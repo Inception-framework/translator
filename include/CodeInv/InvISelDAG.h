@@ -141,7 +141,7 @@ public:
   MachineFunction *MF;
   const Decompiler        *Dec;
 
-  InvISelDAG(const TargetMachine &TMC, 
+  InvISelDAG(const TargetMachine &TMC,
     CodeGenOpt::Level OL = CodeGenOpt::Default,
     const Decompiler *TheDec = NULL);
  // {
@@ -152,7 +152,7 @@ public:
     // Creator is responsible for destroying TLI, TM, CurDAG, and MF.
   };
 
-  virtual IREmitter* getEmitter(Decompiler *Dec, raw_ostream &InfoOut = nulls(), 
+  virtual IREmitter* getEmitter(Decompiler *Dec, raw_ostream &InfoOut = nulls(),
     raw_ostream &ErrOut = nulls())
   { return new IREmitter(Dec, InfoOut, ErrOut); }
 
@@ -166,9 +166,6 @@ public:
     const unsigned char *MatcherTable,
     unsigned TableSize);
 
-  // NOTE: InvertCode is Implemented by tablegen
-  virtual SDNode* InvertCode(SDNode *NodeToMatch) = 0;
-
   bool CheckAndMask(SDValue LHS, ConstantSDNode *RHS, int64_t DesiredMaskS) const;
   bool CheckOrMask(SDValue LHS, ConstantSDNode *RHS, int64_t DesiredMaskS) const;
   void SelectInlineAsmMemoryOperands(std::vector<SDValue> &Ops);
@@ -177,25 +174,25 @@ public:
   SDNode *MorphNode(SDNode *Node, unsigned TargetOpc, SDVTList VTList,
     const SDValue *Ops, unsigned NumOps, unsigned EmitNodeInfo);
   void CannotYetSelect(SDNode *N);
-  void SetDAG(SelectionDAG *NewDAG) { 
-    CurDAG = NewDAG; 
+  void SetDAG(SelectionDAG *NewDAG) {
+    CurDAG = NewDAG;
     MF = &CurDAG->getMachineFunction();
   }
 
   /// \brief Selects appropriate SDNode to convert Target Instruction to IR
   ///
   /// This function is implemented by each target and should be the entry point
-  /// to that target's fracture-tblgen InvertCode function. It is also the 
+  /// to that target's fracture-tblgen InvertCode function. It is also the
   /// function where the target author should put hacks and special cases
   /// which cannot be expressed in the tablegen system.
   ///
   /// Typical Usage:
   /// \code
   ///   MachineBasicBlock B = ...
-  ///   foreach (SDNode S in B) 
+  ///   foreach (SDNode S in B)
   ///     S = Transmogrify(S);
   /// \code
-  /// 
+  ///
   /// \param N a MachineSDNode that will be converted.
   ///
   /// \retrurns a regular SDnode which corresponded to the MachineSDNode.
@@ -203,18 +200,19 @@ public:
 
   virtual bool CheckComplexPattern(SDNode *Root, SDNode *Parent, SDValue N,
     unsigned PatternNo,
-    SmallVectorImpl<std::pair<SDValue, SDNode*> > &Result, 
+    SmallVectorImpl<std::pair<SDValue, SDNode*> > &Result,
     unsigned StartNo = 0) {
     llvm_unreachable("Tblgen should generate the implementation of this!");
   }
+  
 };
 
 /// \brief Selects the correct InvISelDAG engine for the Target.
-/// 
+///
 /// Returns null if there is no InvISelDAG for the given Target.
 ///
 /// NOTE: This function must be updated when you add a new engine!
-/// 
+///
 /// Typical usage:
 /// \code
 ///   Target T = ...
@@ -224,7 +222,7 @@ public:
 ///
 /// \param T a pointer to the target.
 ///
-/// \returns InvISelDAG engine for Target, or null. 
+/// \returns InvISelDAG engine for Target, or null.
 InvISelDAG* getTargetInvISelDAG(const TargetMachine *T, const Decompiler *TheDec = NULL);
 
 } // end fracture namespace

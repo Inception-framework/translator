@@ -1558,8 +1558,8 @@ AC_CONFIG_MAKEFILE(tools/Makefile)
 AC_CONFIG_MAKEFILE(lib/utils/Makefile)
 AC_CONFIG_MAKEFILE(lib/Commands/Makefile)
 AC_CONFIG_MAKEFILE(tools/fracture-cl/Makefile)
-AC_CONFIG_MAKEFILE(utils/Makefile)
-AC_CONFIG_MAKEFILE(utils/TableGen/Makefile)
+#AC_CONFIG_MAKEFILE(utils/Makefile)
+#AC_CONFIG_MAKEFILE(utils/TableGen/Makefile)
 
 
 dnl This must be last

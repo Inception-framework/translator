@@ -44,13 +44,12 @@ public:
   { return new ARMIREmitter(Dec, InfoOut, ErrOut); }
 
 
-  SDNode* InvertCode(SDNode *N);
   SDNode* Transmogrify(SDNode *N);
 
-  bool CheckComplexPattern(SDNode *Root, SDNode *Parent, SDValue N,
-    unsigned PatternNo,
-    SmallVectorImpl<std::pair<SDValue, SDNode*> > &Result, 
-    unsigned StartNo);
+  // bool CheckComplexPattern(SDNode *Root, SDNode *Parent, SDValue N,
+    // unsigned PatternNo,
+    // SmallVectorImpl<std::pair<SDValue, SDNode*> > &Result,
+    // unsigned StartNo);
 
   bool SelectRegShifterOperand(SDValue N, SDValue &A,
                                SDValue &B, SDValue &C,

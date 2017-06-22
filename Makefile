@@ -8,11 +8,10 @@
 # Indicates our relative path to the top of the project's root directory.
 #
 LEVEL = .
-DIRS = utils lib tools docs
+DIRS = lib tools #docs
 EXTRA_DIST = include
 
 #
 # Include the Master Makefile that knows how to build all.
 #
 include $(LEVEL)/Makefile.common
-

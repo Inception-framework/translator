@@ -683,15 +683,15 @@ DataInstall   = $(INSTALL) -m 0644
 # When compiling under Mingw/Cygwin, the tblgen tool expects Windows
 # paths. In this case, the SYSPATH function (defined in
 # Makefile.config) transforms Unix paths into Windows paths.
-TableGen.Flags= -I $(call SYSPATH, $(PROJ_SRC_DIR)) \
-                -I $(call SYSPATH, $(LLVM_SRC_ROOT)/include) \
-                -I $(call SYSPATH, $(PROJ_SRC_ROOT)/include) \
-                -I $(call SYSPATH, $(PROJ_SRC_ROOT)/lib/Target)
-Fracture.Flags= -I $(call SYSPATH, $(LLVM_SRC_ROOT)) \
-                -I $(call SYSPATH, $(LLVM_SRC_ROOT)/include) \
-                -I $(call SYSPATH, $(LLVM_SRC_ROOT)/lib/Target)
-FractureTableGen  = $(FRACTURE_TBLGEN) $(Fracture.Flags)
-LLVMTableGen  = $(LLVM_TBLGEN) $(Fracture.Flags)
+#TableGen.Flags= -I $(call SYSPATH, $(PROJ_SRC_DIR)) \
+#                -I $(call SYSPATH, $(LLVM_SRC_ROOT)/include) \
+#                -I $(call SYSPATH, $(PROJ_SRC_ROOT)/include) \
+#                -I $(call SYSPATH, $(PROJ_SRC_ROOT)/lib/Target)
+#Fracture.Flags= -I $(call SYSPATH, $(LLVM_SRC_ROOT)) \
+#                -I $(call SYSPATH, $(LLVM_SRC_ROOT)/include) \
+#                -I $(call SYSPATH, $(LLVM_SRC_ROOT)/lib/Target)
+#FractureTableGen  = $(FRACTURE_TBLGEN) $(Fracture.Flags)
+#LLVMTableGen  = $(LLVM_TBLGEN) $(Fracture.Flags)
 
 Archive       = $(AR) $(AR.Flags)
 ifdef RANLIB
@@ -1459,19 +1459,19 @@ $(ObjDir)/%.s: %.m $(ObjDir)/.dir $(BUILT_SOURCES)
 # TABLEGEN: Provide rules for running tblgen to produce *.inc files
 ###############################################################################
 
-ifdef TARGET
-TABLEGEN_INC_FILES_COMMON = 1
-endif
+#ifdef TARGET
+#TABLEGEN_INC_FILES_COMMON = 1
+#endif
 
-ifndef TARGETDIR
-TARGETDIR := $(TARGET)
-endif
+#ifndef TARGETDIR
+#TARGETDIR := $(TARGET)
+#endif
 
-ifdef TABLEGEN_INC_FILES_COMMON
+#ifdef TABLEGEN_INC_FILES_COMMON
 
-INCFiles := $(filter %.inc,$(BUILT_SOURCES))
-INCTMPFiles := $(INCFiles:%=$(ObjDir)/%.tmp)
-.PRECIOUS: $(INCTMPFiles) $(INCFiles)
+#INCFiles := $(filter %.inc,$(BUILT_SOURCES))
+#INCTMPFiles := $(INCFiles:%=$(ObjDir)/%.tmp)
+#.PRECIOUS: $(INCTMPFiles) $(INCFiles)
 
 # INCFiles rule: All of the tblgen generated files are emitted to
 # $(ObjDir)/%.inc.tmp, instead of emitting them directly to %.inc.  This allows
@@ -1479,124 +1479,124 @@ INCTMPFiles := $(INCFiles:%=$(ObjDir)/%.tmp)
 # tblgen is modified, all of the .inc.tmp files are regenerated, but no
 # dependencies of the .inc files are, unless the contents of the .inc file
 # changes.
-$(INCFiles) : %.inc : $(ObjDir)/%.inc.tmp
-	$(Verb) $(CMP) -s $@ $< || $(CP) $< $@
+#$(INCFiles) : %.inc : $(ObjDir)/%.inc.tmp
+#	$(Verb) $(CMP) -s $@ $< || $(CP) $< $@
 
-endif # TABLEGEN_INC_FILES_COMMON
+#endif # TABLEGEN_INC_FILES_COMMON
 
-ifdef TARGET
+#ifdef TARGET
 
-TDFiles := $(strip $(wildcard $(PROJ_SRC_DIR)/*.td) \
-           $(LLVM_SRC_ROOT)/include/llvm/Target/Target.td \
-           $(LLVM_SRC_ROOT)/include/llvm/Target/TargetCallingConv.td \
-           $(LLVM_SRC_ROOT)/include/llvm/Target/TargetSchedule.td \
-           $(LLVM_SRC_ROOT)/include/llvm/Target/TargetSelectionDAG.td \
-           $(LLVM_SRC_ROOT)/include/llvm/CodeGen/ValueTypes.td) \
-           $(wildcard $(LLVM_SRC_ROOT)/include/llvm/Intrinsics*.td)
+#TDFiles := $(strip $(wildcard $(PROJ_SRC_DIR)/*.td) \
+#           $(LLVM_SRC_ROOT)/include/llvm/Target/Target.td \
+#           $(LLVM_SRC_ROOT)/include/llvm/Target/TargetCallingConv.td \
+#           $(LLVM_SRC_ROOT)/include/llvm/Target/TargetSchedule.td \
+#           $(LLVM_SRC_ROOT)/include/llvm/Target/TargetSelectionDAG.td \
+#           $(LLVM_SRC_ROOT)/include/llvm/CodeGen/ValueTypes.td) \
+#           $(wildcard $(LLVM_SRC_ROOT)/include/llvm/Intrinsics*.td)
 
 # All .inc.tmp files depend on the .td files.
-$(INCTMPFiles) : $(TDFiles)
+#$(INCTMPFiles) : $(TDFiles)
 
-$(TARGET:%=$(ObjDir)/%GenRegisterInfo.inc.tmp): \
-$(ObjDir)/%GenRegisterInfo.inc.tmp : \
-$(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR)/%.td \
-$(ObjDir)/.dir $(FRACTURE_TBLGEN)
-	$(Echo) "Building $(<F) register info implementation with tblgen"
-	$(Verb) $(LLVMTableGen) \
-               -I $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR) \
-               -gen-register-info -o $(call SYSPATH, $@) $<
+#$(TARGET:%=$(ObjDir)/%GenRegisterInfo.inc.tmp): \
+#$(ObjDir)/%GenRegisterInfo.inc.tmp : \
+#$(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR)/%.td \
+#$(ObjDir)/.dir $(FRACTURE_TBLGEN)
+#	$(Echo) "Building $(<F) register info implementation with tblgen"
+#	$(Verb) $(LLVMTableGen) \
+#               -I $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR) \
+#               -gen-register-info -o $(call SYSPATH, $@) $<
 
-$(TARGET:%=$(ObjDir)/%GenInstrInfo.inc.tmp): \
-$(ObjDir)/%GenInstrInfo.inc.tmp : \
-$(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR)/%.td \
-$(ObjDir)/.dir $(FRACTURE_TBLGEN)
-	$(Echo) "Building $(<F) instruction information with tblgen"
-	$(Verb) $(LLVMTableGen) \
-               -I $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR) \
-               -gen-instr-info -o $(call SYSPATH, $@) $<
+#$(TARGET:%=$(ObjDir)/%GenInstrInfo.inc.tmp): \
+#$(ObjDir)/%GenInstrInfo.inc.tmp : \
+#$(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR)/%.td \
+#$(ObjDir)/.dir $(FRACTURE_TBLGEN)
+#	$(Echo) "Building $(<F) instruction information with tblgen"
+#	$(Verb) $(LLVMTableGen) \
+#               -I $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR) \
+#               -gen-instr-info -o $(call SYSPATH, $@) $<
 
-$(TARGET:%=$(ObjDir)/%GenAsmWriter.inc.tmp): \
-$(ObjDir)/%GenAsmWriter.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) assembly writer with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-asm-writer -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenAsmWriter1.inc.tmp): \
-$(ObjDir)/%GenAsmWriter1.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) assembly writer #1 with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-asm-writer -asmwriternum=1 -o \
-          $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenAsmMatcher.inc.tmp): \
-$(ObjDir)/%GenAsmMatcher.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) assembly matcher with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-asm-matcher -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenMCCodeEmitter.inc.tmp): \
-$(ObjDir)/%GenMCCodeEmitter.inc.tmp: %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) MC code emitter with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-emitter -mc-emitter -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenMCPseudoLowering.inc.tmp): \
-$(ObjDir)/%GenMCPseudoLowering.inc.tmp: %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) MC Pseudo instruction expander with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-pseudo-lowering -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenCodeEmitter.inc.tmp): \
-$(ObjDir)/%GenCodeEmitter.inc.tmp: %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) code emitter with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-emitter -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenDAGISel.inc.tmp): \
-$(ObjDir)/%GenDAGISel.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) DAG instruction selector implementation with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-dag-isel -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenDisassemblerTables.inc.tmp): \
-$(ObjDir)/%GenDisassemblerTables.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) disassembly tables with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-disassembler -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenEDInfo.inc.tmp): \
-$(ObjDir)/%GenEDInfo.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) enhanced disassembly information with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-enhanced-disassembly-info -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenFastISel.inc.tmp): \
-$(ObjDir)/%GenFastISel.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) \"fast\" instruction selector implementation with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-fast-isel -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenSubtargetInfo.inc.tmp): \
-$(ObjDir)/%GenSubtargetInfo.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) subtarget information with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-subtarget -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenCallingConv.inc.tmp): \
-$(ObjDir)/%GenCallingConv.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) calling convention information with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-callingconv -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenIntrinsics.inc.tmp): \
-$(ObjDir)/%GenIntrinsics.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) intrinsics information with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-tgt-intrinsic -o $(call SYSPATH, $@) $<
-
-$(ObjDir)/ARMGenDecoderTables.inc.tmp : ARM.td $(ObjDir)/.dir $(LLVM_TBLGEN)
-	$(Echo) "Building $(<F) decoder tables with tblgen"
-	$(Verb) $(LLVMTableGen) -gen-arm-decoder -o $(call SYSPATH, $@) $<
-
-$(TARGET:%=$(ObjDir)/%GenInvISel.inc.tmp): \
-$(ObjDir)/%GenInvISel.inc.tmp : $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR)/%.td \
-$(ObjDir)/.dir $(FRACTURE_TBLGEN)
-	$(Echo) "Building $(<F) DAG inverse selector implementation with tblgen"
-	$(Verb) $(FractureTableGen) \
-               -I $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR) \
-               -gen-instr-map -o $(call SYSPATH, $@) $<
-
-clean-local::
-	-$(Verb) $(RM) -f $(INCFiles)
-
-endif # TARGET
+#$(TARGET:%=$(ObjDir)/%GenAsmWriter.inc.tmp): \
+#$(ObjDir)/%GenAsmWriter.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) assembly writer with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-asm-writer -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenAsmWriter1.inc.tmp): \
+#$(ObjDir)/%GenAsmWriter1.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) assembly writer #1 with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-asm-writer -asmwriternum=1 -o \
+#          $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenAsmMatcher.inc.tmp): \
+#$(ObjDir)/%GenAsmMatcher.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) assembly matcher with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-asm-matcher -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenMCCodeEmitter.inc.tmp): \
+#$(ObjDir)/%GenMCCodeEmitter.inc.tmp: %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) MC code emitter with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-emitter -mc-emitter -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenMCPseudoLowering.inc.tmp): \
+#$(ObjDir)/%GenMCPseudoLowering.inc.tmp: %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) MC Pseudo instruction expander with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-pseudo-lowering -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenCodeEmitter.inc.tmp): \
+#$(ObjDir)/%GenCodeEmitter.inc.tmp: %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) code emitter with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-emitter -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenDAGISel.inc.tmp): \
+#$(ObjDir)/%GenDAGISel.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) DAG instruction selector implementation with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-dag-isel -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenDisassemblerTables.inc.tmp): \
+#$(ObjDir)/%GenDisassemblerTables.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) disassembly tables with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-disassembler -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenEDInfo.inc.tmp): \
+#$(ObjDir)/%GenEDInfo.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) enhanced disassembly information with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-enhanced-disassembly-info -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenFastISel.inc.tmp): \
+#$(ObjDir)/%GenFastISel.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) \"fast\" instruction selector implementation with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-fast-isel -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenSubtargetInfo.inc.tmp): \
+#$(ObjDir)/%GenSubtargetInfo.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) subtarget information with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-subtarget -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenCallingConv.inc.tmp): \
+#$(ObjDir)/%GenCallingConv.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) calling convention information with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-callingconv -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenIntrinsics.inc.tmp): \
+#$(ObjDir)/%GenIntrinsics.inc.tmp : %.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) intrinsics information with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-tgt-intrinsic -o $(call SYSPATH, $@) $<
+#
+#$(ObjDir)/ARMGenDecoderTables.inc.tmp : ARM.td $(ObjDir)/.dir $(LLVM_TBLGEN)
+#	$(Echo) "Building $(<F) decoder tables with tblgen"
+#	$(Verb) $(LLVMTableGen) -gen-arm-decoder -o $(call SYSPATH, $@) $<
+#
+#$(TARGET:%=$(ObjDir)/%GenInvISel.inc.tmp): \
+#$(ObjDir)/%GenInvISel.inc.tmp : $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR)/%.td \
+#$(ObjDir)/.dir $(FRACTURE_TBLGEN)
+#	$(Echo) "Building $(<F) DAG inverse selector implementation with tblgen"
+#	$(Verb) $(FractureTableGen) \
+#               -I $(LLVM_SRC_ROOT)/lib/Target/$(TARGETDIR) \
+#               -gen-instr-map -o $(call SYSPATH, $@) $<
+#
+#clean-local::
+#	-$(Verb) $(RM) -f $(INCFiles)
+#
+#endif # TARGET
 
 ###############################################################################
 # OTHER RULES: Other rules needed

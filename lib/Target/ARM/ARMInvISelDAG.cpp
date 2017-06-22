@@ -20,7 +20,7 @@ using namespace llvm;
 
 namespace fracture {
 
-#include "ARMGenInvISel.inc"
+//#include "ARMGenInvISel.inc"
 
 
 //Coppied these from https://github.com/llvm-mirror/llvm/blob/f65712bfe35a038e5895ffc859bcf43fda35a8fd/lib/Target/ARM/MCTargetDesc/ARMAddressingModes.h#L413
@@ -36,7 +36,6 @@ namespace fracture {
 //static inline unsigned getAM2IdxMode(unsigned AM2Opc) {
 //  return (AM2Opc >> 16);
 //}
-
 
 
 SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
@@ -233,7 +232,7 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
     //      return NULL;
     //    }
     // }
- 
+
 //    case ARM::LDRi12: {
 //      //load the Ptr
 //      //ldr chain [ptr offset]
@@ -368,13 +367,16 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
       return NULL;
   }
 
+  return NULL;
+
 
   //If Transmogrify fails to find the opcode then we will send it to the
   //tablegen file to search for a match. If this fails, then fracture will
   // crash with a debug code.
-  SDNode* TheRes = InvertCode(N);
-  return TheRes;
+  //SDNode* TheRes = InvertCode(N);
+  //return TheRes;
 }
+
 
 bool ARMInvISelDAG::SelectImmShifterOperand(SDValue N,
                                               SDValue &BaseReg,
