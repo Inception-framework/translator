@@ -24,5 +24,4 @@ config.status
 include/config.h
 configure.out
 Debug+Asserts
-*.inc
 docs/dox

@@ -34,7 +34,7 @@ Disassembler::Disassembler(MCDirector *NewMC, object::ObjectFile *NewExecutable,
   }
   // Set current section to ".text"
   // setSection(".text");
-  setSection("text");
+  setSection("code");
   // Initialize the MMI
   MMI = new MachineModuleInfo(*MC->getMCAsmInfo(), *MC->getMCRegisterInfo(),
     MC->getMCObjectFileInfo());
@@ -151,14 +151,14 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
       (size_t)CurSectionMemory->getBytes().size());
   // Chop any bytes off before instuction address that we don't need.
   uint64_t NewAddr = Address - CurSectionMemory->getBase();
-  ArrayRef<uint8_t> NewBytes((uint8_t*)(Bytes.data() + NewAddr), 
+  ArrayRef<uint8_t> NewBytes((uint8_t*)(Bytes.data() + NewAddr),
                              //Bytes.data() + Bytes.size() - NewAddr);
                              (size_t)(Bytes.size() - NewAddr));
   // Replace nulls() with outs() for stack tracing
   if (!(DA->getInstruction(*Inst, InstSize, NewBytes, Address,
         nulls(), nulls()))) {
     printError("Unknown instruction encountered, instruction decode failed! ");
-    
+
     return 1;
     // Instructions[Address] = NULL;
     // Block->push_back(NULL);
@@ -474,7 +474,7 @@ std::string Disassembler::getSymbolName(unsigned Address) {
   return "";
 }
 // getRelocFunctionName() pairs function call addresses with dynamically relocated
-// library function addresses and sets the function name to the actual name 
+// library function addresses and sets the function name to the actual name
 // rather than the function address
 void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   MachineFunction *MF = disassemble(Address);
@@ -507,7 +507,7 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   // grab the symbol name
   for (object::section_iterator seci = Executable->section_begin(); seci !=
       Executable->section_end(); ++seci)
-    for (object::relocation_iterator ri = seci->relocation_begin(); ri != 
+    for (object::relocation_iterator ri = seci->relocation_begin(); ri !=
          seci->relocation_end(); ++ri) {
       uint64_t RelocAddr;
       if ((ec = ri->getAddress(RelocAddr))) {
@@ -667,7 +667,7 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
   std::error_code ec;
   for (object::section_iterator si = Executable->section_begin(), se =
          Executable->section_end(); si != se; ++si) {
-    
+
     if (ec) {
       printError(ec.message());
       break;
@@ -685,7 +685,7 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
   }
 
   return *Executable->section_end();
-}   
+}
 
 uint64_t Disassembler::getDebugOffset(const DebugLoc &Loc) const {
   MDNode *Scope = Loc.getScope(*MC->getContext());

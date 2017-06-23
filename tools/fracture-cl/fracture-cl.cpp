@@ -184,14 +184,16 @@ static std::error_code loadBinary(StringRef FileName) {
 
   // Arch-Vendor-OS[-Env]
   // Figure out the target triple.
-  Triple TT("unknown-unknown-unknown");
-  if (TripleName.empty()) {
-    TT.setArch(Triple::ArchType(TempExecutable->getArch()));
-  } else {
-    TT.setTriple(Triple::normalize(TripleName));
-  }
-  if (!ArchName.empty())
-    TT.setArchName(ArchName);
+  Triple TT("thumbv7m-unknown-none-elf");
+  // Triple TT("unknown-unknown-unknown");
+  // if (TripleName.empty()) {
+  //   TT.setArch(Triple::ArchType(TempExecutable->getArch()));
+  // } else {
+  //   TT.setTriple(Triple::normalize(TripleName));
+  // }
+  // if (!ArchName.empty())
+  //   TT.setArchName(ArchName);
+	TT.setTriple(Triple::normalize("thumbv7m-unknown-none-elf"));
 
   TripleName = TT.str();
 
@@ -199,7 +201,7 @@ static std::error_code loadBinary(StringRef FileName) {
   delete DAS;
   delete MCD;
 
-  MCD = new MCDirector(TripleName, "generic", FeaturesStr,
+  MCD = new MCDirector(TripleName, "", FeaturesStr,
     TargetOptions(), Reloc::DynamicNoPIC, CodeModel::Default, CodeGenOpt::Default,
     outs(), errs());
   DAS = new Disassembler(MCD, TempExecutable.release(), NULL, outs(), outs());
@@ -562,7 +564,7 @@ static void dumpELFRelocSymbols(const object::ELFObjectFile<ELFT>* elf,
     ri->getSymbol()->getName(Name);
     if (error(ri->getAddress(Addr)))
       continue;
-    //if (error(ri->getOffset(Offset))) // FIXME: Maybe getOffset only 
+    //if (error(ri->getOffset(Offset))) // FIXME: Maybe getOffset only
     //  continue;                       // works for a certain reloc type?
     if (error(ri->getType(Type)))
       continue;
@@ -763,7 +765,7 @@ static void dumpCOFFSymbols(const object::COFFObjectFile *coff,
       outs() << "SYMNAME: " << symName << "\n";
     }
   }
-  outs() << "\n\nEXPORT DIRECTORY STUFF\n\n"; 
+  outs() << "\n\nEXPORT DIRECTORY STUFF\n\n";
   for (object::export_directory_iterator edi = coff->export_directory_begin();
        edi != coff->export_directory_end(); ++edi) {
     StringRef dllName, symName;

@@ -34,11 +34,11 @@ InvISelDAG* getTargetInvISelDAG(const TargetMachine *T, const Decompiler *TheDec
 	outs() << "CPU: " << cpu.str().c_str() << "\n";
 
 	InvISelDAG *res = NULL;
-	if(triple.str().find("arm") == 0){
+	// if(triple.str().find("arm") == 0){
 		res = new ARMInvISelDAG(*T, CodeGenOpt::Default, TheDec);
-	} else {
-		outs() << "Decompiler doesn't support: " << triple.str().c_str() << cpu.str().c_str() << "\n";
-	}
+	// } else {
+		// outs() << "Decompiler doesn't support: " << triple.str().c_str() << cpu.str().c_str() << "\n";
+	// }
   return res;
 }
 
@@ -1202,7 +1202,7 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
           MMO = *(SrcNode->memoperands_begin());
         }
         if (TargetOpc == ISD::STORE) {
-          Res = (CurDAG->getStore(InputChain, SDLoc(NodeToMatch), Ops[0], 
+          Res = (CurDAG->getStore(InputChain, SDLoc(NodeToMatch), Ops[0],
               Ops[1], MMO)).getNode();
         }
         if (TargetOpc == ISD::LOAD) {
@@ -1213,7 +1213,7 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
           // NOTE: Selection/DAG handles Alignment = 0;.
           unsigned Alignment = 0;
           Res = (CurDAG->getLoad(LdType, SDLoc(NodeToMatch), InputChain, Ops[0],
-              MachinePointerInfo::getConstantPool(), 
+              MachinePointerInfo::getConstantPool(),
               false, false, true, //FIXME: Just guessing on these.
               Alignment)).getNode();
         }
@@ -1225,7 +1225,7 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
         }
         FixChainOp(Res);
       }
-      else if (Opcode != OPC_MorphNodeTo 
+      else if (Opcode != OPC_MorphNodeTo
         && !NodeToMatch->isTargetMemoryOpcode()) {
         // If this is a normal EmitNode command, just create the new node and
         // add the results to the RecordedNodes list.
@@ -1235,9 +1235,9 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
         // Add all the non-glue/non-chain results to the RecordedNodes list.
         // Note: The following line was necessary to make replacealluses work
         //       in OPC_CompleteMatch.
-        //       It should be safe as our recorded nodes should not be needed 
-        //       after we generate the new node. It might break other 
-        //       functionality, however, as ResSlot is supposed to be the 
+        //       It should be safe as our recorded nodes should not be needed
+        //       after we generate the new node. It might break other
+        //       functionality, however, as ResSlot is supposed to be the
         //       slot to replace for each value type produced by the instruction.
         RecordedNodes.clear();
         for (unsigned i = 0, e = VTs.size(); i != e; ++i) {
@@ -1361,7 +1361,7 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
 
         assert(ResSlot < RecordedNodes.size() && "Invalid CheckSame");
         SDValue Res = RecordedNodes[ResSlot].first;
- 
+
         assert(i < NodeToMatch->getNumValues() &&
                NodeToMatch->getValueType(i) != MVT::Other &&
                NodeToMatch->getValueType(i) != MVT::Glue &&

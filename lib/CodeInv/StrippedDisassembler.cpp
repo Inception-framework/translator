@@ -127,7 +127,7 @@ void StrippedDisassembler::functionsIterator(uint64_t Address) {
     Graph->addToList(tempNode);
     ad = DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc());
     if(DAS->getDebugOffset(BI->instr_rbegin()->getDebugLoc())
-      + BI->instr_rbegin()->getDesc().getSize() >= Section.getAddress() 
+      + BI->instr_rbegin()->getDesc().getSize() >= Section.getAddress()
       + Section.getSize() - BI->instr_rbegin()->getDesc().getSize())
       return;
   }
@@ -144,7 +144,7 @@ void StrippedDisassembler::findStrippedMain() {
 
   uint64_t Address = 0, pre = 0;
   //uint64_t symbAddr = getStrippedSection(".text");
-  object::SectionRef curSection = DAS->getSectionByName("text");
+  object::SectionRef curSection = DAS->getSectionByName("code");
   uint64_t symbAddr = curSection.getAddress();
   DAS->setSection(curSection);
   std::ostringstream sin;
