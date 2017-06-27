@@ -62,339 +62,64 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
 
   switch(TargetOpc) {
     default:
-        // outs() << "To tablegen Opc: " << TargetOpc << "\n";
+        errs() << "[ARMInvIselDAG] Unsupported instruction ...\n";
     	break;
-    case ARM::CMPrr:
-    case ARM::CMPri: {
-      // NOTE: Pattern in ARM DAG Selector is busted as not handling CPSR
-      //       not sure how to fix, so this might just be a hack!
-      // Pattern: (CMPri:int32 GPR:$Rn, (imm:i32):$i, pred:$p, pred:%noreg)
-      // Emits: (ARMcmp GPR:$Rn, (imm:i32):$i)
-      unsigned Opc = ARMISD::CMP;
-      SDValue N0 = N->getOperand(0);
-      SDValue N1 = N->getOperand(1);
-      SDValue ResNode = CurDAG->getNode(Opc, SDLoc(N), MVT::i32, N0, N1);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), ResNode);
-      return NULL;
-    }
-    case ARM::t2Bcc:
-    case ARM::tBcc:
-    case ARM::Bcc: {
-//       Pattern: (Bcc:void (bb:Other):$dst, (imm:i32):$cc)
-//       Emits: (ARMbrcond:void (bb:Other):$dst, (imm:i32):$cc)
-//
-//       Pattern: (tBcc:void (bb:Other):$dst, (imm:i32):$cc)
-//       Emits: (ARMbrcond:void (bb:Other):$dst, (imm:i32):$cc)
-//
-//       Pattern: (t2Bcc:void (bb:Other):$dst, (imm:i32):$cc)
-//       Emits: (ARMbrcond:void (bb:Other):$dst, (imm:i32):$cc)
-      unsigned Opc = ARMISD::BRCOND;
-      // Bcc is a control flow instruction, therefore
-      // the first operand is always the pointer to the prev inst node.
-      SDValue Chain = N->getOperand(0);
-      SDValue N1 = N->getOperand(1); // Branch target
-      // FIXME: May want to interpret the pred value, we ignore for now.
-      SDValue ARMcc = N->getOperand(2); // pred, 14 for unconditional
-      SDValue Cmp = N->getOperand(3); // CPSR, or %noreg for unconditional
 
-      SDValue BT = CurDAG->getConstant(
-        cast<ConstantSDNode>(N1)->getZExtValue(), N1.getValueType());
+      /* Process Add Instructions */
+      // return AddInstruction::select(N);
+      /* Process Address Instructions */
 
+      /* Process Subtract Instructions */
 
-      // From ARMISelLowering.cpp ---
-      // return DAG.getNode(ARMISD::BRCOND, dl, MVT::Other,
-      //                    Chain, Dest, ARMcc, CCR, Cmp);
-      // We don't get that, we get Chain, Dest (BT), ARMcc, Cmp
-      // Chain flips to the end by convention (no other reason).
-      SDValue ResNode = CurDAG->getNode(Opc, SDLoc(N), MVT::Other,
-        BT, ARMcc, Cmp, Chain);
+      /* Process Paallel Arithmetic Instructions */
 
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0),
-        SDValue(ResNode.getNode(), ResNode.getResNo()));
+      /* Process Saturate Instructions */
 
-      return NULL;
-    }
-      break;
-    case ARM::RSBrr: {
-      // Pattern: (RSBrr GPR:$Rn, imm:op2, pred:$p)
-      // Emits: (sub op2, $Rn)
-      SDValue Op1 = N->getOperand(0);
-      SDValue Op2 = N->getOperand(1);
-      SDLoc SL(N);
-      SDValue Sub = CurDAG->getNode(ISD::SUB, SL, MVT::i32, Op2, Op1);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Sub);
-      return NULL;
-    }
-      break;
-    case ARM::STR_PRE_IMM: {
-      // Pattern: (STR_PRE_IMM GPR:$Rt, GPR:$Rb, imm:offset, pred:$p)
-      // Emits: (store $Rt, (add $Rb, imm:offset)).
-      // Note also that this variation has an outs to $Rb for the add op
-      // This is one variation of a complex instruction:
-      //  http://www.heyrick.co.uk/assembler/str.html#str
-      SDValue Chain = N->getOperand(0);
-      SDValue Tgt = N->getOperand(1);
-      SDValue Base = N->getOperand(2);
-      SDValue Offset = N->getOperand(3);
+      /* Process Multiply Instructions */
 
-      SDLoc SL(N);
-      SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+      /* Process Divide Instructions */
 
-      SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr);
+      /* Process Mode Data Instructions */
 
-      // memops might be null here, but not sure if we need to check.
-      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      MachineMemOperand *MMO = NULL;
-      if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for STR_PRE_IMM!\n";
-      } else {
-        MMO = *(MN->memoperands_begin());
-      }
-      SDValue Store = CurDAG->getStore(Chain, SL, Tgt, Addr, MMO);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store);
+      /* Process Shift Instructions */
 
-      return NULL;
-    }
-    case ARM::STRH_POST:
-    case ARM::STRD_POST: {
-      // Store register , decrement, post index
-      // mem[Rn+Rm/#imm] = Rd (32 bit copy)
-   	  //
-      SDValue Chain = N->getOperand(0);
-      SDValue Tgt1 = N->getOperand(1);
-      SDValue Tgt2 = N->getOperand(2);
-      SDValue Base = N->getOperand(3);
-      SDValue Offset = N->getOperand(4);
+      /* Process Compare Instructions */
 
-      SDLoc SL(N);
-      SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+      /* Process Logial Instructions */
 
-      SDValue Addr1 = CurDAG->getNode(ISD::SUB, SL, AddVTList, Base, Offset);
+      /* Process Bit Field Instructions */
 
-      // memops might be null here, but not sure if we need to check.
-      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      MachineMemOperand *MMO = NULL;
-      if (MN->memoperands_empty()) {
-    	  errs() << "NO MACHINE OPS for STRD_POST!\n";
-         }
-      else {
-           MMO = *(MN->memoperands_begin());
-         }
-      SDValue Four = CurDAG->getConstant(4, MVT::i32, false, false);
-      SDValue Store = CurDAG->getStore(Chain, SL, Tgt1, Addr1, MMO);
-      SDValue Addr2 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr1, Four);
-      SDValue Store2 = CurDAG->getStore(Store, SL, Tgt2, Addr2, MMO);
-      SDValue Addr3 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr2, Four);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr3);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store2);
-      FixChainOp(Store.getNode());
-      FixChainOp(Store2.getNode());
+      /* Process Pack Instructions */
 
-         return NULL;
-       }
+      /* Process Signed Extend Instructions */
 
+      /* Process Unsigned Extend Instructions */
 
-    // case ARM::LDRD_POST: {
-    //   // Load, increment, post index
-    //   // RD = mem[Rn+Rm/#imm]
-   	//   //
-    //   SDValue Chain = N->getOperand(0);
-    //   SDValue Op1 = N->getOperand(1);
-    //   SDValue Op2 = N->getOperand(2);
-    //   SDValue Base = N->getOperand(3);
-    //   SDValue Offset = N->getOperand(4);
+      /* Process Signed Extend With Add Instructions */
 
-    //   SDLoc SL(N);
-    //   SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
+      /* Process Unsigned Extend With Add Instructions */
 
-    //   SDValue Addr1 = CurDAG->getNode(ISD::SUB, SL, AddVTList, Base, Offset);
+      /* Process Reverse Instructions */
 
-    //   // memops might be null here, but not sure if we need to check.
-    //   const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-    //   MachineMemOperand *MMO = NULL;
-    //   if (MN->memoperands_empty()) {
-    // 	  errs() << "NO MACHINE OPS for STRD_POST!\n";
-    //      }
-    //   else {
-    //        MMO = *(MN->memoperands_begin());
-    //      }
-    //   SDValue Four = CurDAG->getConstant(4, MVT::i32, false, false);
-    //   SDValue Store = CurDAG->getStore(Chain, SL, Tgt1, Addr1, MMO);
-    //   SDValue Addr2 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr1, Four);
-    //   SDValue Store2 = CurDAG->getStore(Store, SL, Tgt2, Addr2, MMO);
-    //   SDValue Addr3 = CurDAG->getNode(ISD::ADD, SL, AddVTList, Addr2, Four);
-    //   CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Addr3);
-    //   CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Store2);
-    //   FixChainOp(Store.getNode());
-    //   FixChainOp(Store2.getNode());
+      /* Process Select Instructions */
 
-    //      return NULL;
-    //    }
-    // }
+      /* Process IfThen Instructions */
 
-//    case ARM::LDRi12: {
-//      //load the Ptr
-//      //ldr chain [ptr offset]
-//
-//      SDValue Chain 	  = N->getOperand(0);
-//      SDValue Ptr       = N->getOperand(1);
-//      SDValue Offset    = N->getOperand(2);
-//      SDLoc SL(N);
-//  	  SDVTList VTList = CurDAG->getVTList(MVT::i32);
-//
-//
-//  	  EVT LdType = N->getValueType(0);
-//
-//  	  SDValue Addr = CurDAG->getNode(ISD::ADD, SL, VTList, Ptr, Offset);
-//   	  SDValue Ldr = CurDAG->getLoad(LdType, SL, Chain, Addr,
-//          	        MachinePointerInfo::getConstantPool(), false, false, true, 0, 0);
-//      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ldr);
-//      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), SDValue(Ldr.getNode(),1));
-//      FixChainOp(Ldr.getNode());
-//
-//          	return NULL;
-//      }
-    case ARM::STRi12: {
-      //store the tgt filled with the the stack space indicated by  base + offset
-      //str Tgt [base offset]
+      /* Process Branch Instructions */
 
-      SDValue Chain = N->getOperand(0);
-      SDValue Tgt = N->getOperand(1);
-      SDValue Base = N->getOperand(2);
-      SDValue Offset = N->getOperand(3);
+      /* Process Move To Or From PSR Instructions */
 
-      SDLoc SL(N);
-      SDVTList AddVTList = CurDAG->getVTList(MVT::i32);
-      SDValue Addr = CurDAG->getNode(ISD::ADD, SL, AddVTList, Base, Offset);
+      /* Process Processor State Change Instructions */
 
+      /* Process Loard Instructions */
 
-      // memops might be null here, but not sure if we need to check.
-      const MachineSDNode *MN = dyn_cast<MachineSDNode>(N);
-      MachineMemOperand *MMO = NULL;
-      if (MN->memoperands_empty()) {
-        errs() << "NO MACHINE OPS for STRi12!\n";
-    	    } else {
-    	      MMO = *(MN->memoperands_begin());
-    	    }
-      SDValue Store = CurDAG->getStore(Chain, SL, Tgt, Addr, MMO);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Store);
-      FixChainOp(Store.getNode());
-	return NULL;
-      }
-    case ARM::LDMIA:            // Load variations...
-                            //   LD?  Inc?   Bef?    WB?
-      InvLoadOrStoreMultiple(N, true, true, false, false);
-      return NULL;
-    case ARM::LDMIB:
-      InvLoadOrStoreMultiple(N, true, true, true, false);
-      return NULL;
-    case ARM::LDMDA:
-      InvLoadOrStoreMultiple(N, true, false, false, false);
-      return NULL;
-    case ARM::LDMDB:
-      InvLoadOrStoreMultiple(N, true, false, true, false);
-      return NULL;
-    case ARM::LDMIA_UPD:        // writeback variations
-      InvLoadOrStoreMultiple(N, true, true, false, true);
-      return NULL;
-    case ARM::LDMIB_UPD:
-      InvLoadOrStoreMultiple(N, true, true, true, true);
-      return NULL;
-    case ARM::LDMDA_UPD:
-      InvLoadOrStoreMultiple(N, true, false, false, true);
-      return NULL;
-    case ARM::LDMDB_UPD:
-      InvLoadOrStoreMultiple(N, true, false, true, true);
-      return NULL;
-    case ARM::STMIA:            // store variations...
-      InvLoadOrStoreMultiple(N, false, true, false, false);
-      return NULL;
-    case ARM::STMIB:
-      InvLoadOrStoreMultiple(N, false, true, true, false);
-      return NULL;
-    case ARM::STMDA:
-      InvLoadOrStoreMultiple(N, false, false, false, false);
-      return NULL;
-    case ARM::STMDB:
-      InvLoadOrStoreMultiple(N, false, false, true, false);
-      return NULL;
-    case ARM::STMIA_UPD:        // increment after, writeback
-      InvLoadOrStoreMultiple(N, false, true, false, true);
-      return NULL;
-    case ARM::STMIB_UPD:        // increment before, write back
-      InvLoadOrStoreMultiple(N, false, true, true, true);
-      return NULL;
-    case ARM::STMDA_UPD:        // Decrement After, write back
-      InvLoadOrStoreMultiple(N, false, false, false, true);
-      return NULL;
-    case ARM::STMDB_UPD:        // Decrement before, write back
-      InvLoadOrStoreMultiple(N, false, false, true, true);
-      return NULL;
-      case ARM::tBX_RET: {
-        // missing open bracket {
-        SDValue Chain = SDValue(N->getOperand(1).getNode(), 1);
+      /* Process Store Instructions */
 
-        SDLoc SL(N);
+      /* Process Coprocessor Instructions */
 
-        SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+      /* Process Miscellaneous Instructions */
 
-        SDValue CallNode = CurDAG->getNode(ARMISD::RET_FLAG, SL, VTList, Chain);
-
-        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N->getOperand(0).getNode(), 1), SDValue(CallNode.getNode(), 0));
-        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(CallNode.getNode(), 1));
-
-        return NULL;
-      }
-      case ARM::t2MOVi:
-      case ARM::t2MVNi:
-      case ARM::tMOVSr:
-      case ARM::tMOVi8:
-      case ARM::tMOVr:
-      case ARM::MOVr:
-       case ARM::MOVi: {
-         // Note: Cannot use dummy arithmetic here because it will get folded
-         // (removed) from the DAG. Instead we search for a CopyToReg, if it
-         // exists we set it's debug location to the Mov, and if it doesn't we
-         // print an error and do nothing.
-         SDNode *C2R = NULL;
-         for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E;
-              ++I) {
-           if (I->getOpcode() == ISD::CopyToReg) {
-             C2R = *I;
-             break;
-           }
-         }
-         assert(C2R && "Move instruction without CopytoReg!");
-         C2R->setDebugLoc(N->getDebugLoc());
-         CurDAG->ReplaceAllUsesOfValueWith(SDValue(N,0), N->getOperand(0));
-         return NULL;
-         break;
-       }
-    case ARM::BL:
-    case ARM::BLX:
-      //missing open bracket {
-      SDValue Chain = N->getOperand(0);
-      SDValue Offset = N->getOperand(1);
-      SDLoc SL(N);
-      SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
-      SDValue CallNode =
-      CurDAG->getNode(ARMISD::CALL, SL, VTList, Offset, Chain);
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0),
-      SDValue(CallNode.getNode(), 0));
-      CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1),
-      SDValue(CallNode.getNode(), 1));
-      return NULL;
-  }
-
-  return NULL;
-
-
-  //If Transmogrify fails to find the opcode then we will send it to the
-  //tablegen file to search for a match. If this fails, then fracture will
-  // crash with a debug code.
-  //SDNode* TheRes = InvertCode(N);
-  //return TheRes;
+      /* Process Add Instructions */
 }
 
 
