@@ -97,6 +97,11 @@ public:
   /// \returns A vector of MachineInstr* with valid MC Instruction Descriptors
   MachineFunction* disassemble(unsigned Address);
 
+  /// \brief Check if a bb contains a return instruction
+  ///
+  /// \param MBB - BasicBlock to search into.
+  bool hasReturnInstruction(MachineBasicBlock* MBB);
+
   /// \brief Prints size instructions on the given output stream at the given
   /// address. Uses current section for base offset.
   ///
@@ -201,7 +206,7 @@ private:
 
   /// Error printing
   raw_ostream &Infos, &Errs;
-  void printInfo(std::string Msg) const { 
+  void printInfo(std::string Msg) const {
     Infos << "Disassembler: " << Msg << "\n";
   }
   void printError(std::string Msg) const {
