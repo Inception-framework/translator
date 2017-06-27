@@ -331,7 +331,27 @@ SDNode* ARMInvISelDAG::Transmogrify(SDNode *N) {
     case ARM::STMDB_UPD:        // Decrement before, write back
       InvLoadOrStoreMultiple(N, false, false, true, true);
       return NULL;
-    case ARM::MOVr:
+      case ARM::tBX_RET: {
+        // missing open bracket {
+        SDValue Chain = SDValue(N->getOperand(1).getNode(), 1);
+
+        SDLoc SL(N);
+
+        SDVTList VTList = CurDAG->getVTList(MVT::i32, MVT::Other);
+
+        SDValue CallNode = CurDAG->getNode(ARMISD::RET_FLAG, SL, VTList, Chain);
+
+        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N->getOperand(0).getNode(), 1), SDValue(CallNode.getNode(), 0));
+        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), SDValue(CallNode.getNode(), 1));
+
+        return NULL;
+      }
+      case ARM::t2MOVi:
+      case ARM::t2MVNi:
+      case ARM::tMOVSr:
+      case ARM::tMOVi8:
+      case ARM::tMOVr:
+      case ARM::MOVr:
        case ARM::MOVi: {
          // Note: Cannot use dummy arithmetic here because it will get folded
          // (removed) from the DAG. Instead we search for a CopyToReg, if it

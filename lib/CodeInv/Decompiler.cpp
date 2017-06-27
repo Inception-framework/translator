@@ -16,7 +16,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "CodeInv/Decompiler.h"
-
+#include "../Target/ARM/ARMBaseInfo.h"
 using namespace llvm;
 
 #define DEBUG_TYPE "fracture-decompiler"
@@ -80,7 +80,7 @@ void Decompiler::decompile(unsigned Address) {
         DEBUG(outs() << "Read Address as: " << format("%1" PRIx64, Addr)
           << ", " << AddrStr << "\n");
         StringRef FName = Dis->getFunctionName(Addr);
-        // Change sections to check if function address is paired with a 
+        // Change sections to check if function address is paired with a
         // relocated function and then set function name accordingly
         StringRef SectionName;
         object::SectionRef Section = Dis->getSectionByAddress(Addr);
@@ -427,6 +427,16 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
     SmallVector<MachineOperand*, 8> Defs;
     for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
       MachineOperand *MOp = &I->getOperand(i);
+      if(OpCode == ARM::tBX) {
+
+        if(MOp->isReg() && MOp->getReg() == ARM::LR)
+          OpCode = ARM::tBX_RET;
+        else
+          OpCode = ARM::tBX_CALL;
+
+    		std::cout << "ARM:tBX replaced by ARM::tBX_RET" << std::endl;
+    	}
+
       if (MOp->isReg()) {
         unsigned Reg = MOp->getReg();
         // NOTE: These are register definitions by the instruction, which must
