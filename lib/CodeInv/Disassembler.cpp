@@ -88,7 +88,8 @@ MachineFunction* Disassembler::disassemble(unsigned Address) {
       MBB = decodeBasicBlock(Address+Size, MF, MBBSize);
       Size += MBBSize;
     } while (Address+Size < CurSectionEnd && MBB->size() > 0
-      && !(MBB->instr_rbegin()->isReturn()));
+      && hasReturnInstruction(MBB)==false );
+//      && !(MBB->instr_rbegin()->isReturn()));
     if (Address+Size < CurSectionEnd && MBB->size() > 0) {
       // FIXME: This can be shoved into the loop above to improve performance
       MachineFunction *NextMF =
@@ -102,6 +103,36 @@ MachineFunction* Disassembler::disassemble(unsigned Address) {
 
   Functions[Address] = MF;
   return MF;
+}
+
+bool Disassembler::hasReturnInstruction(MachineBasicBlock* MBB) {
+
+  formatted_raw_ostream Out(outs(), false);
+
+  for (MachineBasicBlock::iterator I = MBB->instr_begin(), E = MBB->instr_end();
+       I != E; ++I) {
+
+    MachineInstr* instr = &(*I);
+
+    const MCRegisterInfo *RI = getMCDirector()->getMCRegisterInfo();
+
+    TargetRegisterInfo* TRI = (TargetRegisterInfo*) RI;
+
+    if ( instr->modifiesRegister(RI->getProgramCounter(), TRI) ) {
+      return true;
+    }
+
+    //printInstruction(Out, I, false);
+
+    if( instr->isBranch() ) {
+
+      return instr->readsVirtualRegister(RI->getRARegister());
+    }
+
+  }
+
+  std::cout << "hasReturnInstruction False" << std::endl;
+  return false;
 }
 
 MachineBasicBlock* Disassembler::decodeBasicBlock(unsigned Address,
