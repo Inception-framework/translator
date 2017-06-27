@@ -6,8 +6,8 @@
 --disable-jit \
 --disable-libffi \
 --enable-debug-symbols \
--with-llvmsrc=/home/giovanni/phd/Inception/tools/llvm/llvm3.6/ \
---with-llvmobj=/home/giovanni/phd/Inception/tools/llvm/llvm3.6/ \
+--with-llvmsrc=../tools/llvm/llvm3.6/ \
+--with-llvmobj=../tools/llvm/llvm3.6/ \
 --disable-optimized
 
 make -j16
