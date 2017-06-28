@@ -1,6 +1,8 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-./autoconf/AutoRegen.sh
+printf "$DIR/../tools/llvm/llvm3.6/\n \
+$DIR/../tools/llvm/build_debug/" \
+| autoconf/AutoRegen.sh
 
 ./configure --disable-docs \
 --disable-doxygen \
