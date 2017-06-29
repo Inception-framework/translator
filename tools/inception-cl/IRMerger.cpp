@@ -1,6 +1,6 @@
 #include "IRMerger.h"
 
-extern bool nameLookupAddr(StringRef funcName, uint64_t &Address);
+extern bool nameLookupAddr(StringRef funcName, uint64_t& Address);
 
 namespace fracture {
 
@@ -8,33 +8,32 @@ bool IRMerger::first_call = true;
 
 std::map<std::string, SDNode*> IRMerger::registersNodes = {};
 
-IRMerger::IRMerger(Decompiler *P_DEC, std::string new_function_name) : DEC(P_DEC) {
-
-  RegMap.grow(DEC->getDisassembler()->getMCDirector()->getMCRegisterInfo()->getNumRegs());
+IRMerger::IRMerger(Decompiler* P_DEC, std::string new_function_name)
+    : DEC(P_DEC) {
+  RegMap.grow(DEC->getDisassembler()
+                  ->getMCDirector()
+                  ->getMCRegisterInfo()
+                  ->getNumRegs());
 
   function_name = new StringRef(new_function_name);
 }
 
 IRMerger::~IRMerger() {
-
   marked_old_instructions.clear();
 
   marked_old_basicblocks.clear();
 }
 
 void IRMerger::SetNewFunction(std::string new_function_name) {
+  function_name = new StringRef(new_function_name);
 
-    function_name = new StringRef(new_function_name);
+  marked_old_instructions.clear();
 
-    marked_old_instructions.clear();
-
-    marked_old_basicblocks.clear();
+  marked_old_basicblocks.clear();
 }
 
 void IRMerger::Run() {
-
-  if(IRMerger::first_call) {
-
+  if (IRMerger::first_call) {
     IRMerger::first_call = false;
 
     CreateADDCarryHelper();
@@ -44,11 +43,9 @@ void IRMerger::Run() {
 
   fct = DEC->getModule()->getFunction(*function_name);
 
-  if(fct->empty())
-      empty = true;
+  if (fct->empty()) empty = true;
 
-  if(!empty) {
-
+  if (!empty) {
     entry_bb = &(fct->getEntryBlock());
 
     MarkOldInstructions();
@@ -57,55 +54,55 @@ void IRMerger::Run() {
 
     entry_bb = BasicBlock::Create(context, "entry", fct);
 
-    fct->addFnAttr ("Empty", "True");
+    fct->addFnAttr("Empty", "True");
   }
 
   MapArgsToRegs();
 
-  Function *new_function = Disassemble();
-  if(new_function == NULL)
-    return;
+  Function* new_function = Disassemble();
+  if (new_function == NULL) return;
 
-  if(!empty) {
-      RemoveUseless();
+  if (!empty) {
+    RemoveUseless();
   }
 
   // DEC->getModule()->dump();
 }
 
 void IRMerger::CreateADDCarryHelper() {
-
   Module* mod = DEC->getModule();
 
-  std::vector<Type*>FuncTy_args;
+  std::vector<Type*> FuncTy_args;
   FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
   FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
   FunctionType* FuncTy = FunctionType::get(
-   /*Result=*/IntegerType::get(mod->getContext(), 32),
-   /*Params=*/FuncTy_args,
-   /*isVarArg=*/false);
+      /*Result=*/IntegerType::get(mod->getContext(), 32),
+      /*Params=*/FuncTy_args,
+      /*isVarArg=*/false);
 
-  Function* func__Z14ADD_WITH_CARRYii = mod->getFunction("_Z14ADD_WITH_CARRYii");
+  Function* func__Z14ADD_WITH_CARRYii =
+      mod->getFunction("_Z14ADD_WITH_CARRYii");
   if (!func__Z14ADD_WITH_CARRYii) {
-  func__Z14ADD_WITH_CARRYii = Function::Create(
-   /*Type=*/FuncTy,
-   /*Linkage=*/GlobalValue::ExternalLinkage,
-   /*Name=*/"_Z14ADD_WITH_CARRYii", mod);
-  func__Z14ADD_WITH_CARRYii->setCallingConv(67);
+    func__Z14ADD_WITH_CARRYii = Function::Create(
+        /*Type=*/FuncTy,
+        /*Linkage=*/GlobalValue::ExternalLinkage,
+        /*Name=*/"_Z14ADD_WITH_CARRYii", mod);
+    func__Z14ADD_WITH_CARRYii->setCallingConv(67);
   }
 
   GlobalVariable* gvar_int32_CPSR = mod->getGlobalVariable("CPSR");
-  if(gvar_int32_CPSR == NULL) {
-
-    gvar_int32_CPSR = new GlobalVariable(/*Module=*/*mod,
-    /*Type=*/IntegerType::get(mod->getContext(), 32),
-    /*isConstant=*/false,
-    /*Linkage=*/GlobalValue::CommonLinkage,
-    /*Initializer=*/0, // has initializer, specified below
-    /*Name=*/"CPSR");
+  if (gvar_int32_CPSR == NULL) {
+    gvar_int32_CPSR = new GlobalVariable(
+        /*Module=*/*mod,
+        /*Type=*/IntegerType::get(mod->getContext(), 32),
+        /*isConstant=*/false,
+        /*Linkage=*/GlobalValue::CommonLinkage,
+        /*Initializer=*/0,  // has initializer, specified below
+        /*Name=*/"CPSR");
     gvar_int32_CPSR->setAlignment(4);
 
-    ConstantInt* const_int32_0 = ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
+    ConstantInt* const_int32_0 =
+        ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
 
     // Global Variable Definitions
     gvar_int32_CPSR->setInitializer(const_int32_0);
@@ -118,37 +115,51 @@ void IRMerger::CreateADDCarryHelper() {
   Value* int32_b = args++;
   int32_b->setName("b");
 
-  ConstantInt* carry = ConstantInt::get(mod->getContext(), APInt(32, StringRef("1"), 10));
+  ConstantInt* carry =
+      ConstantInt::get(mod->getContext(), APInt(32, StringRef("1"), 10));
 
-  BasicBlock* label_entry = BasicBlock::Create(mod->getContext(), "entry",func__Z14ADD_WITH_CARRYii,0);
-  BasicBlock* label_if_then = BasicBlock::Create(mod->getContext(), "if.then",func__Z14ADD_WITH_CARRYii,0);
-  BasicBlock* label_if_end = BasicBlock::Create(mod->getContext(), "if.end",func__Z14ADD_WITH_CARRYii,0);
-  BasicBlock* label_return = BasicBlock::Create(mod->getContext(), "return",func__Z14ADD_WITH_CARRYii,0);
+  BasicBlock* label_entry = BasicBlock::Create(mod->getContext(), "entry",
+                                               func__Z14ADD_WITH_CARRYii, 0);
+  BasicBlock* label_if_then = BasicBlock::Create(mod->getContext(), "if.then",
+                                                 func__Z14ADD_WITH_CARRYii, 0);
+  BasicBlock* label_if_end = BasicBlock::Create(mod->getContext(), "if.end",
+                                                func__Z14ADD_WITH_CARRYii, 0);
+  BasicBlock* label_return = BasicBlock::Create(mod->getContext(), "return",
+                                                func__Z14ADD_WITH_CARRYii, 0);
 
   // Block entry (label_entry)
-  AllocaInst* ptr_retval = new AllocaInst(IntegerType::get(mod->getContext(), 32), "retval", label_entry);
+  AllocaInst* ptr_retval = new AllocaInst(
+      IntegerType::get(mod->getContext(), 32), "retval", label_entry);
 
-  AllocaInst* ptr_a_addr = new AllocaInst(IntegerType::get(mod->getContext(), 32), "a.addr", label_entry);
+  AllocaInst* ptr_a_addr = new AllocaInst(
+      IntegerType::get(mod->getContext(), 32), "a.addr", label_entry);
 
-  AllocaInst* ptr_b_addr = new AllocaInst(IntegerType::get(mod->getContext(), 32), "b.addr", label_entry);
+  AllocaInst* ptr_b_addr = new AllocaInst(
+      IntegerType::get(mod->getContext(), 32), "b.addr", label_entry);
 
-  AllocaInst* ptr_c_addr = new AllocaInst(IntegerType::get(mod->getContext(), 32), "c", label_entry);
+  AllocaInst* ptr_c_addr =
+      new AllocaInst(IntegerType::get(mod->getContext(), 32), "c", label_entry);
 
-  StoreInst* arg_to_ptr_a = new StoreInst(int32_a, ptr_a_addr, false, label_entry);
+  StoreInst* arg_to_ptr_a =
+      new StoreInst(int32_a, ptr_a_addr, false, label_entry);
 
-  StoreInst* arg_to_ptr_b = new StoreInst(int32_b, ptr_b_addr, false, label_entry);
+  StoreInst* arg_to_ptr_b =
+      new StoreInst(int32_b, ptr_b_addr, false, label_entry);
 
   int32_a = new LoadInst(ptr_a_addr, "", false, label_entry);
 
   int32_b = new LoadInst(ptr_b_addr, "", false, label_entry);
 
-  BinaryOperator* a_add_b = BinaryOperator::Create(Instruction::Add, int32_a, int32_b, "add", label_entry);
+  BinaryOperator* a_add_b = BinaryOperator::Create(Instruction::Add, int32_a,
+                                                   int32_b, "add", label_entry);
   LoadInst* cpsr = new LoadInst(gvar_int32_CPSR, "", false, label_entry);
 
-  BinaryOperator* a_add_b_add_cpsr = BinaryOperator::Create(Instruction::Add, a_add_b, cpsr, "add1", label_entry);
+  BinaryOperator* a_add_b_add_cpsr = BinaryOperator::Create(
+      Instruction::Add, a_add_b, cpsr, "add1", label_entry);
   new StoreInst(a_add_b_add_cpsr, ptr_c_addr, false, label_entry);
 
-  ICmpInst* cmp = new ICmpInst(*label_entry, ICmpInst::ICMP_SGT, int32_a, a_add_b_add_cpsr, "cmp");
+  ICmpInst* cmp = new ICmpInst(*label_entry, ICmpInst::ICMP_SGT, int32_a,
+                               a_add_b_add_cpsr, "cmp");
   BranchInst::Create(label_if_then, label_if_end, cmp, label_entry);
 
   // Block if.then (label_if_then)
@@ -163,13 +174,12 @@ void IRMerger::CreateADDCarryHelper() {
 }
 
 Function* IRMerger::Disassemble() {
-
   uint64_t Address;
 
   outs() << "[Inception] The funcion " << *function_name;
   outs() << " has to be replaced...\n";
 
-  if(nameLookupAddr(*function_name, Address) == false){
+  if (nameLookupAddr(*function_name, Address) == false) {
     return NULL;
   }
 
@@ -191,135 +201,130 @@ Function* IRMerger::Disassemble() {
 }
 
 void IRMerger::MarkOldInstructions() {
+  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++) {
+    BasicBlock& old_bb = *bb_i;
 
-  for (auto bb_i = fct->begin(); bb_i != fct->end();
-       bb_i++)
-  {
+    for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
+      Instruction& old_inst = *int_i;
 
-      BasicBlock &old_bb = *bb_i;
+      if (&old_inst != NULL) {
+        const UnreachableInst* ui = dyn_cast<UnreachableInst>(&old_inst);
+        const ReturnInst* ret = dyn_cast<ReturnInst>(&old_inst);
 
-      for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
-
-        Instruction &old_inst = *int_i;
-
-        if(&old_inst != NULL) {
-
-          const UnreachableInst *ui = dyn_cast<UnreachableInst>(&old_inst);
-          const ReturnInst *ret = dyn_cast<ReturnInst>(&old_inst);
-
-          if (ui != NULL) {
-            marked_old_binstructions.push_back(&old_inst);
-          } else if (ret != NULL) {
-            marked_old_binstructions.push_back(&old_inst);
-          } else
-            marked_old_instructions.push_back(&old_inst);
-        }
-      } // END INST LOOP
-
-      if( &old_bb != entry_bb ) {
-        marked_old_basicblocks.push_back(&old_bb);
-        // old_bb.dropAllReferences();
-        // old_bb.removeFromParent();
-        // old_bb.insertInto (fct);
+        if (ui != NULL) {
+          marked_old_binstructions.push_back(&old_inst);
+        } else if (ret != NULL) {
+          marked_old_binstructions.push_back(&old_inst);
+        } else
+          marked_old_instructions.push_back(&old_inst);
       }
-  }//END BB LOOP
+    }  // END INST LOOP
+
+    if (&old_bb != entry_bb) {
+      marked_old_basicblocks.push_back(&old_bb);
+      // old_bb.dropAllReferences();
+      // old_bb.removeFromParent();
+      // old_bb.insertInto (fct);
+    }
+  }  // END BB LOOP
 }
 
 void IRMerger::RemoveUseless() {
-
   BasicBlock* last_bb = NULL;
 
-  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++)
-    last_bb = bb_i;
-
+  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++) last_bb = bb_i;
 
   unsigned int ret_counter = 0;
 
-  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++){
-      BasicBlock &old_bb = *bb_i;
-      for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
+  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++) {
+    BasicBlock& old_bb = *bb_i;
+    for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
+      Instruction& old_inst = *int_i;
 
-        Instruction &old_inst = *int_i;
+      if (&old_inst != NULL) {
+        const ReturnInst* ret = dyn_cast<ReturnInst>(&old_inst);
 
-        if(&old_inst != NULL) {
+        if (ret != NULL) {
+          marked_old_binstructions.push_back(&old_inst);
 
-          const ReturnInst *ret = dyn_cast<ReturnInst>(&old_inst);
+          IRBuilder<>* IRB = new IRBuilder<>(&old_inst);
 
-          if(ret != NULL) {
+          Type* FType = fct->getReturnType();
 
-            marked_old_binstructions.push_back(&old_inst);
+          Value* Reg = DEC->getModule()->getGlobalVariable("R0");
+          if (Reg == NULL) {
+            outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION \n\n";
+            return;
+          }
 
-            IRBuilder<>* IRB = new IRBuilder<>(&old_inst);
+          if (FType->isPointerTy()) IRB->CreateRet(Reg);
 
-            Type *FType = fct->getReturnType();
+          if (FType->isIntegerTy()) {
+            std::string ret_name = "R0_RET" + std::to_string(ret_counter);
+            StringRef ReturnName(ret_name);
 
-            Value *Reg =  DEC->getModule()->getGlobalVariable("R0");
-            if (Reg == NULL) {
-              outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION \n\n";
-              return;
-            }
+            Instruction* Res = IRB->CreateLoad(Reg, ReturnName);
 
-            if( FType->isPointerTy() )
-              IRB->CreateRet(Reg);
+            IRB->CreateRet(Res);
 
-            if( FType->isIntegerTy() ) {
+            ret_counter++;
+          }
 
-              std::string ret_name = "R0_RET"+ std::to_string(ret_counter);
-              StringRef ReturnName(ret_name);
-
-              Instruction *Res = IRB->CreateLoad(Reg, ReturnName);
-
-              IRB->CreateRet(Res);
-
-              ret_counter++;
-            }
-
-            if( FType->isVoidTy() )
-              IRB->CreateRetVoid();
-
+          if (FType->isVoidTy()) IRB->CreateRetVoid();
         }
       }
     }
   }
 
-  for(auto& inst: marked_old_instructions) {
-
-    outs() << "Removing : " << *inst <<"\n";
-    inst->eraseFromParent();
+  for (auto& inst : marked_old_instructions) {
+    RemoveInstruction(inst);
   }
 
-  for(auto& inst: marked_old_binstructions) {
-
-    outs() << "Removing : " << *inst <<"\n";
-    inst->eraseFromParent();
+  for (auto& inst : marked_old_binstructions) {
+    RemoveInstruction(inst);
   }
 
-  for(auto& bb: marked_old_basicblocks) {
-
+  for (auto& bb : marked_old_basicblocks) {
     bb->dropAllReferences();
     bb->removeFromParent();
   }
 }
 
-void IRMerger::MapArgsToRegs() {
+void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
+  SmallVector<std::pair<unsigned, MDNode*>, 4> Metadata;
 
+  instruction->getAllMetadata(Metadata);
+
+  for (unsigned i = 0, n = Metadata.size(); i < n; ++i) {
+    unsigned Kind = Metadata[i].first;
+
+    instruction->setMetadata(Kind, nullptr);
+  }
+  Metadata.clear();
+
+  outs() << "Removing : " << *instruction << "\n";
+  instruction->eraseFromParent();
+}
+
+void IRMerger::MapArgsToRegs() {
   outs() << "=========MAP ARGS===========\n\n";
 
-  BasicBlock &new_entry = fct->getEntryBlock ();
+  BasicBlock& new_entry = fct->getEntryBlock();
 
   IRBuilder<>* IRB = new IRBuilder<>(&new_entry);
 
   uint8_t reg_counter = 0;
-  for(auto arg = fct->arg_begin(); arg != fct->arg_end(); arg++) {
-
+  for (auto arg = fct->arg_begin(); arg != fct->arg_end(); arg++) {
     Value* x = arg;
 
-    std::string reg_name = "R"+ std::to_string(reg_counter);
+    std::string reg_name = "R" + std::to_string(reg_counter);
 
-    Value *Reg =  DEC->getModule()->getGlobalVariable(reg_name);
+    Value* Reg = DEC->getModule()->getGlobalVariable(reg_name);
     if (Reg == NULL) {
-      // ConstantInt* Ty = ConstantInt::get(DEC->getModule()->getContext(), APInt(32,0));
-      //PointerType::get(IntegerType::get( DEC->getModule()->getContext(), 32), 0);
+      // ConstantInt* Ty = ConstantInt::get(DEC->getModule()->getContext(),
+      // APInt(32,0));
+      // PointerType::get(IntegerType::get( DEC->getModule()->getContext(), 32),
+      // 0);
       // std::map<std::string, SDNode*>::iterator it;
       // it = registersNodes.find(reg_name);
       // if (it != registersNodes.end()) {
@@ -333,14 +338,13 @@ void IRMerger::MapArgsToRegs() {
       // else
       Type* Ty = IntegerType::get(DEC->getModule()->getContext(), 32);
 
-      Constant *Initializer = Constant::getNullValue(Ty);
+      Constant* Initializer = Constant::getNullValue(Ty);
 
-      GlobalVariable* gvar_i32 = new GlobalVariable(*DEC->getModule(), // Module
-                               Ty,                // Type
-                               false,             // isConstant
-                               GlobalValue::CommonLinkage,
-                               Initializer,
-                               reg_name);
+      GlobalVariable* gvar_i32 =
+          new GlobalVariable(*DEC->getModule(),  // Module
+                             Ty,                 // Type
+                             false,              // isConstant
+                             GlobalValue::CommonLinkage, Initializer, reg_name);
       // gvar_i32->setAlignment(4);
 
       RegMap[reg_counter] = gvar_i32;
@@ -353,10 +357,10 @@ void IRMerger::MapArgsToRegs() {
 
     // if (!Addr->getType()->isPointerTy()) {
 
-      // StringRef AddrName(reg_name+"_FARG_P");
+    // StringRef AddrName(reg_name+"_FARG_P");
 
-      // Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), AddrName);
-      // outs() << "\nCast "; Addr->dump();
+    // Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(),
+    // AddrName); outs() << "\nCast "; Addr->dump();
     // }
 
     // if ( Reg->getType() != x->getType() ) {
@@ -377,18 +381,20 @@ void IRMerger::MapArgsToRegs() {
       outs() << "\nGet Ptr value ";
       x->dump();
 
-      if ( Reg->getType() != x->getType() ) {
-        x = IRB->CreateBitCast (x, Reg->getType());
+      if (Reg->getType() != x->getType()) {
+        x = IRB->CreateBitCast(x, Reg->getType());
         outs() << "\nBitcast ";
         x->dump();
       }
       // x = IRB->CreatePtrToInt(x, x->getType()->getPointerTo());
     }
 
-    outs() << "\nRegType "; Reg->getType()->dump();
-    outs() << "\nArgType "; x->getType()->dump();
+    outs() << "\nRegType ";
+    Reg->getType()->dump();
+    outs() << "\nArgType ";
+    x->getType()->dump();
 
-    Instruction *Res = IRB->CreateStore(x, Reg);
+    Instruction* Res = IRB->CreateStore(x, Reg);
     Res->dump();
     outs() << "==========================\n\n";
 
@@ -396,4 +402,4 @@ void IRMerger::MapArgsToRegs() {
   }
 }
 
-}
+}  // namespace fracture

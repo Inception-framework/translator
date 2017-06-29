@@ -46,6 +46,7 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include "llvm/IR/Metadata.h"
 #include <llvm/Pass.h>
 #include <llvm/PassManager.h>
 #include <llvm/Support/FormattedStream.h>
@@ -93,6 +94,8 @@ class IRMerger {
   void MapArgsToRegs();
 
   void RemoveUseless();
+
+  void RemoveInstruction(llvm::Instruction* instruction);
 
   Function *fct;
 
