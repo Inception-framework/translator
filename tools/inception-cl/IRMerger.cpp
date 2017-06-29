@@ -38,8 +38,6 @@ void IRMerger::Run() {
     IRMerger::first_call = false;
 
     CreateADDCarryHelper();
-
-    // DEC->getModule()->dump();
   }
 
   bool empty = false;
@@ -62,32 +60,17 @@ void IRMerger::Run() {
     fct->addFnAttr ("Empty", "True");
   }
 
-  // outs() << "-------------------------------------------\n";
-  // outs() << "-----------Original Module ----------------\n";
-  // outs() << "-------------------------------------------\n";
-	// DEC->getModule()->dump();
-  // outs() << "-------------------------------------------\n";
-  // outs() << "-------------------------------------------\n";
-
-  // MapArgsToRegs();
-
-  // outs() << "-------------------------------------------\n";
-  // outs() << "-----------Module ARGS---------------------\n";
-  // outs() << "-------------------------------------------\n";
-	// DEC->getModule()->dump();
-  // outs() << "-------------------------------------------\n";
-  // outs() << "-------------------------------------------\n";
-
+  MapArgsToRegs();
 
   Function *new_function = Disassemble();
   if(new_function == NULL)
     return;
 
-  // if(!empty) {
+  if(!empty) {
       RemoveUseless();
-  // }
+  }
 
-  DEC->getModule()->dump();
+  // DEC->getModule()->dump();
 }
 
 void IRMerger::CreateADDCarryHelper() {
@@ -228,7 +211,8 @@ void IRMerger::MarkOldInstructions() {
             marked_old_binstructions.push_back(&old_inst);
           } else if (ret != NULL) {
             marked_old_binstructions.push_back(&old_inst);
-          }
+          } else
+            marked_old_instructions.push_back(&old_inst);
         }
       } // END INST LOOP
 
@@ -298,9 +282,15 @@ void IRMerger::RemoveUseless() {
     }
   }
 
+  for(auto& inst: marked_old_instructions) {
+
+    outs() << "Removing : " << *inst <<"\n";
+    inst->eraseFromParent();
+  }
+
   for(auto& inst: marked_old_binstructions) {
 
-    outs() << *inst <<"\n";
+    outs() << "Removing : " << *inst <<"\n";
     inst->eraseFromParent();
   }
 
