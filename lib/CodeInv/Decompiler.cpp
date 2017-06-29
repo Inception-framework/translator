@@ -53,8 +53,6 @@ void Decompiler::decompile(unsigned Address) {
   Children.push_back(Address);
 
   do {
-    //size_t ChildrenSize = Children.size();
-    //errs() << "Size: " << ChildrenSize << "\n";
     Function* CurFunc = decompileFunction(Children.back());
     Children.pop_back();
     if (CurFunc == NULL) {
@@ -67,12 +65,16 @@ void Decompiler::decompile(unsigned Address) {
       for (BasicBlock::iterator I = BI->begin(), E = BI->end();
            I != E; ++I) {
         CallInst *CI = dyn_cast<CallInst>(I);
-        //outs() << "------CI------\n";
-        if (CI == NULL || !CI->getCalledFunction()->hasFnAttribute("Address")) {
-          //outs() << "Continue?\n";
+
+        if(CI == NULL)
           continue;
-        }
-        //CI->dump();
+
+        if( CI->getCalledValue()->getName().equals(CurFunc->getName()) || CI->getCalledFunction() == NULL)
+          continue;
+
+        if ( isa<InlineAsm>(CI->getCalledValue()) || !CI->getCalledFunction()->hasFnAttribute("Address"))
+          continue;
+
         StringRef AddrStr =
           CI->getCalledFunction()->getFnAttribute("Address").getValueAsString();
         uint64_t Addr;
@@ -80,6 +82,9 @@ void Decompiler::decompile(unsigned Address) {
         DEBUG(outs() << "Read Address as: " << format("%1" PRIx64, Addr)
           << ", " << AddrStr << "\n");
         StringRef FName = Dis->getFunctionName(Addr);
+
+        outs() << "\n The decompiled function contains a call to " << FName << "\n";
+
         // Change sections to check if function address is paired with a
         // relocated function and then set function name accordingly
         StringRef SectionName;
@@ -115,16 +120,25 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
   MachineFunction *MF = Dis->disassemble(Address);
 
-  // Get Function Name
-  // TODO: Determine Function Type
-  FunctionType *FType = FunctionType::get(Type::getPrimitiveType(*Context,
-      Type::VoidTyID), false);
-  Function *F =
-    cast<Function>(Mod->getOrInsertFunction(MF->getName(), FType));
+  std::string fct_name = MF->getName().str();
 
-  if (!F->empty()) {
-    return F;
+  Function* F = NULL;
+
+  for(Module::const_iterator i= Mod->getFunctionList().begin(), e= Mod->getFunctionList().end(); i != e; ++i) {
+    // errs() << *i << "\n";
+    if(!i->isDeclaration())
+      if(i->getName().str() == fct_name)
+        F = Mod->getFunction(fct_name);
   }
+
+  if(F==NULL) {
+    FunctionType *FType = FunctionType::get(Type::getPrimitiveType(*Context,         Type::VoidTyID), false);
+    F = cast<Function>(Mod->getOrInsertFunction(fct_name, FType));
+  }
+
+  // if (!F->empty()) {
+    // return F;
+  // }
 
   // Create a basic block to hold entry point (alloca) information
   BasicBlock *entry = getOrCreateBasicBlock("entry", F);
@@ -146,11 +160,13 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
   BI = MF->begin();
   while (BI != BE) {
+    outs() << "\n[decompileFunction] call decompileBasicBlock \n";
     BI->dump();
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
     }
     ++BI;
+    outs() << "\n--> done\n\n";
   }
 
   // During Decompilation, did any "in-between" basic blocks get created?
