@@ -1,6 +1,8 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-./autoconf/AutoRegen.sh
+printf "$DIR/../tools/llvm/llvm3.6/\n \
+$DIR/../tools/llvm/build_debug/" \
+| autoconf/AutoRegen.sh
 
 ./configure --disable-docs \
 --disable-doxygen \
@@ -9,9 +11,10 @@ DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 --disable-libffi \
 --enable-debug-symbols \
 --with-llvmsrc=$DIR/../tools/llvm/llvm3.6/ \
---with-llvmobj=$DIR/../tools/llvm/llvm3.6/build_debug \
+--with-llvmobj=$DIR/../tools/llvm/build_debug \
 --disable-optimized
 
 make -j16
 
 sudo make install
+
