@@ -486,7 +486,7 @@ Value* IREmitter::visitBR(const SDNode *N) {
 
 Value* IREmitter::visitBR_CC(const SDNode *N) { llvm_unreachable("visitBR_CC Unimplemented visit..."); return NULL; }
 
-Value* IREmitter::visitLOAD(const SDNode *N) { 
+Value* IREmitter::visitLOAD(const SDNode *N) {
   // Operand 0 - Addr to load, should be a pointer
   // Operand 1 - undef (ignored)
   // Operand 2 - Chain (ignored)
@@ -554,7 +554,7 @@ Value* IREmitter::visitRegister(const SDNode *N) {
     raw_string_ostream RP(RegName);
     RP << PrintReg(R->getReg(),
       DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0);
-    RegName = RP.str().substr(1, RegName.size());
+    RegName = RP.str().substr(1, RP.str().size());
 
     Type* Ty = R->getValueType(0).getTypeForEVT(getGlobalContext());
 
