@@ -368,6 +368,8 @@ static std::error_code loadBinary(StringRef FileName) {
   errs() << "-------------------------------------------\n";
   errs() << "-------------------------------------------\n";
 
+  exit(0);
+
   return std::error_code();
 }
 
