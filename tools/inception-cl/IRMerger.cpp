@@ -241,6 +241,17 @@ void IRMerger::RemoveUseless() {
     for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
       Instruction& old_inst = *int_i;
 
+      SmallVector<std::pair<unsigned, MDNode*>, 100> Metadata;
+
+      int_i->getAllMetadata(Metadata);
+
+      for (unsigned i = 0, n = Metadata.size(); i < n; ++i) {
+        unsigned Kind = Metadata[i].first;
+
+        int_i->setMetadata(Kind, nullptr);
+      }
+      Metadata.clear();
+
       if (&old_inst != NULL) {
         const ReturnInst* ret = dyn_cast<ReturnInst>(&old_inst);
 
@@ -285,13 +296,15 @@ void IRMerger::RemoveUseless() {
   }
 
   for (auto& bb : marked_old_basicblocks) {
+
     bb->dropAllReferences();
-    bb->removeFromParent();
+    // bb->removeFromParent();
+    bb->eraseFromParent();
   }
 }
 
 void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
-  SmallVector<std::pair<unsigned, MDNode*>, 4> Metadata;
+  SmallVector<std::pair<unsigned, MDNode*>, 100> Metadata;
 
   instruction->getAllMetadata(Metadata);
 
@@ -303,6 +316,8 @@ void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
   Metadata.clear();
 
   outs() << "Removing : " << *instruction << "\n";
+  instruction->dropAllReferences();
+  // instruction->removeFromParent();
   instruction->eraseFromParent();
 }
 

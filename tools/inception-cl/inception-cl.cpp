@@ -101,6 +101,8 @@ bool nameLookupAddr(StringRef funcName, uint64_t &Address);
 
 static void runDisassembleCommand(std::vector<std::string> &CommandLine);
 
+static void runSaveCommand(std::vector<std::string> &CommandLine);
+
 //===----------------------------------------------------------------------===//
 // Global Variables and Parameters
 //===----------------------------------------------------------------------===//
@@ -348,6 +350,15 @@ static std::error_code loadBinary(StringRef FileName) {
   }
 
   errs() << "[Inception]\t Conversion done !\n";
+
+  std::string bc_output(FileName.str());
+  bc_output += ".ll";
+
+  std::vector<std::string> CommandLine;
+  CommandLine.push_back("save");
+  CommandLine.push_back(bc_output);
+  runSaveCommand(CommandLine);
+
   // std::this_thread::sleep_for(std::chrono::seconds(10));
 
   errs() << "-------------------------------------------\n";
