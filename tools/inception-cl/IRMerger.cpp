@@ -69,6 +69,61 @@ void IRMerger::Run() {
   // DEC->getModule()->dump();
 }
 
+void IRMerger::InsertDump(llvm::Instruction *inst) {
+
+  Module* mod = DEC->getModule();
+
+  std::vector<Type*>FuncTy_3_args;
+  FunctionType* FuncTy_3 = FunctionType::get(
+   /*Result=*/Type::getVoidTy(mod->getContext()),
+   /*Params=*/FuncTy_3_args,
+   /*isVarArg=*/false);
+
+  PointerType* PointerTy_1 = PointerType::get(FuncTy_3, 0);
+
+  std::vector<Type*>FuncTy_4_args;
+  FunctionType* FuncTy_4 = FunctionType::get(
+   /*Result=*/Type::getVoidTy(mod->getContext()),
+   /*Params=*/FuncTy_4_args,
+   /*isVarArg=*/true);
+
+
+  // Function Declarations
+  Function* func_inception_dump_registers = mod->getFunction("inception_dump_registers");
+  if (!func_inception_dump_registers) {
+  func_inception_dump_registers = Function::Create(
+   /*Type=*/FuncTy_4,
+   /*Linkage=*/GlobalValue::ExternalLinkage,
+   /*Name=*/"inception_dump_registers", mod); // (external, no body)
+  func_inception_dump_registers->setCallingConv(CallingConv::C);
+  }
+  AttributeSet func_inception_dump_registers_PAL;
+  {
+   SmallVector<AttributeSet, 4> Attrs;
+   AttributeSet PAS;
+    {
+     AttrBuilder B;
+     PAS = AttributeSet::get(mod->getContext(), ~0U, B);
+    }
+
+   Attrs.push_back(PAS);
+   func_inception_dump_registers_PAL = AttributeSet::get(mod->getContext(), Attrs);
+
+  }
+  func_inception_dump_registers->setAttributes(func_inception_dump_registers_PAL);
+
+  // Constant Definitions
+  Constant* const_ptr_7 = ConstantExpr::getCast(Instruction::BitCast, func_inception_dump_registers, PointerTy_1);
+  std::vector<Value*> params;
+
+  // Function: main (func_main)
+  {
+   CallInst* void_10 = CallInst::Create(const_ptr_7, params, "", inst);
+   void_10->setCallingConv(CallingConv::C);
+   void_10->setTailCall(false);
+  }
+}
+
 void IRMerger::CreateADDCarryHelper() {
   Module* mod = DEC->getModule();
 
@@ -128,9 +183,6 @@ void IRMerger::CreateADDCarryHelper() {
                                                 func__Z14ADD_WITH_CARRYii, 0);
 
   // Block entry (label_entry)
-  AllocaInst* ptr_retval = new AllocaInst(
-      IntegerType::get(mod->getContext(), 32), "retval", label_entry);
-
   AllocaInst* ptr_a_addr = new AllocaInst(
       IntegerType::get(mod->getContext(), 32), "a.addr", label_entry);
 
@@ -139,12 +191,6 @@ void IRMerger::CreateADDCarryHelper() {
 
   AllocaInst* ptr_c_addr =
       new AllocaInst(IntegerType::get(mod->getContext(), 32), "c", label_entry);
-
-  StoreInst* arg_to_ptr_a =
-      new StoreInst(int32_a, ptr_a_addr, false, label_entry);
-
-  StoreInst* arg_to_ptr_b =
-      new StoreInst(int32_b, ptr_b_addr, false, label_entry);
 
   int32_a = new LoadInst(ptr_a_addr, "", false, label_entry);
 
@@ -267,6 +313,8 @@ void IRMerger::RemoveUseless() {
             outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION \n\n";
             return;
           }
+
+          InsertDump(&old_inst);
 
           if (FType->isPointerTy()) IRB->CreateRet(Reg);
 
