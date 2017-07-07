@@ -48,8 +48,9 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
 
   switch (TargetOpc) {
   default:
-    errs() << "[ARMInvIselDAG] Unsupported instruction : " << TargetOpc
-           << "...\n";
+
+    errs() << "[ARMInvIselDAG] Unsupported instruction : " << TargetOpc << "\n";
+    exit(1);
     break;
 
   /* Process Add Instructions */
@@ -92,6 +93,30 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
     /* Process Divide Instructions */
 
     /* Process Mode Data Instructions */
+    //XXX: Pattern ?
+    // t2MOVCCasr	= 2438,
+    // t2MOVCCi	= 2439,
+    // t2MOVCCi16	= 2440,
+    // t2MOVCCi32imm	= 2441,
+    // t2MOVCClsl	= 2442,
+    // t2MOVCClsr	= 2443,
+    // t2MOVCCr	= 2444,
+    // t2MOVCCror	= 2445,
+    // t2MOVSsi	= 2446,
+    // t2MOVSsr	= 2447,
+    // t2MOVTi16	= 2448,
+    // t2MOVTi16_ga_pcrel	= 2449,
+    // t2MOV_ga_pcrel	= 2450,
+    // t2MOVi	= 2451,
+    // t2MOVi16_ga_pcrel	= 2453,
+    // t2MOVi32imm	= 2454,
+    // t2MOVr	= 2455,
+    // t2MOVsi	= 2456,
+    // t2MOVsr	= 2457,
+    // t2MOVsra_flag	= 2458,
+    // t2MOVsrl_flag	= 2459,
+
+    case ARM::t2MOVi16:
     case ARM::t2MOVi:
     case ARM::t2MVNi:
     case ARM::tMOVSr:
@@ -144,8 +169,42 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
     /* Process Processor State Change Instructions */
 
     /* Process Loard Instructions */
+    case ARM::tPOP:
+    case ARM::tLDRspi:
+    case ARM::t2LDR_POST:
+    case ARM::t2LDMIA_UPD :
+    case ARM::LDMIA_UPD:
+    case ARM::LDMIB_UPD:
+    case ARM::LDMDA_UPD:
+    case ARM::LDMDB_UPD:
+    case ARM::LDMIA:
+    case ARM::LDMIB:
+    case ARM::LDMDA:
+    case ARM::LDMDB:
+      return ARMLifterManager::resolve("LOAD")->select(N);
+    break;
 
     /* Process Store Instructions */
+    case ARM::tPUSH:
+    case ARM::t2STMDB_UPD:
+    case ARM::STR_PRE_IMM:
+    case ARM::STRH_POST:
+    case ARM::STRD_POST:
+    case ARM::t2STR_POST:
+    case ARM::tSTRspi:
+    case ARM::tSTRi:
+    case ARM::STRi12:
+    case ARM::t2STMIA:
+    case ARM::STMIA:
+    case ARM::STMIB:
+    case ARM::STMDA:
+    case ARM::STMDB:
+    case ARM::STMIA_UPD:
+    case ARM::STMIB_UPD:
+    case ARM::STMDA_UPD:
+    case ARM::STMDB_UPD:
+      return ARMLifterManager::resolve("STORE")->select(N);
+    break;
 
     /* Process Coprocessor Instructions */
 

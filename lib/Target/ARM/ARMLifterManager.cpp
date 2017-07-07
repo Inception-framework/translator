@@ -6,6 +6,8 @@
 #include "Target/ARM/SubtractLifter.h"
 #include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/CompareLifter.h"
+#include "Target/ARM/LoadLifter.h"
+#include "Target/ARM/StoreLifter.h"
 
 llvm::SelectionDAG *ARMLifterManager::DAG = NULL;
 
@@ -15,7 +17,9 @@ std::map<std::string, ARMLifter *> ARMLifterManager::managers = {
     {"MOVE", new MoveDataLifter()},
     {"SUB", new MoveDataLifter()},
     {"SHIFT", new MoveDataLifter()},
-    {"COMPARE", new MoveDataLifter()}
+    {"COMPARE", new MoveDataLifter()},
+    {"LOAD", new LoadLifter()},
+    {"STORE", new StoreLifter()}
   };
 
 ARMLifter *ARMLifterManager::resolve(std::string domain) {

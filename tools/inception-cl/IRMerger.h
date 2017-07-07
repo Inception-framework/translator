@@ -83,7 +83,7 @@ class IRMerger {
 
   void CreateADDCarryHelper();
 
-  Function *Disassemble();
+  Function *Decompile();
 
   StringRef getIndexedValueName(StringRef BaseName);
 

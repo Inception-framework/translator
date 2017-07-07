@@ -361,12 +361,8 @@ static std::error_code loadBinary(StringRef FileName) {
 
   // std::this_thread::sleep_for(std::chrono::seconds(10));
 
-  errs() << "-------------------------------------------\n";
   errs() << "-----------New Module ---------------------\n";
-  errs() << "-------------------------------------------\n";
   module->dump();
-  errs() << "-------------------------------------------\n";
-  errs() << "-------------------------------------------\n";
 
   exit(0);
 

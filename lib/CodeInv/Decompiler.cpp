@@ -127,14 +127,24 @@ Function* Decompiler::decompileFunction(unsigned Address) {
   for(Module::const_iterator i= Mod->getFunctionList().begin(), e= Mod->getFunctionList().end(); i != e; ++i) {
     // errs() << *i << "\n";
     if(!i->isDeclaration())
-      if(i->getName().str() == fct_name)
+      if(i->getName().str() == fct_name) {
         F = Mod->getFunction(fct_name);
+
+        if(F->hasFnAttribute("Decompiled"))
+          return F;
+      }
   }
 
   if(F==NULL) {
     FunctionType *FType = FunctionType::get(Type::getPrimitiveType(*Context,         Type::VoidTyID), false);
     F = cast<Function>(Mod->getOrInsertFunction(fct_name, FType));
   }
+
+  AttributeSet AS;
+  AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+    "Decompiled", "True");
+
+  F->setAttributes(AS);
 
   // if (!F->empty()) {
     // return F;

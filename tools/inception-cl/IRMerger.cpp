@@ -59,7 +59,7 @@ void IRMerger::Run() {
 
   MapArgsToRegs();
 
-  Function* new_function = Disassemble();
+  Function* new_function = Decompile();
   if (new_function == NULL) return;
 
   if (!empty) {
@@ -219,11 +219,11 @@ void IRMerger::CreateADDCarryHelper() {
   ReturnInst::Create(mod->getContext(), a_add_b_add_cpsr, label_return);
 }
 
-Function* IRMerger::Disassemble() {
+Function* IRMerger::Decompile() {
   uint64_t Address;
 
   outs() << "[Inception] The funcion " << *function_name;
-  outs() << " has to be replaced...\n";
+  outs() << " needs to be replaced...\n";
 
   if (nameLookupAddr(*function_name, Address) == false) {
     return NULL;
@@ -236,12 +236,9 @@ Function* IRMerger::Disassemble() {
 
   DEC->decompile(Address);
 
-  // outs() << "-------------------------------------------\n";
-  // outs() << "-----------New IR Code --------------------\n";
-  // outs() << "-------------------------------------------\n";
-  // DEC->printInstructions(Out, Address);
-  // outs() << "-------------------------------------------\n";
-  // outs() << "-------------------------------------------\n";
+  outs() << "-----------New IR Code --------------------\n";
+  DEC->printInstructions(Out, Address);
+  outs() << "-------------------------------------------\n";
 
   return DEC->getModule()->getFunction(*function_name);
 }
@@ -310,8 +307,21 @@ void IRMerger::RemoveUseless() {
 
           Value* Reg = DEC->getModule()->getGlobalVariable("R0");
           if (Reg == NULL) {
-            outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION \n\n";
-            return;
+
+            Type* Ty = IntegerType::get(DEC->getModule()->getContext(), 32);
+
+            Constant* Initializer = Constant::getNullValue(Ty);
+
+            GlobalVariable* gvar_i32 =
+                new GlobalVariable(*DEC->getModule(),  // Module
+                                   Ty,                 // Type
+                                   false,              // isConstant
+                                   GlobalValue::CommonLinkage, Initializer, "R0");
+
+           Reg = gvar_i32;
+
+            // outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION \n\n";
+            // return;
           }
 
           InsertDump(&old_inst);
@@ -370,7 +380,7 @@ void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
 }
 
 void IRMerger::MapArgsToRegs() {
-  outs() << "=========MAP ARGS===========\n\n";
+  // outs() << "=========MAP ARGS===========\n\n";
 
   BasicBlock& new_entry = fct->getEntryBlock();
 
@@ -414,7 +424,7 @@ void IRMerger::MapArgsToRegs() {
 
       Reg = gvar_i32;
 
-      outs() << "\n[Inception]\tAdding new register " << reg_name << "\n";
+      // outs() << "\n[Inception]\tAdding new register " << reg_name << "\n";
     }
     // Reg->dump();
 
@@ -441,25 +451,25 @@ void IRMerger::MapArgsToRegs() {
       continue;
 
       x = IRB->CreateLoad(x);
-      outs() << "\nGet Ptr value ";
-      x->dump();
+      // outs() << "\nGet Ptr value ";
+      // x->dump();
 
       if (Reg->getType() != x->getType()) {
         x = IRB->CreateBitCast(x, Reg->getType());
-        outs() << "\nBitcast ";
-        x->dump();
+        // outs() << "\nBitcast ";
+        // x->dump();
       }
       // x = IRB->CreatePtrToInt(x, x->getType()->getPointerTo());
     }
 
-    outs() << "\nRegType ";
-    Reg->getType()->dump();
-    outs() << "\nArgType ";
-    x->getType()->dump();
+    // outs() << "\nRegType ";
+    // Reg->getType()->dump();
+    // outs() << "\nArgType ";
+    // x->getType()->dump();
 
     Instruction* Res = IRB->CreateStore(x, Reg);
     Res->dump();
-    outs() << "==========================\n\n";
+    // outs() << "==========================\n\n";
 
     reg_counter++;
   }
