@@ -229,8 +229,8 @@ Function* IRMerger::Decompile() {
     return NULL;
   }
 
-  // DEC->setViewMCDAGs(true);
-  // DEC->setViewIRDAGs(true);
+  DEC->setViewMCDAGs(true);
+  DEC->setViewIRDAGs(true);
 
   formatted_raw_ostream Out(outs(), false);
 
@@ -305,6 +305,17 @@ void IRMerger::RemoveUseless() {
 
           Type* FType = fct->getReturnType();
 
+          if (FType->isVoidTy()) {
+
+            InsertDump(&old_inst);
+
+            IRB->CreateRetVoid();
+
+            continue;
+          }
+
+          InsertDump(&old_inst);
+
           Value* Reg = DEC->getModule()->getGlobalVariable("R0");
           if (Reg == NULL) {
 
@@ -324,8 +335,6 @@ void IRMerger::RemoveUseless() {
             // return;
           }
 
-          InsertDump(&old_inst);
-
           if (FType->isPointerTy()) IRB->CreateRet(Reg);
 
           if (FType->isIntegerTy()) {
@@ -338,8 +347,6 @@ void IRMerger::RemoveUseless() {
 
             ret_counter++;
           }
-
-          if (FType->isVoidTy()) IRB->CreateRetVoid();
         }
       }
     }
