@@ -266,10 +266,18 @@ Value* IREmitter::visitCopyToReg(const SDNode *N) {
     return NULL;
   }
 
-  //errs() << "V:\t" <<"Output Type: " << V->getType()->getScalarSizeInBits() <<"\n";
-  //V->dump();
-  //errs() << "RegVal:\t" <<"Output Type: " << RegVal->getType()->getScalarSizeInBits() <<"\n";
-  //RegVal->dump();
+  errs() << "V:\t" <<"Output Type: " << V->getType()->getTypeID() <<"\n";
+  V->dump();
+  errs() << "RegVal:\t" <<"Output Type: " << RegVal->getType()->getTypeID() <<"\n";
+  RegVal->dump();
+  errs() << "\n\n";
+
+  StringRef BaseName = getBaseValueName(RegVal->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+
+  if (!RegVal->getType()->isPointerTy()) {
+    RegVal = IRB->CreateIntToPtr(RegVal, RegVal->getType()->getPointerTo(), Name);
+  }
 
   Instruction* Res = IRB->CreateStore(V, RegVal);
   VisitMap[N] = Res;

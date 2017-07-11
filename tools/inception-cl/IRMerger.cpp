@@ -36,7 +36,7 @@ void IRMerger::Run() {
   if (IRMerger::first_call) {
     IRMerger::first_call = false;
 
-    CreateADDCarryHelper();
+    // CreateADDCarryHelper();
   }
 
   bool empty = false;
@@ -147,20 +147,17 @@ void IRMerger::CreateADDCarryHelper() {
 
   GlobalVariable* gvar_int32_CPSR = mod->getGlobalVariable("CPSR");
   if (gvar_int32_CPSR == NULL) {
-    gvar_int32_CPSR = new GlobalVariable(
-        /*Module=*/*mod,
-        /*Type=*/IntegerType::get(mod->getContext(), 32),
-        /*isConstant=*/false,
-        /*Linkage=*/GlobalValue::CommonLinkage,
-        /*Initializer=*/0,  // has initializer, specified below
-        /*Name=*/"CPSR");
-    gvar_int32_CPSR->setAlignment(4);
 
-    ConstantInt* const_int32_0 =
-        ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
+    Type* Ty = IntegerType::get(mod->getContext(), 32);
 
-    // Global Variable Definitions
-    gvar_int32_CPSR->setInitializer(const_int32_0);
+    Constant *Initializer = Constant::getNullValue(Ty);
+
+    gvar_int32_CPSR = new GlobalVariable(*mod, // Module
+                             Ty,                // Type
+                             false,             // isConstant
+                             GlobalValue::ExternalLinkage,
+                             Initializer,
+                             "CPSR");
   }
 
   Function::arg_iterator args = func__Z14ADD_WITH_CARRYii->arg_begin();
