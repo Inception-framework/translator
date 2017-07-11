@@ -46,6 +46,8 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
 
   uint16_t TargetOpc = N->getMachineOpcode();
 
+  outs() << "[ARMInvIselDAG] Next opcode : " << TargetOpc << "\n\n";
+
   switch (TargetOpc) {
   default:
 

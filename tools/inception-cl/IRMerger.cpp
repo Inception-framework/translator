@@ -33,11 +33,6 @@ void IRMerger::SetNewFunction(std::string new_function_name) {
 }
 
 void IRMerger::Run() {
-  if (IRMerger::first_call) {
-    IRMerger::first_call = false;
-
-    // CreateADDCarryHelper();
-  }
 
   bool empty = false;
 
@@ -122,98 +117,6 @@ void IRMerger::InsertDump(llvm::Instruction *inst) {
    void_10->setCallingConv(CallingConv::C);
    void_10->setTailCall(false);
   }
-}
-
-void IRMerger::CreateADDCarryHelper() {
-  Module* mod = DEC->getModule();
-
-  std::vector<Type*> FuncTy_args;
-  FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
-  FuncTy_args.push_back(IntegerType::get(mod->getContext(), 32));
-  FunctionType* FuncTy = FunctionType::get(
-      /*Result=*/IntegerType::get(mod->getContext(), 32),
-      /*Params=*/FuncTy_args,
-      /*isVarArg=*/false);
-
-  Function* func__Z14ADD_WITH_CARRYii =
-      mod->getFunction("_Z14ADD_WITH_CARRYii");
-  if (!func__Z14ADD_WITH_CARRYii) {
-    func__Z14ADD_WITH_CARRYii = Function::Create(
-        /*Type=*/FuncTy,
-        /*Linkage=*/GlobalValue::ExternalLinkage,
-        /*Name=*/"_Z14ADD_WITH_CARRYii", mod);
-    func__Z14ADD_WITH_CARRYii->setCallingConv(67);
-  }
-
-  GlobalVariable* gvar_int32_CPSR = mod->getGlobalVariable("CPSR");
-  if (gvar_int32_CPSR == NULL) {
-
-    Type* Ty = IntegerType::get(mod->getContext(), 32);
-
-    Constant *Initializer = Constant::getNullValue(Ty);
-
-    gvar_int32_CPSR = new GlobalVariable(*mod, // Module
-                             Ty,                // Type
-                             false,             // isConstant
-                             GlobalValue::ExternalLinkage,
-                             Initializer,
-                             "CPSR");
-  }
-
-  Function::arg_iterator args = func__Z14ADD_WITH_CARRYii->arg_begin();
-
-  Value* int32_a = args++;
-  int32_a->setName("a");
-  Value* int32_b = args++;
-  int32_b->setName("b");
-
-  ConstantInt* carry =
-      ConstantInt::get(mod->getContext(), APInt(32, StringRef("1"), 10));
-
-  BasicBlock* label_entry = BasicBlock::Create(mod->getContext(), "entry",
-                                               func__Z14ADD_WITH_CARRYii, 0);
-  BasicBlock* label_if_then = BasicBlock::Create(mod->getContext(), "if.then",
-                                                 func__Z14ADD_WITH_CARRYii, 0);
-  BasicBlock* label_if_end = BasicBlock::Create(mod->getContext(), "if.end",
-                                                func__Z14ADD_WITH_CARRYii, 0);
-  BasicBlock* label_return = BasicBlock::Create(mod->getContext(), "return",
-                                                func__Z14ADD_WITH_CARRYii, 0);
-
-  // Block entry (label_entry)
-  AllocaInst* ptr_a_addr = new AllocaInst(
-      IntegerType::get(mod->getContext(), 32), "a.addr", label_entry);
-
-  AllocaInst* ptr_b_addr = new AllocaInst(
-      IntegerType::get(mod->getContext(), 32), "b.addr", label_entry);
-
-  AllocaInst* ptr_c_addr =
-      new AllocaInst(IntegerType::get(mod->getContext(), 32), "c", label_entry);
-
-  int32_a = new LoadInst(ptr_a_addr, "", false, label_entry);
-
-  int32_b = new LoadInst(ptr_b_addr, "", false, label_entry);
-
-  BinaryOperator* a_add_b = BinaryOperator::Create(Instruction::Add, int32_a,
-                                                   int32_b, "add", label_entry);
-  LoadInst* cpsr = new LoadInst(gvar_int32_CPSR, "", false, label_entry);
-
-  BinaryOperator* a_add_b_add_cpsr = BinaryOperator::Create(
-      Instruction::Add, a_add_b, cpsr, "add1", label_entry);
-  new StoreInst(a_add_b_add_cpsr, ptr_c_addr, false, label_entry);
-
-  ICmpInst* cmp = new ICmpInst(*label_entry, ICmpInst::ICMP_SGT, int32_a,
-                               a_add_b_add_cpsr, "cmp");
-  BranchInst::Create(label_if_then, label_if_end, cmp, label_entry);
-
-  // Block if.then (label_if_then)
-  new StoreInst(carry, gvar_int32_CPSR, false, label_if_then);
-  BranchInst::Create(label_if_end, label_if_then);
-
-  // Block if.end (label_if_end)
-  ReturnInst::Create(mod->getContext(), a_add_b_add_cpsr, label_if_end);
-
-  // Block return (label_return)
-  ReturnInst::Create(mod->getContext(), a_add_b_add_cpsr, label_return);
 }
 
 Function* IRMerger::Decompile() {

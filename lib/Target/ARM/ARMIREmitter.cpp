@@ -17,6 +17,10 @@
 #include "CodeInv/Decompiler.h"
 #include "ARMBaseInfo.h"
 
+
+#include "llvm/CodeGen/ISDOpcodes.h"
+#include "llvm/IR/Intrinsics.h"
+
 using namespace llvm;
 
 #define DEBUG_TYPE "armiremitter"
@@ -181,6 +185,63 @@ Value* ARMIREmitter::visitWrapper(const SDNode *N) { llvm_unreachable("visitWrap
 Value* ARMIREmitter::visitWrapperPIC(const SDNode *N) { llvm_unreachable("visitWrapperPIC unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitWrapperJT(const SDNode *N) { llvm_unreachable("visitWrapperJT unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitCOPY_STRUCT_BYVAL(const SDNode *N) { llvm_unreachable("visitCOPY_STRUCT_BYVAL unimplemented ARM visit..."); return NULL; }
+
+Value* ARMIREmitter::visitADDC(const SDNode *N) {
+
+  if(VisitMap[N])
+    return   VisitMap[N];
+
+  Module *mod = IRB->GetInsertBlock()->getParent()->getParent();
+
+  ConstantInt* const_int32_0 = ConstantInt::get(mod->getContext(), APInt(32, 0, false));
+  ConstantInt* const_int32_1 = ConstantInt::get(mod->getContext(), APInt(32, 1, false));
+
+  Value *A = visit(N->getOperand(0).getNode());
+  A->dump();
+  Value *B = visit(N->getOperand(1).getNode());
+  A->dump();
+
+  std::vector<Type*> types;
+  types.push_back(IntegerType::get(mod->getContext(), 32));
+  types.push_back(IntegerType::get(mod->getContext(), 32));
+
+  Intrinsic::ID intr_id =  Intrinsic::uadd_with_overflow;
+
+  Value *intr = Intrinsic::getDeclaration(mod, intr_id, makeArrayRef(A->getType()));
+  // Value *ptr_res = IRB->CreateCall(intr, {A, B});
+
+  // Function* func = Intrinsic::getDeclaration(mod, Intrinsic::uadd_with_overflow, types);
+  // Type *FType = func->getReturnType();
+
+  // errs() << "\nWating for " << func->getFunctionType()->getNumParams() << " params ...\n";
+  // func->getFunctionType()->dump();
+
+  // for(auto i=0; i<func->getFunctionType()->getNumParams(); i++) {
+  //
+  //   errs() << "\Param type " << func->getFunctionType()->getParamType(i)->getTypeID() << "\n\n";
+  //   func->getFunctionType()->getParamType(i)->dump();
+  // }
+
+  std::vector<Value*> params;
+  params.push_back(A);
+  params.push_back(B);
+  CallInst* ptr_res = IRB->CreateCall(intr, params);
+
+  StructType* structType = dyn_cast<StructType>(ptr_res->getType());
+  if(structType == NULL)
+    errs() << "Returned value is not a structure !!";
+
+  PointerType* PointerTy_0 = PointerType::get(structType, 0);
+
+  Value* c = IRB->CreateExtractValue(ptr_res, 0);
+  Value* carry = IRB->CreateExtractValue(ptr_res, 0);
+
+  Value *Res = IRB->CreateAdd(c, carry);
+
+  VisitMap[N] = Res;
+
+  return Res;
+}
 
 Value* ARMIREmitter::visitCALL(const SDNode *N) {
   const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(0));
@@ -372,7 +433,7 @@ Value* ARMIREmitter::visitPIC_ADD(const SDNode *N) { llvm_unreachable("visitPIC_
 Value* ARMIREmitter::visitCMP(const SDNode *N) {
 	//errs() << "visitCMP unimplemented ARM visit...\n";
 	//return NULL;
-  
+
     //Presuming the ARM version will work something like X86...
     //cmp     r0, #0x0
     //beq     #-0x14
@@ -394,7 +455,7 @@ Value* ARMIREmitter::visitUITOF(const SDNode *N) { llvm_unreachable("visitUITOF 
 Value* ARMIREmitter::visitSRL_FLAG(const SDNode *N) { llvm_unreachable("visitSRL_FLAG unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitSRA_FLAG(const SDNode *N) { llvm_unreachable("visitSRA_FLAG unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitRRX(const SDNode *N) { llvm_unreachable("visitRRX unimplemented ARM visit..."); return NULL; }
-Value* ARMIREmitter::visitADDC(const SDNode *N) { llvm_unreachable("visitADDC unimplemented ARM visit..."); return NULL; }
+// Value* ARMIREmitter::visitADDC(const SDNode *N) { llvm_unreachable("visitADDC unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitADDE(const SDNode *N) { llvm_unreachable("visitADDE unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitSUBC(const SDNode *N) { llvm_unreachable("visitSUBC unimplemented ARM visit..."); return NULL; }
 Value* ARMIREmitter::visitSUBE(const SDNode *N) { llvm_unreachable("visitSUBE unimplemented ARM visit..."); return NULL; }

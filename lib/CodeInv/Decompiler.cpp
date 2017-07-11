@@ -129,9 +129,6 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     if(!i->isDeclaration())
       if(i->getName().str() == fct_name) {
         F = Mod->getFunction(fct_name);
-
-        if(F->hasFnAttribute("Decompiled"))
-          return F;
       }
   }
 
@@ -140,11 +137,16 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     F = cast<Function>(Mod->getOrInsertFunction(fct_name, FType));
   }
 
-  AttributeSet AS;
-  AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
-    "Decompiled", "True");
+  if(F->hasFnAttribute("Decompiled"))
+    return F;
+ else {
 
-  F->setAttributes(AS);
+   AttributeSet AS;
+   AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+   "Decompiled", "True");
+
+   F->setAttributes(AS);
+ }
 
   // if (!F->empty()) {
     // return F;
