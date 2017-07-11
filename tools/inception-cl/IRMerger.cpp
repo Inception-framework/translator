@@ -129,8 +129,8 @@ Function* IRMerger::Decompile() {
     return NULL;
   }
 
-  DEC->setViewMCDAGs(true);
-  DEC->setViewIRDAGs(true);
+  // DEC->setViewMCDAGs(true);
+  // DEC->setViewIRDAGs(true);
 
   formatted_raw_ostream Out(outs(), false);
 
