@@ -140,7 +140,7 @@ public:
   SDNode *SelectT2IndexedLoad(SDNode *N);
 
   // Increment, Before, WriteBack
-  void InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B, bool WB);
+  // void InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B, bool WB);
   bool SelectCMOVPred(SDValue N, SDValue &Pred, SDValue &Reg);
 
 private:

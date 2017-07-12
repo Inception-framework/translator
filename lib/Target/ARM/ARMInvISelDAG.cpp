@@ -25,6 +25,7 @@ namespace fracture {
 SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
 
   ARMLifterManager::DAG = CurDAG;
+  ARMLifterManager::Dec = (Decompiler*)Dec;
 
   // Insert fixups here
   if (!N->isMachineOpcode()) {
@@ -183,6 +184,7 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
     case ARM::LDMIB:
     case ARM::LDMDA:
     case ARM::LDMDB:
+    case ARM::t2LDRi12:
       return ARMLifterManager::resolve("LOAD")->select(N);
     break;
 
@@ -205,6 +207,13 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
     case ARM::STMIB_UPD:
     case ARM::STMDA_UPD:
     case ARM::STMDB_UPD:
+    case ARM::t2STRDi8:
+    case ARM::t2STRHi12:
+    case ARM::t2STRi12:
+    case ARM::t2STMIA_UPD:
+    case ARM::t2STR_PRE:
+    case ARM::t2STMDB:
+    case ARM::tSTRr:
       return ARMLifterManager::resolve("STORE")->select(N);
     break;
 
@@ -713,126 +722,6 @@ SDNode *ARMInvISelDAG::SelectT2IndexedLoad(SDNode *N) {
   }
 
   return NULL;
-}
-
-void ARMInvISelDAG::InvLoadOrStoreMultiple(SDNode *N, bool Ld, bool Inc, bool B,
-                                           bool WB) {
-  // Pattern:  (STMDB_UPD:void GPR:$Rn, pred:$p, reglist:$regs,
-  //                           variable_ops)
-  // Emits: for each $reg in $regs:
-  //          (store $reg, $Rn+offset($reg))
-  //        (sub $Rn, sizeof($regs)*regsize)
-  // Same for LDMIA, except we add instead of sub and we load instead of
-  // store.
-
-  //   xxM type cond   base write-back, {register list}
-  // Stack     Other
-  // LDMED     LDMIB     Pre-incremental load
-  // LDMFD     LDMIA     Post-incremental load
-  // LDMEA     LDMDB     Pre-decremental load
-  // LDMFA     LDMDA     Post-decremental load
-  // STMFA     STMIB     Pre-incremental store
-  // STMEA     STMIA     Post-incremental store
-  // STMFD     STMDB     Pre-decremental store
-  // STMED     STMDA     Post-decremental store
-
-  // UPD refers to write-back in LLVM-speak.
-  // the ED/FD/EA/FA don't seem to be in LLVM from what I have seen.
-  // writeback is defined as a ! in ASM.
-
-  // Op[0] is Chain
-  // Op[1] is $Rn
-  // Op[2] is $p (14)
-  // Op[3] is predicate (%noreg)
-  SDValue Chain = N->getOperand(0);
-  SDValue Ptr = N->getOperand(1);
-  SDValue PrevPtr = Ptr;
-  SDValue UsePtr;
-  SDValue Offset = CurDAG->getConstant(4, EVT(MVT::i32), false);
-  SDLoc SL(N);
-  SDVTList VTList = CurDAG->getVTList(MVT::i32);
-  EVT LdType = N->getValueType(0); // Note: unused in the store case...
-  unsigned ImmSum = 0;
-  uint16_t MathOpc = (Inc) ? ISD::ADD : ISD::SUB;
-  for (unsigned i = 4; i < N->getNumOperands(); ++i) {
-    // Semantics of Store is that it takes a chain, value, and pointer.
-    // NOTE: There is a 4th oper which is "undef" from what we see.
-    SDValue Val = N->getOperand(i);
-
-    // We create an instruction for each oper to do the $Rn+Offset
-    // that becomes the Ptr op for the store instruction
-    // LLVM Uses a "FrameIndex" when going forward, which we could do
-    // but better to move this to later in our pipeline.
-    // NOTE: Need to validate that this is the semantics of the command!
-    Ptr = CurDAG->getNode(MathOpc, SL, VTList, Ptr, Offset);
-
-    // FIXME: the 4 and 0 here are really specific -- double check these
-    // are always good.
-    ImmSum += 4;
-    Value *NullPtr = 0;
-    MachineMemOperand *MMO = new MachineMemOperand(
-        MachinePointerInfo(NullPtr, ImmSum), MachineMemOperand::MOStore, 4, 0);
-
-    // Before or after behavior
-    UsePtr = (B) ? PrevPtr : Ptr;
-
-    SDValue ResNode;
-    if (Ld) {
-      // This is a special case, because we have to flip CopyFrom/To
-      if (Val->hasNUsesOfValue(1, 0)) {
-        Chain = Val->getOperand(0);
-      }
-
-      // Check if we are loading into PC, if we are, emit a return.
-      RegisterSDNode *RegNode = dyn_cast<RegisterSDNode>(Val->getOperand(1));
-      const MCRegisterInfo *RI =
-          Dec->getDisassembler()->getMCDirector()->getMCRegisterInfo();
-      if (RI->isSubRegisterEq(RI->getProgramCounter(), RegNode->getReg())) {
-        ResNode = CurDAG->getNode(ARMISD::RET_FLAG, SL, MVT::Other,
-                                  CurDAG->getRoot());
-        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
-        CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
-        CurDAG->setRoot(ResNode);
-        return;
-      } else {
-        ResNode = CurDAG->getLoad(LdType, SL, Chain, UsePtr,
-                                  MachinePointerInfo::getConstantPool(), false,
-                                  false, true, 0);
-        SDValue C2R = CurDAG->getCopyToReg(ResNode.getValue(1), SL,
-                                           RegNode->getReg(), ResNode);
-        Chain = C2R;
-        // If CopyFromReg has only 1 use, replace it
-        if (Val->hasNUsesOfValue(1, 0)) {
-          CurDAG->ReplaceAllUsesOfValueWith(Val, ResNode);
-          CurDAG->ReplaceAllUsesOfValueWith(Val.getValue(1),
-                                            ResNode.getValue(1));
-          CurDAG->DeleteNode(Val.getNode());
-        }
-      }
-    } else {
-      ResNode = CurDAG->getStore(Chain, SL, Val, UsePtr, MMO);
-      Chain = ResNode;
-    }
-    if (ResNode.getNumOperands() > 1) {
-      FixChainOp(ResNode.getNode());
-    }
-    PrevPtr = Ptr;
-  }
-
-  // NOTE: This gets handled automagically because DAG represents it, but leave
-  // for now in case we need it.
-  // Writeback operation
-  // if (WB) {
-  //   RegisterSDNode *WBReg =
-  //     dyn_cast<RegisterSDNode>(N->getOperand(1)->getOperand(1));
-  //   Chain = CurDAG->getCopyToReg(Ptr, SL, WBReg->getReg(), Chain);
-  // }
-
-  // Pass the chain to the last chain node
-  CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
-
-  // Pass the last math operation to any uses of Rn
-  CurDAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
 }
 
 bool ARMInvISelDAG::SelectCMOVPred(SDValue N, SDValue &Pred, SDValue &Reg) {

@@ -507,24 +507,6 @@ HandleMergeInputChains(SmallVectorImpl<SDNode*> &ChainNodesMatched,
                          MVT::Other, InputChains);
 }
 
-/// Moves Op[0] to Op[Op.size()-1]. This is done for certain load/store operands
-/// during inverse DAG Selection.
-void InvISelDAG::FixChainOp(SDNode *N) {
-  SDValue Chain = N->getOperand(0);
-  unsigned NumOps = N->getNumOperands();
-
-  assert(NumOps > 1 && "Not enough operands to swap the Chain on Load/Store!");
-  assert(Chain.getValueType() == MVT::Other && "Not a chain value!");
-
-  SmallVector<SDValue, 3> Ops;
-  for (unsigned i = 1; i != NumOps; ++i) {
-    Ops.push_back(N->getOperand(i));
-  }
-  Ops.push_back(Chain);
-
-  N = CurDAG->UpdateNodeOperands(N, Ops);
-}
-
 
 /// MorphNode - Handle morphing a node in place for the selector.
 SDNode *InvISelDAG::
@@ -1223,7 +1205,7 @@ SDNode* InvISelDAG::InvertCodeCommon(SDNode *NodeToMatch,
           RecordedNodes.push_back(std::pair<SDValue,SDNode*>(SDValue(Res, i),
               (SDNode*) 0));
         }
-        FixChainOp(Res);
+        // FixChainOp(Res);
       }
       else if (Opcode != OPC_MorphNodeTo
         && !NodeToMatch->isTargetMemoryOpcode()) {

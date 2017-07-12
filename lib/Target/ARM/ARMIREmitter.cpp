@@ -234,7 +234,7 @@ Value* ARMIREmitter::visitADDC(const SDNode *N) {
   PointerType* PointerTy_0 = PointerType::get(structType, 0);
 
   Value* c = IRB->CreateExtractValue(ptr_res, 0);
-  Value* carry = IRB->CreateExtractValue(ptr_res, 0);
+  Value* carry = IRB->CreateExtractValue(ptr_res, 1);
 
   Value *Res = IRB->CreateAdd(c, carry);
 
