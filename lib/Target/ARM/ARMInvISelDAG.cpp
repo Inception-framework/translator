@@ -189,6 +189,8 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
     break;
 
     /* Process Store Instructions */
+    case ARM::t2STRBi12:
+    case ARM::t2STRi8:
     case ARM::tPUSH:
     case ARM::t2STMDB_UPD:
     case ARM::STR_PRE_IMM:

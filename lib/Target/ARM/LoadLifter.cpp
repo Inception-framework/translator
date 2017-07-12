@@ -6,6 +6,7 @@
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 using namespace fracture;
@@ -13,134 +14,160 @@ using namespace fracture;
 SDNode *LoadLifter::select(SDNode *N) {
   uint16_t TargetOpc = N->getMachineOpcode();
 
+  switch (TargetOpc) {
+    case ARM::tPOP:
+      // SDNode *_N, _chain, _src_begin, _src_end, _addr, _offset, _inc, _before
+      InvLoadMultiple(new LoadInfo(N, 0, 3, N->getNumOperands() - 1,
+                                   N->getNumOperands() - 1, -1, true, false));
+      break;
+    case ARM::t2LDRi12:
+      // SDNode *_N, _chain, _src_begin, _src_end, _addr, _offset, _inc, _before
+      InvLoadMultiple(new LoadInfo(N, 0, 4, 4, 1, 2, true, false));
+      break;
+    case ARM::t2LDMIA_UPD:
+      // SDNode *_N, _chain, _src_begin, _src_end, _addr, _offset, _inc, _before
+      InvLoadMultiple(
+          new LoadInfo(N, 0, 4, 4, N->getNumOperands() - 1, -1, true, false));
+      break;
+  }
+
   return NULL;
 }
 
-void LoadLifter::InvLoadMultiple(SDNode *N, bool Inc, bool Before,
-                                 LoadInfo *info) {
-  SDValue Chain = N->getOperand(info->chain);
-  SDValue Ptr = N->getOperand(info->addr);
+void LoadLifter::InvLoadMultiple(LoadInfo *info) {
+  // Initial Value
+  info->Chain = info->N->getOperand(info->chain);
+  info->Ptr = info->N->getOperand(info->addr);
 
-  uint16_t MathOpc = (Inc) ? ISD::ADD : ISD::SUB;
+  info->MathOpc = (info->Increment) ? ISD::ADD : ISD::SUB;
 
-  SDValue PrevPtr = Ptr;
-  SDValue UsePtr;
+  // Is there any offset
+  if (info->offset == -1) {
+    // The DAG Node does not contain any offset
+    // Offset is not available in multi load
+    // We create our own offset
+    info->Offset = ARMLifterManager::DAG->getConstant(4, EVT(MVT::i32), false);
 
-  SDValue Offset = ARMLifterManager::DAG->getConstant(4, EVT(MVT::i32), false);
+  } else {
+    info->Offset = info->N->getOperand(info->offset);
+  }
 
+  // For each source value to load
+  for (unsigned i = info->src_begin; i < info->src_end; ++i) {
+    SDValue Val = info->N->getOperand(i);
+
+    Val->dump();
+
+    // if (Val->hasNUsesOfValue(1, 0)) {
+    //   info->Chain = Val->getOperand(0);
+    // }
+
+    // Update before ?
+    if (info->Before)
+      info->Ptr =
+          update_pointer(info->N, info->MathOpc, info->Ptr, info->Offset,
+                         info->offset == -1 && info->Before ? true : false);
+
+    // if (is_pc_affected(Val))
+    //   create_ret(info->N, info->Chain, info->Ptr);
+    // else
+    info->Chain = create_load(info->N, Val, info->Chain, info->Ptr);
+
+    // Update after ?
+    if (!info->Before)
+      info->Ptr =
+          update_pointer(info->N, info->MathOpc, info->Ptr, info->Offset,
+                         info->offset == -1 && info->Before ? true : false);
+
+    update(info->Chain);
+  }
+
+  clean_graph(info->N, info->Chain, info->Ptr);
+}
+
+void LoadLifter::update(SDValue ResNode) {}
+
+SDValue LoadLifter::update_pointer(SDNode *N, uint16_t MathOpc, SDValue Ptr,
+                                   SDValue Offset, bool UpdateRef) {
   SDLoc SL(N);
 
   SDVTList VTList = ARMLifterManager::DAG->getVTList(MVT::i32);
 
+  // Compute new pointer value
+  SDValue ptr =
+      ARMLifterManager::DAG->getNode(MathOpc, SL, VTList, Ptr, Offset);
+
+  // if (UpdateRef) {
+  //   ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(
+  //       SDValue(Offset.getNode(), 0), ptr);
+  // }
+
+  return ptr;
+}
+
+SDValue LoadLifter::create_load(SDNode *N, SDValue Val, SDValue Chain,
+                                SDValue Ptr) {
+  llvm::errs() << "Create load\n";
+
+  SDLoc SL(N);
+
   EVT LdType = N->getValueType(0);
 
-  unsigned ImmSum = 0;
+  RegisterSDNode *RegNode = dyn_cast<RegisterSDNode>(Val->getOperand(1));
 
-  for (unsigned i = info->src_begin; i < info->src_end; ++i) {
-    SDValue Val = N->getOperand(i);
+  SDValue ResNode = ARMLifterManager::DAG->getLoad(
+      LdType, SL, Chain, Ptr, MachinePointerInfo::getConstantPool(), false,
+      false, true, 0);
+  SDValue C2R = ARMLifterManager::DAG->getCopyToReg(ResNode.getValue(1), SL,
+                                                    RegNode->getReg(), ResNode);
 
-    Ptr = ARMLifterManager::DAG->getNode(MathOpc, SL, VTList, Ptr, Offset);
+  if (ResNode.getNumOperands() > 1) {
+    ARMLifterManager::FixChainOp(ResNode.getNode());
+  }
+  // if (Val->hasNUsesOfValue(1, 0)) {
+  //   ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(Val, ResNode);
+  //   ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(Val.getValue(1),
+  //                                     ResNode.getValue(1));
+  //   ARMLifterManager::DAG->DeleteNode(Val.getNode());
+  // }
 
-    ImmSum += 4;
+  return C2R;
+}
 
-    Value *NullPtr = 0;
+void LoadLifter::clean_graph(SDNode *N, SDValue Chain, SDValue Ptr) {
+  if (N->getNumValues() >= 2) {
+    // Pass the last math operation to any uses of Rn
+    ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
+    // Pass the chain to the last chain node
+    ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
+  } else if (N->getNumValues() == 1) {
+    // Pass the chain to the last chain node
+    ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Chain);
+  }
+}
 
-    MachineMemOperand *MMO = new MachineMemOperand(
-        MachinePointerInfo(NullPtr, ImmSum), MachineMemOperand::MOStore, 4, 0);
-
-    // Before or after behavior
-    UsePtr = (Before) ? PrevPtr : Ptr;
-
-    SDValue ResNode;
-
-    // This is a special case, because we have to flip CopyFrom/To
-    if (Val->hasNUsesOfValue(1, 0)) {
-      Chain = Val->getOperand(0);
-    }
-
-    // Check if we are loading into PC, if we are, emit a return.
+bool LoadLifter::is_pc_affected(SDValue Val) {
+  // Check if we are loading into PC, if we are, emit a return.
+  if (Val->getNumOperands() >= 2) {
     RegisterSDNode *RegNode = dyn_cast<RegisterSDNode>(Val->getOperand(1));
 
     const MCRegisterInfo *RI = ARMLifterManager::Dec->getDisassembler()
                                    ->getMCDirector()
                                    ->getMCRegisterInfo();
-    if (RI->isSubRegisterEq(RI->getProgramCounter(), RegNode->getReg())) {
-      ResNode = ARMLifterManager::DAG->getNode(
-          ARMISD::RET_FLAG, SL, MVT::Other, ARMLifterManager::DAG->getRoot());
-      ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
-      ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
-      ARMLifterManager::DAG->setRoot(ResNode);
-      return;
-    } else {
-      ResNode = ARMLifterManager::DAG->getLoad(
-          LdType, SL, Chain, UsePtr, MachinePointerInfo::getConstantPool(),
-          false, false, true, 0);
-      SDValue C2R = ARMLifterManager::DAG->getCopyToReg(
-          ResNode.getValue(1), SL, RegNode->getReg(), ResNode);
-      Chain = C2R;
-      // If CopyFromReg has only 1 use, replace it
-      if (Val->hasNUsesOfValue(1, 0)) {
-        ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(Val, ResNode);
-        ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(Val.getValue(1),
-                                                         ResNode.getValue(1));
-        ARMLifterManager::DAG->DeleteNode(Val.getNode());
-      }
-    }
 
-    if (ResNode.getNumOperands() > 1) {
-      ARMLifterManager::FixChainOp(ResNode.getNode());
-    }
-    PrevPtr = Ptr;
+    return (RI->isSubRegisterEq(RI->getProgramCounter(), RegNode->getReg()));
   }
-
-  // NOTE: This gets handled automagically because DAG represents it, but leave
-  // for now in case we need it.
-  // Writeback operation
-  // if (WB) {
-  //   RegisterSDNode *WBReg =
-  //     dyn_cast<RegisterSDNode>(N->getOperand(1)->getOperand(1));
-  //   Chain = ARMLifterManager::DAG->getCopyToReg(Ptr, SL, WBReg->getReg(),
-  //   Chain);
-  // }
-
-  // Pass the chain to the last chain node
-  ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
-
-  // Pass the last math operation to any uses of Rn
-  ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
+  return false;
 }
 
-// if( is_pc_affected(Val) )
-//   create_ret(info->N, info->Chain, info->Ptr);
-// else
+SDValue LoadLifter::create_ret(SDNode *N, SDValue Chain, SDValue Ptr) {
+  SDLoc SL(N);
 
-// bool StoreLifter::is_pc_affected(SDValue Val) {
-//   // Check if we are loading into PC, if we are, emit a return.
-//   if(Val->getNumOperands()>=2) {
-//
-//     RegisterSDNode *RegNode = dyn_cast<RegisterSDNode>(Val->getOperand(1));
-//
-//     const MCRegisterInfo *RI = ARMLifterManager::Dec->getDisassembler()
-//     ->getMCDirector()
-//     ->getMCRegisterInfo();
-//
-//     return (RI->isSubRegisterEq(RI->getProgramCounter(), RegNode->getReg()));
-//   }
-//   return false;
-// }
-//
-// SDValue StoreLifter::create_ret(SDNode *N, SDValue Chain, SDValue Ptr) {
-//   SDLoc SL(N);
-//
-//   llvm::errs() << "PC affected -> return\n";
-//
-//   SDValue ResNode = ARMLifterManager::DAG->getNode(
-//       ARMISD::RET_FLAG, SL, MVT::Other, ARMLifterManager::DAG->getRoot());
-//   ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 1),
-//                                                    Chain);
-//   ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 0),
-//                                                    Ptr);
-//   ARMLifterManager::DAG->setRoot(ResNode);
-//
-//   return ResNode;
-// }
+  SDValue ResNode = ARMLifterManager::DAG->getNode(
+      ARMISD::RET_FLAG, SL, MVT::Other, ARMLifterManager::DAG->getRoot());
+  ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 1), Chain);
+  ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(SDValue(N, 0), Ptr);
+  ARMLifterManager::DAG->setRoot(ResNode);
+
+  return ResNode;
+}
