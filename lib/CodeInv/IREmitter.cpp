@@ -569,12 +569,14 @@ Value* IREmitter::visitRegister(const SDNode *N) {
     Reg = Dec->getModule()->getGlobalVariable(RegName);
     if (Reg == NULL) {
       Constant *Initializer = Constant::getNullValue(Ty);
-      Reg = new GlobalVariable(*Dec->getModule(), // Module
+      GlobalVariable* gvar_ptr = new GlobalVariable(*Dec->getModule(), // Module
                                Ty,                // Type
                                false,             // isConstant
                                GlobalValue::ExternalLinkage,
                                Initializer,
                                RegName);
+      gvar_ptr->setAlignment(4);
+      Reg = gvar_ptr;
     }
     RegMap[R->getReg()] = Reg;
   }

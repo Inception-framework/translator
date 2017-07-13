@@ -33,8 +33,35 @@ void IRMerger::SetNewFunction(std::string new_function_name) {
 }
 
 void IRMerger::Run() {
-
   bool empty = false;
+
+  if (IRMerger::first_call) {
+    IRMerger::first_call = false;
+
+    Value* Reg = DEC->getModule()->getGlobalVariable("SP");
+    if (Reg == NULL) {
+      Type* Ty = IntegerType::get(DEC->getModule()->getContext(), 32);
+
+      Constant* Initializer = Constant::getNullValue(Ty);
+
+      GlobalVariable* gvar_ptr_SP =
+          new GlobalVariable(*DEC->getModule(),  // Module
+                             Ty,                 // Type
+                             false,              // isConstant
+                             GlobalValue::CommonLinkage, Initializer, "SP");
+      gvar_ptr_SP->setAlignment(4);
+
+      // Constant Definitions
+      ConstantInt* const_int32 = ConstantInt::get(
+          DEC->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
+
+      // Constant* const_ptr = ConstantExpr::getCast(Instruction::IntToPtr,
+      //                                               const_int32, Ty);
+
+      // Global Variable Definitions
+      gvar_ptr_SP->setInitializer(const_int32);
+    }
+  }
 
   fct = DEC->getModule()->getFunction(*function_name);
 
@@ -64,58 +91,59 @@ void IRMerger::Run() {
   // DEC->getModule()->dump();
 }
 
-void IRMerger::InsertDump(llvm::Instruction *inst) {
-
+void IRMerger::InsertDump(llvm::Instruction* inst) {
   Module* mod = DEC->getModule();
 
-  std::vector<Type*>FuncTy_3_args;
+  std::vector<Type*> FuncTy_3_args;
   FunctionType* FuncTy_3 = FunctionType::get(
-   /*Result=*/Type::getVoidTy(mod->getContext()),
-   /*Params=*/FuncTy_3_args,
-   /*isVarArg=*/false);
+      /*Result=*/Type::getVoidTy(mod->getContext()),
+      /*Params=*/FuncTy_3_args,
+      /*isVarArg=*/false);
 
   PointerType* PointerTy_1 = PointerType::get(FuncTy_3, 0);
 
-  std::vector<Type*>FuncTy_4_args;
+  std::vector<Type*> FuncTy_4_args;
   FunctionType* FuncTy_4 = FunctionType::get(
-   /*Result=*/Type::getVoidTy(mod->getContext()),
-   /*Params=*/FuncTy_4_args,
-   /*isVarArg=*/true);
-
+      /*Result=*/Type::getVoidTy(mod->getContext()),
+      /*Params=*/FuncTy_4_args,
+      /*isVarArg=*/true);
 
   // Function Declarations
-  Function* func_inception_dump_registers = mod->getFunction("inception_dump_registers");
+  Function* func_inception_dump_registers =
+      mod->getFunction("inception_dump_registers");
   if (!func_inception_dump_registers) {
-  func_inception_dump_registers = Function::Create(
-   /*Type=*/FuncTy_4,
-   /*Linkage=*/GlobalValue::ExternalLinkage,
-   /*Name=*/"inception_dump_registers", mod); // (external, no body)
-  func_inception_dump_registers->setCallingConv(CallingConv::C);
+    func_inception_dump_registers = Function::Create(
+        /*Type=*/FuncTy_4,
+        /*Linkage=*/GlobalValue::ExternalLinkage,
+        /*Name=*/"inception_dump_registers", mod);  // (external, no body)
+    func_inception_dump_registers->setCallingConv(CallingConv::C);
   }
   AttributeSet func_inception_dump_registers_PAL;
   {
-   SmallVector<AttributeSet, 4> Attrs;
-   AttributeSet PAS;
+    SmallVector<AttributeSet, 4> Attrs;
+    AttributeSet PAS;
     {
-     AttrBuilder B;
-     PAS = AttributeSet::get(mod->getContext(), ~0U, B);
+      AttrBuilder B;
+      PAS = AttributeSet::get(mod->getContext(), ~0U, B);
     }
 
-   Attrs.push_back(PAS);
-   func_inception_dump_registers_PAL = AttributeSet::get(mod->getContext(), Attrs);
-
+    Attrs.push_back(PAS);
+    func_inception_dump_registers_PAL =
+        AttributeSet::get(mod->getContext(), Attrs);
   }
-  func_inception_dump_registers->setAttributes(func_inception_dump_registers_PAL);
+  func_inception_dump_registers->setAttributes(
+      func_inception_dump_registers_PAL);
 
   // Constant Definitions
-  Constant* const_ptr_7 = ConstantExpr::getCast(Instruction::BitCast, func_inception_dump_registers, PointerTy_1);
+  Constant* const_ptr_7 = ConstantExpr::getCast(
+      Instruction::BitCast, func_inception_dump_registers, PointerTy_1);
   std::vector<Value*> params;
 
   // Function: main (func_main)
   {
-   CallInst* void_10 = CallInst::Create(const_ptr_7, params, "", inst);
-   void_10->setCallingConv(CallingConv::C);
-   void_10->setTailCall(false);
+    CallInst* void_10 = CallInst::Create(const_ptr_7, params, "", inst);
+    void_10->setCallingConv(CallingConv::C);
+    void_10->setTailCall(false);
   }
 }
 
@@ -206,7 +234,6 @@ void IRMerger::RemoveUseless() {
           Type* FType = fct->getReturnType();
 
           if (FType->isVoidTy()) {
-
             InsertDump(&old_inst);
 
             IRB->CreateRetVoid();
@@ -218,21 +245,20 @@ void IRMerger::RemoveUseless() {
 
           Value* Reg = DEC->getModule()->getGlobalVariable("R0");
           if (Reg == NULL) {
-
             Type* Ty = IntegerType::get(DEC->getModule()->getContext(), 32);
 
             Constant* Initializer = Constant::getNullValue(Ty);
 
-            GlobalVariable* gvar_i32 =
-                new GlobalVariable(*DEC->getModule(),  // Module
-                                   Ty,                 // Type
-                                   false,              // isConstant
-                                   GlobalValue::CommonLinkage, Initializer, "R0");
+            GlobalVariable* gvar_i32 = new GlobalVariable(
+                *DEC->getModule(),  // Module
+                Ty,                 // Type
+                false,              // isConstant
+                GlobalValue::CommonLinkage, Initializer, "R0");
 
-           Reg = gvar_i32;
+            Reg = gvar_i32;
 
-            // outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION \n\n";
-            // return;
+            // outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION
+            // \n\n"; return;
           }
 
           if (FType->isPointerTy()) IRB->CreateRet(Reg);
@@ -261,7 +287,6 @@ void IRMerger::RemoveUseless() {
   }
 
   for (auto& bb : marked_old_basicblocks) {
-
     bb->dropAllReferences();
     // bb->removeFromParent();
     bb->eraseFromParent();
