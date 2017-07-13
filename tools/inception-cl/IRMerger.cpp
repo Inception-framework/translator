@@ -38,9 +38,10 @@ void IRMerger::Run() {
   if (IRMerger::first_call) {
     IRMerger::first_call = false;
 
-    Value* Reg = DEC->getModule()->getGlobalVariable("SP");
+    Value* Reg = DEC->getModule()->getGlobalVariable("STACK");
     if (Reg == NULL) {
-      Type* Ty = IntegerType::get(DEC->getModule()->getContext(), 32);
+      Type* Ty = ArrayType::get(
+          IntegerType::get(DEC->getModule()->getContext(), 32), 1000);
 
       Constant* Initializer = Constant::getNullValue(Ty);
 
@@ -48,18 +49,8 @@ void IRMerger::Run() {
           new GlobalVariable(*DEC->getModule(),  // Module
                              Ty,                 // Type
                              false,              // isConstant
-                             GlobalValue::CommonLinkage, Initializer, "SP");
+                             GlobalValue::CommonLinkage, Initializer, "STACK");
       gvar_ptr_SP->setAlignment(4);
-
-      // Constant Definitions
-      ConstantInt* const_int32 = ConstantInt::get(
-          DEC->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
-
-      // Constant* const_ptr = ConstantExpr::getCast(Instruction::IntToPtr,
-      //                                               const_int32, Ty);
-
-      // Global Variable Definitions
-      gvar_ptr_SP->setInitializer(const_int32);
     }
   }
 

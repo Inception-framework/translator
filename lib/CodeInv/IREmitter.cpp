@@ -569,12 +569,24 @@ Value* IREmitter::visitRegister(const SDNode *N) {
     Reg = Dec->getModule()->getGlobalVariable(RegName);
     if (Reg == NULL) {
       Constant *Initializer = Constant::getNullValue(Ty);
+
+      // if( RegName.find("SP") !=std::string::npos ) {
+      //   // Constant Definitions
+      //   ConstantInt* const_int32 = ConstantInt::get(
+      //       Dec->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
+      //
+      //   Initializer = ConstantExpr::getCast(Instruction::IntToPtr, const_int32, Ty);
+      // }
+
       GlobalVariable* gvar_ptr = new GlobalVariable(*Dec->getModule(), // Module
                                Ty,                // Type
                                false,             // isConstant
                                GlobalValue::ExternalLinkage,
                                Initializer,
                                RegName);
+     gvar_ptr->dump();
+     gvar_ptr->getType()->dump();
+
       gvar_ptr->setAlignment(4);
       Reg = gvar_ptr;
     }
