@@ -27,7 +27,7 @@ IREmitter::IREmitter(Decompiler *TheDec, raw_ostream &InfoOut,
   raw_ostream &ErrOut) : Infos(InfoOut), Errs(ErrOut) {
   Dec = TheDec;
   DAG = Dec->getCurrentDAG();
-  IRB = new IRBuilder<>(getGlobalContext());
+  IRB = new IRBuilder<>(Dec->getModule()->getContext());
   RegMap.grow(Dec->getDisassembler()->getMCDirector()->getMCRegisterInfo(
      )->getNumRegs());
 }
@@ -288,7 +288,7 @@ Value* IREmitter::visitCopyToReg(const SDNode *N) {
 Value* IREmitter::visitConstant(const SDNode *N) {
   if (const ConstantSDNode *CSDN = dyn_cast<ConstantSDNode>(N)) {
     Value *Res = Constant::getIntegerValue(
-      N->getValueType(0).getTypeForEVT(getGlobalContext()),
+      N->getValueType(0).getTypeForEVT(Dec->getModule()->getContext()),
       CSDN->getAPIntValue());
     VisitMap[N] = Res;
     return Res;
@@ -527,11 +527,11 @@ Value* IREmitter::visitSTORE(const SDNode *N) {
   if (!Addr->getType()->isPointerTy()) {
     //errs() << "-----Dump1\n";
     //Addr->dump();
-    //N->getDebugLoc().dump(getGlobalContext());
+    //N->getDebugLoc().dump(Dec->getModule()->getContext());
     Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
     //errs() << "-----Dump2\n";
     //Addr->dump();
-    //N->getDebugLoc().dump(getGlobalContext());
+    //N->getDebugLoc().dump(Dec->getModule()->getContext());
     (dyn_cast<Instruction>(Addr))->setDebugLoc(N->getDebugLoc());
   }
 
@@ -564,28 +564,31 @@ Value* IREmitter::visitRegister(const SDNode *N) {
       DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0);
     RegName = RP.str().substr(1, RP.str().size());
 
-    Type* Ty = R->getValueType(0).getTypeForEVT(getGlobalContext());
+    Type* Ty = R->getValueType(0).getTypeForEVT(Dec->getModule()->getContext());
 
     Reg = Dec->getModule()->getGlobalVariable(RegName);
     if (Reg == NULL) {
       Constant *Initializer = Constant::getNullValue(Ty);
 
-      // if( RegName.find("SP") !=std::string::npos ) {
-      //   // Constant Definitions
-      //   ConstantInt* const_int32 = ConstantInt::get(
-      //       Dec->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
-      //
-      //   Initializer = ConstantExpr::getCast(Instruction::IntToPtr, const_int32, Ty);
-      // }
+      if( RegName.find("SP") !=std::string::npos ) {
+
+        // Ty = PointerType::get(IntegerType::get(Dec->getModule()->getContext(), 32), 0);
+        // Constant Definitions
+        Initializer = ConstantInt::get(
+            Dec->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
+
+        llvm::errs() << "Initializer for SP \n";
+        Ty->dump();
+        // Initializer = ConstantExpr::getCast(Instruction::IntToPtr, const_int32, Ty);
+      }
+      Initializer->getType()->dump();
 
       GlobalVariable* gvar_ptr = new GlobalVariable(*Dec->getModule(), // Module
                                Ty,                // Type
                                false,             // isConstant
-                               GlobalValue::ExternalLinkage,
+                               GlobalValue::CommonLinkage,
                                Initializer,
                                RegName);
-     gvar_ptr->dump();
-     gvar_ptr->getType()->dump();
 
       gvar_ptr->setAlignment(4);
       Reg = gvar_ptr;
