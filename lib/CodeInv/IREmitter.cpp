@@ -590,7 +590,7 @@ Value* IREmitter::visitRegister(const SDNode *N) {
         if(!main_fct)
           llvm::errs() << "Unable to find main function needed to init SP !";
 
-        ConstantInt* const_int32 = ConstantInt::get(Dec->getModule()->getContext(), APInt(32, StringRef("4"), 10));
+        ConstantInt* const_int32 = ConstantInt::get(Dec->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
 
         Instruction* inst = main_fct->getEntryBlock().begin();
 
