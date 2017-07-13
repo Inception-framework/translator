@@ -20,6 +20,7 @@ SDNode *LoadLifter::select(SDNode *N) {
       InvLoadMultiple(new LoadInfo(N, 0, 3, N->getNumOperands() - 1,
                                    N->getNumOperands() - 1, -1, true, false));
       break;
+    case ARM::t2LDR_PRE:
     case ARM::t2LDRi12:
       // SDNode *_N, _chain, _src_begin, _src_end, _addr, _offset, _inc, _before
       InvLoadMultiple(new LoadInfo(N, 0, 4, 4, 1, 2, true, false));
@@ -30,7 +31,6 @@ SDNode *LoadLifter::select(SDNode *N) {
           new LoadInfo(N, 0, 4, 4, N->getNumOperands() - 1, -1, true, false));
       break;
   }
-
   return NULL;
 }
 

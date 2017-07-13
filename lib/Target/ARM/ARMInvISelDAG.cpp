@@ -185,6 +185,7 @@ SDNode *ARMInvISelDAG::Transmogrify(SDNode *N) {
     case ARM::LDMDA:
     case ARM::LDMDB:
     case ARM::t2LDRi12:
+    case ARM::t2LDR_PRE:
       return ARMLifterManager::resolve("LOAD")->select(N);
     break;
 
