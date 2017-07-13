@@ -570,25 +570,33 @@ Value* IREmitter::visitRegister(const SDNode *N) {
     if (Reg == NULL) {
       Constant *Initializer = Constant::getNullValue(Ty);
 
-      if( RegName.find("SP") !=std::string::npos ) {
-
-        // Ty = PointerType::get(IntegerType::get(Dec->getModule()->getContext(), 32), 0);
-        // Constant Definitions
-        Initializer = ConstantInt::get(
-            Dec->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
-
-        llvm::errs() << "Initializer for SP \n";
-        Ty->dump();
-        // Initializer = ConstantExpr::getCast(Instruction::IntToPtr, const_int32, Ty);
-      }
-      Initializer->getType()->dump();
-
       GlobalVariable* gvar_ptr = new GlobalVariable(*Dec->getModule(), // Module
                                Ty,                // Type
                                false,             // isConstant
                                GlobalValue::CommonLinkage,
                                Initializer,
                                RegName);
+
+      if( RegName.find("SP") !=std::string::npos ) {
+
+        // Initializer = ConstantInt::get(
+        // Dec->getModule()->getContext(), APInt(32, StringRef("268435456"), 10));
+        //
+        // gvar_ptr->setInitializer(Initializer);
+
+        //XXX: SP cannot be initialized with other than 0
+        //XXX: Therefore, We introduce a store before the first instruction
+        Function* main_fct = Dec->getModule()->getFunction("main");
+        if(!main_fct)
+          llvm::errs() << "Unable to find main function needed to init SP !";
+
+        ConstantInt* const_int32 = ConstantInt::get(Dec->getModule()->getContext(), APInt(32, StringRef("4"), 10));
+
+        Instruction* inst = main_fct->getEntryBlock().begin();
+
+        IRBuilder<> *builder = new IRBuilder<>(inst);
+        builder->CreateStore(const_int32, gvar_ptr);
+      }
 
       gvar_ptr->setAlignment(4);
       Reg = gvar_ptr;
