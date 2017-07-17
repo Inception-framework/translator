@@ -5,9 +5,16 @@
 
 #include "Target/ARM/ARMLifter.h"
 
+class ARMLifterManager;
+
 class ShiftLifter : public ARMLifter{
   public :
-    llvm::SDNode* select(llvm::SDNode* node);
+
+  void registerLifter();
+
+  ShiftLifter(ARMLifterManager* _alm) : ARMLifter(_alm) {};
+
+  ~ShiftLifter(){};
 };
 
 #endif

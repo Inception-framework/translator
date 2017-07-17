@@ -5,9 +5,16 @@
 
 #include "Target/ARM/ARMLifter.h"
 
-class CompareLifter : public ARMLifter {
+class ARMLifterManager;
+
+class CompareLifter : public ARMLifter{
   public :
-    llvm::SDNode* select(llvm::SDNode* node);
+
+  void registerLifter();
+
+  CompareLifter(ARMLifterManager* _alm) : ARMLifter(_alm) {};
+
+  ~CompareLifter(){};
 };
 
 #endif

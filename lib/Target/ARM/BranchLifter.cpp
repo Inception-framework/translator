@@ -9,21 +9,11 @@
 using namespace llvm;
 using namespace fracture;
 
-SDNode *BranchLifter::select(SDNode *N) {
+void BranchLifter::registerLifter() {
+  alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tBX_RET,
+                      (LifterHandler)&BranchLifter::BranchHandler);
+}
 
-  SDValue Chain = SDValue(N->getOperand(1).getNode(), 1);
-
-  SDLoc SL(N);
-
-  SDVTList VTList = ARMLifterManager::DAG->getVTList(MVT::i32, MVT::Other);
-
-  SDValue CallNode =
-      ARMLifterManager::DAG->getNode(ARMISD::RET_FLAG, SL, VTList, Chain);
-
-  ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(
-      SDValue(N->getOperand(0).getNode(), 1), SDValue(CallNode.getNode(), 0));
-
-  ARMLifterManager::DAG->ReplaceAllUsesOfValueWith(
-      SDValue(N, 0), SDValue(CallNode.getNode(), 1));
-  return NULL;
+void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
+  IRB->CreateRetVoid();
 }

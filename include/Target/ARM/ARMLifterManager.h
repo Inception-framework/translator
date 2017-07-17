@@ -3,28 +3,65 @@
 
 #include "llvm/CodeGen/SelectionDAG.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
+#include "llvm/IR/IRBuilder.h"
 
 #include "Target/ARM/ARMLifter.h"
 
 #include <iostream>
-#include <vector>
+#include <map>
+#include <string>
+#include <tuple>
 
 namespace fracture {
-  class Decompiler;
+class Decompiler;
 }
 
+class ARMLifter;
+
+#ifndef LIFTER_HANDLER_H
+#define LIFTER_HANDLER_H
+typedef void (ARMLifter::*LifterHandler)(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+#endif
+
+typedef struct LifterSolver {
+  LifterHandler handler;
+
+  std::string name;
+
+  ARMLifter* lifter;
+
+  LifterSolver(ARMLifter* _lifter, std::string _name, LifterHandler _handler)
+      : lifter(_lifter), name(_name), handler(_handler){};
+} LifterSolver;
+
 class ARMLifterManager {
-public:
-  static ARMLifter *resolve(std::string domain);
+ public:
+  ~ARMLifterManager();
 
-  static void FixChainOp(llvm::SDNode *N);
+  ARMLifterManager();
 
-  static llvm::SelectionDAG *DAG;
+  // Return the coresponding architecture dependent Lifter for the specified
+  // opcode
+  LifterSolver* resolve(unsigned opcode);
 
-  static fracture::Decompiler *Dec;
+  void registerLifter(ARMLifter* lifter, std::string name, unsigned opcode, LifterHandler handler);
 
-private:
-  static std::map<std::string, ARMLifter *> managers;
+  void registerAll();
+
+  const TargetRegisterInfo* RegisterInfo;
+
+  llvm::Module* Mod;
+
+  IndexedMap<Value*> RegMap;
+
+  DenseMap<const SDNode*, Value*> VisitMap;
+
+  StringMap<StringRef> BaseNames;
+
+ private:
+  std::map<unsigned, LifterSolver*> solver;
+
+  std::map<std::string, ARMLifter*> lifters;
 };
 
 #endif

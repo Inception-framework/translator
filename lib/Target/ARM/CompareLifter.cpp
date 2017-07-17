@@ -9,7 +9,6 @@
 using namespace llvm;
 using namespace fracture;
 
-SDNode *CompareLifter::select(SDNode *N) {
-
-  return CompareLifter::generic2OP(N, ARMISD::CMP);
+void CompareLifter::registerLifter() {
+  // alm->registerLifter(ADDLifter, ARM::tADDrr, ADDHandler);
 }

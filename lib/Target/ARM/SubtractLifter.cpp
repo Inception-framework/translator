@@ -1,11 +1,14 @@
 #include "Target/ARM/SubtractLifter.h"
 
 #include "ARMBaseInfo.h"
+#include "Target/ARM/ARMISD.h"
+#include "Target/ARM/ARMLifterManager.h"
+#include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 using namespace llvm;
+using namespace fracture;
 
-SDNode *SubLifter::select(SDNode *N) {
-
-  return SubLifter::generic2OP(N, ISD::SUB);
+void SubtractLifter::registerLifter() {
+  // alm->registerLifter(ADDLifter, ARM::tADDrr, ADDHandler);
 }

@@ -34,11 +34,8 @@
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
 #include "llvm/PassManager.h"
 
-#include "CodeInv/InvISelDAG.h"
 #include "CodeInv/Disassembler.h"
 #include "Transforms/TypeRecovery.h"
-
-#include "CodeInv/InvISelDAG.h"
 
 using namespace llvm;
 
@@ -88,11 +85,9 @@ private:
   Disassembler *Dis;
   Module *Mod;
   LLVMContext *Context;
-  InvISelDAG *InvISel;
   SelectionDAG* DAG;
   bool ViewMCDAGs;
   bool ViewIRDAGs;
-  IREmitter *Emitter;
 
   void printSDNode(std::map<SDValue, std::string> &OpMap,
     std::stack<SDNode *> &NodeStack, SDNode *CurNode, SelectionDAG *DAG);

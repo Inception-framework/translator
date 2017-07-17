@@ -4,53 +4,76 @@
 
 #include "Target/ARM/AddLifter.h"
 #include "Target/ARM/BranchLifter.h"
-#include "Target/ARM/MoveDataLifter.h"
-#include "Target/ARM/SubtractLifter.h"
-#include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/CompareLifter.h"
 #include "Target/ARM/LoadLifter.h"
+#include "Target/ARM/MoveDataLifter.h"
+#include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/StoreLifter.h"
+#include "Target/ARM/SubtractLifter.h"
+
+#include "llvm/Support/ErrorHandling.h"
 
 using namespace llvm;
 
-llvm::SelectionDAG *ARMLifterManager::DAG = NULL;
+ARMLifterManager::~ARMLifterManager() {}
 
-fracture::Decompiler *ARMLifterManager::Dec = NULL;
+ARMLifterManager::ARMLifterManager() {
+  /*
+   * All the architecture specific lifters should be declared here
+   */
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("ADD", new AddLifter(this)));
 
-std::map<std::string, ARMLifter *> ARMLifterManager::managers = {
-    {"ADD", new AddLifter()},
-    {"BRANCH", new BranchLifter()},
-    {"MOVE", new MoveDataLifter()},
-    {"SUB", new MoveDataLifter()},
-    {"SHIFT", new MoveDataLifter()},
-    {"COMPARE", new MoveDataLifter()},
-    {"LOAD", new LoadLifter()},
-    {"STORE", new StoreLifter()}
-  };
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("BRANCH", new BranchLifter(this)));
 
-ARMLifter *ARMLifterManager::resolve(std::string domain) {
-  auto search = ARMLifterManager::managers.find(domain);
-  if (search != ARMLifterManager::managers.end()) {
-    return search->second;
+  // lifters.insert(
+  //     std::pair<std::string, ARMLifter*>("SUB", new SubtractLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("MOVE", new MoveDataLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("SHIFT", new ShiftLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("COMPARE", new CompareLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("LOAD", new LoadLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("STORE", new StoreLifter(this)));
+
+  registerAll();
+}
+
+/*
+ * This function select the correct Lifter for a giving opcode
+ */
+LifterSolver* ARMLifterManager::resolve(unsigned opcode) {
+  auto search = solver.find(opcode);
+
+  if (search != solver.end()) {
+    LifterSolver* solver = search->second;
+
+    return solver;
   } else {
     return NULL;
   }
 }
 
-/// Moves Op[0] to Op[Op.size()-1]. This is done for certain load/store operands
-/// during inverse DAG Selection.
-void ARMLifterManager::FixChainOp(SDNode *N) {
-  SDValue Chain = N->getOperand(0);
-  unsigned NumOps = N->getNumOperands();
-
-  assert(NumOps > 1 && "Not enough operands to swap the Chain on Load/Store!");
-  assert(Chain.getValueType() == MVT::Other && "Not a chain value!");
-
-  SmallVector<SDValue, 3> Ops;
-  for (unsigned i = 1; i != NumOps; ++i) {
-    Ops.push_back(N->getOperand(i));
+void ARMLifterManager::registerAll() {
+  for (auto b = lifters.begin(), e = lifters.end(); b != e; b++) {
+    llvm::outs() << "Register Lifter : " << b->first << "\n";
+    b->second->registerLifter();
   }
-  Ops.push_back(Chain);
+}
 
-  N = DAG->UpdateNodeOperands(N, Ops);
+void ARMLifterManager::registerLifter(ARMLifter* lifter,
+                                      std::string lifter_name, unsigned opcode,
+                                      LifterHandler handler) {
+  LifterSolver* lifter_solver = new LifterSolver(lifter, lifter_name, handler);
+
+  solver.insert(std::pair<unsigned, LifterSolver*>(opcode, lifter_solver));
 }

@@ -2,12 +2,31 @@
 #define BRANCH_LIFTER_H
 
 #include "llvm/CodeGen/SelectionDAGNodes.h"
+#include "llvm/IR/IRBuilder.h"
 
 #include "Target/ARM/ARMLifter.h"
 
+class ARMLifterManager;
+
 class BranchLifter : public ARMLifter{
   public :
-    llvm::SDNode* select(llvm::SDNode* node);
+
+  void registerLifter();
+
+  BranchLifter(ARMLifterManager* _alm) : ARMLifter(_alm) {};
+
+  ~BranchLifter(){};
+
+  #define HANDLER(name) \
+  void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB) { \
+    BranchHandler(N, IRB); \
+  };
+
+  HANDLER(tBX_RET);
+
+protected:
+  void BranchHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+
 };
 
 #endif

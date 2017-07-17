@@ -17,32 +17,36 @@
 
 #include "CodeInv/Decompiler.h"
 #include "../Target/ARM/ARMBaseInfo.h"
+#include "Target/ARM/ARMLifterManager.h"
+#include "Target/ARM/DummyLifter.h"
+
 using namespace llvm;
 
 #define DEBUG_TYPE "fracture-decompiler"
 
 namespace fracture {
 
-Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod, raw_ostream &InfoOut, raw_ostream &ErrOut) :
-    Dis(NewDis), Mod(NewMod), DAG(NULL), ViewMCDAGs(false), ViewIRDAGs(false), Infos(InfoOut), Errs(ErrOut){
-
+Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
+                       raw_ostream &InfoOut, raw_ostream &ErrOut)
+    : Dis(NewDis),
+      Mod(NewMod),
+      DAG(NULL),
+      ViewMCDAGs(false),
+      ViewIRDAGs(false),
+      Infos(InfoOut),
+      Errs(ErrOut) {
   assert(NewDis && "Cannot initialize decompiler with null Disassembler!");
   if (Mod == NULL) {
     std::string ModID = Dis->getExecutable()->getFileName().data();
     ModID += "-IR";
     Mod = new Module(StringRef(ModID), *(Dis->getMCDirector()->getContext()));
+    llvm::outs() << "Module : " << Mod->getName() << "\n";
   }
   Context = Dis->getMCDirector()->getContext();
-
-  //Where is the getTargetInvISelDAG method?
-  InvISel = getTargetInvISelDAG(Dis->getMCDirector()->getTargetMachine(), this);
-  Emitter = InvISel->getEmitter(this, Infos, Errs);
 }
 
 Decompiler::~Decompiler() {
-  delete Emitter;
   delete DAG;
-  delete InvISel;
   delete Context;
   delete Mod;
   delete Dis;
@@ -53,7 +57,7 @@ void Decompiler::decompile(unsigned Address) {
   Children.push_back(Address);
 
   do {
-    Function* CurFunc = decompileFunction(Children.back());
+    Function *CurFunc = decompileFunction(Children.back());
     Children.pop_back();
     if (CurFunc == NULL) {
       continue;
@@ -62,28 +66,30 @@ void Decompiler::decompile(unsigned Address) {
     // during decompile...)
     for (Function::iterator BI = CurFunc->begin(), BE = CurFunc->end();
          BI != BE; ++BI) {
-      for (BasicBlock::iterator I = BI->begin(), E = BI->end();
-           I != E; ++I) {
+      for (BasicBlock::iterator I = BI->begin(), E = BI->end(); I != E; ++I) {
         CallInst *CI = dyn_cast<CallInst>(I);
 
-        if(CI == NULL)
+        if (CI == NULL) continue;
+
+        if (CI->getCalledValue()->getName().equals(CurFunc->getName()) ||
+            CI->getCalledFunction() == NULL)
           continue;
 
-        if( CI->getCalledValue()->getName().equals(CurFunc->getName()) || CI->getCalledFunction() == NULL)
+        if (isa<InlineAsm>(CI->getCalledValue()) ||
+            !CI->getCalledFunction()->hasFnAttribute("Address"))
           continue;
 
-        if ( isa<InlineAsm>(CI->getCalledValue()) || !CI->getCalledFunction()->hasFnAttribute("Address"))
-          continue;
-
-        StringRef AddrStr =
-          CI->getCalledFunction()->getFnAttribute("Address").getValueAsString();
+        StringRef AddrStr = CI->getCalledFunction()
+                                ->getFnAttribute("Address")
+                                .getValueAsString();
         uint64_t Addr;
         AddrStr.getAsInteger(10, Addr);
-        DEBUG(outs() << "Read Address as: " << format("%1" PRIx64, Addr)
-          << ", " << AddrStr << "\n");
+        DEBUG(outs() << "Read Address as: " << format("%1" PRIx64, Addr) << ", "
+                     << AddrStr << "\n");
         StringRef FName = Dis->getFunctionName(Addr);
 
-        outs() << "\n The decompiled function contains a call to " << FName << "\n";
+        outs() << "\n The decompiled function contains a call to " << FName
+               << "\n";
 
         // Change sections to check if function address is paired with a
         // relocated function and then set function name accordingly
@@ -100,10 +106,10 @@ void Decompiler::decompile(unsigned Address) {
         }
       }
     }
-  } while (Children.size() != 0); // While there are children, decompile
+  } while (Children.size() != 0);  // While there are children, decompile
 }
 
-Function* Decompiler::decompileFunction(unsigned Address) {
+Function *Decompiler::decompileFunction(unsigned Address) {
   // Check that Address is inside the current section.
   // TODO: Find a better way to do this check. What we really care about is
   // avoiding reads to library calls and areas of memory we can't "see".
@@ -122,34 +128,36 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
   std::string fct_name = MF->getName().str();
 
-  Function* F = NULL;
+  Function *F = NULL;
 
-  for(Module::const_iterator i= Mod->getFunctionList().begin(), e= Mod->getFunctionList().end(); i != e; ++i) {
+  for (Module::const_iterator i = Mod->getFunctionList().begin(),
+                              e = Mod->getFunctionList().end();
+       i != e; ++i) {
     // errs() << *i << "\n";
-    if(!i->isDeclaration())
-      if(i->getName().str() == fct_name) {
+    if (!i->isDeclaration())
+      if (i->getName().str() == fct_name) {
         F = Mod->getFunction(fct_name);
       }
   }
 
-  if(F==NULL) {
-    FunctionType *FType = FunctionType::get(Type::getPrimitiveType(*Context,         Type::VoidTyID), false);
+  if (F == NULL) {
+    FunctionType *FType = FunctionType::get(
+        Type::getPrimitiveType(*Context, Type::VoidTyID), false);
     F = cast<Function>(Mod->getOrInsertFunction(fct_name, FType));
   }
 
-  if(F->hasFnAttribute("Decompiled"))
+  if (F->hasFnAttribute("Decompiled"))
     return F;
- else {
+  else {
+    AttributeSet AS;
+    AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+                         "Decompiled", "True");
 
-   AttributeSet AS;
-   AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
-   "Decompiled", "True");
-
-   F->setAttributes(AS);
- }
+    F->setAttributes(AS);
+  }
 
   // if (!F->empty()) {
-    // return F;
+  // return F;
   // }
 
   // Create a basic block to hold entry point (alloca) information
@@ -158,12 +166,12 @@ Function* Decompiler::decompileFunction(unsigned Address) {
   // For each basic block
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
   while (BI != BE) {
-    //outs() << "-----BI------\n";
-    //BI->dump();
+    // outs() << "-----BI------\n";
+    // BI->dump();
     // Add branch from "entry"
     if (BI == MF->begin()) {
       entry->getInstList().push_back(
-        BranchInst::Create(getOrCreateBasicBlock(BI->getName(), F)));
+          BranchInst::Create(getOrCreateBasicBlock(BI->getName(), F)));
     } else {
       getOrCreateBasicBlock(BI->getName(), F);
     }
@@ -172,13 +180,13 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
   BI = MF->begin();
   while (BI != BE) {
-    outs() << "\n[decompileFunction] call decompileBasicBlock \n";
-    BI->dump();
+    // outs() << "\n[decompileFunction] call decompileBasicBlock \n";
+    // BI->dump();
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
     }
     ++BI;
-    outs() << "\n--> done\n\n";
+    // outs() << "\n--> done\n\n";
   }
 
   // During Decompilation, did any "in-between" basic blocks get created?
@@ -191,35 +199,37 @@ Function* Decompiler::decompileFunction(unsigned Address) {
     // Right now, the only way to get the right offset is to parse its name
     // it sucks, but it works.
     StringRef Name = I->getName();
-    if (Name == "end" || Name == "entry") continue; // these can be empty
+    if (Name == "end" || Name == "entry") continue;  // these can be empty
 
     size_t Off = F->getName().size() + 1;
     size_t Size = Name.size() - Off;
 
-    //outs() << "-----I------\n";
-    //outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size << "\n";
-    //I->dump();
+    // outs() << "-----I------\n";
+    // outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size <<
+    // "\n";  I->dump();
 
     StringRef BBAddrStr = Name.substr(Off, Size);
     unsigned long long BBAddr;
     getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
     BBAddr += Address;
-    DEBUG(errs() << "Split Target: " << Name << "\t Address: "
-                 << BBAddr << "\n");
+    DEBUG(errs() << "Split Target: " << Name << "\t Address: " << BBAddr
+                 << "\n");
     // split Block at AddrStr
-    Function::iterator SB;      // Split basic block
-    BasicBlock::iterator SI, SE;    // Split instruction
+    Function::iterator SB;        // Split basic block
+    BasicBlock::iterator SI, SE;  // Split instruction
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
       DEBUG(SB->dump());
       if (SB->empty() || BBAddr < getBasicBlockAddress(SB)) {
         continue;
       }
-      assert(SB->getTerminator() && "Decompiler::decompileFunction - getTerminator (missing llvm unreachable?)");
-      DEBUG(outs() << "SB: " << SB->getName()
-              << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
-              << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
-              << "\n");
+      assert(SB->getTerminator() &&
+             "Decompiler::decompileFunction - getTerminator (missing llvm "
+             "unreachable?)");
+      DEBUG(outs() << "SB: " << SB->getName() << "\tRange: "
+                   << Dis->getDebugOffset(SB->begin()->getDebugLoc()) << " "
+                   << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
+                   << "\n");
       if (BBAddr > Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())) {
         continue;
       }
@@ -251,10 +261,11 @@ Function* Decompiler::decompileFunction(unsigned Address) {
 
   // Clean up unnecessary stores and loads
   FunctionPassManager FPM(Mod);
-  //Line below adds decompiler optimization.  Function pass manager for optimization.
+  // Line below adds decompiler optimization.  Function pass manager for
+  // optimization.
   //    This is where to focus for type recovery.
   // FPM.add(createPromoteMemoryToRegisterPass()); // See Scalar.h for more.
-  //FPM.add(createTypeRecoveryPass());
+  // FPM.add(createTypeRecoveryPass());
   FPM.run(*F);
 
   return F;
@@ -268,15 +279,14 @@ void Decompiler::sortBasicBlock(BasicBlock *BB) {
   while (I != E) {
     P = I;
     if (++I == E) {
-      break; // Note the terminator is always last instruction
+      break;  // Note the terminator is always last instruction
     }
-    if (Dis->getDebugOffset(P->getDebugLoc())
-      <= Dis->getDebugOffset(I->getDebugLoc())) {
+    if (Dis->getDebugOffset(P->getDebugLoc()) <=
+        Dis->getDebugOffset(I->getDebugLoc())) {
       continue;
     }
-    while (--P != Cur->begin()
-      && Dis->getDebugOffset(P->getDebugLoc())
-      > Dis->getDebugOffset(I->getDebugLoc())) {
+    while (--P != Cur->begin() && Dis->getDebugOffset(P->getDebugLoc()) >
+                                      Dis->getDebugOffset(I->getDebugLoc())) {
       // Do nothing.
     }
     // Insert at P, remove at I
@@ -298,7 +308,8 @@ void Decompiler::sortBasicBlock(BasicBlock *BB) {
 // This is basically the split basic block function but it does not create
 // a new basic block.
 void Decompiler::splitBasicBlockIntoBlock(Function::iterator Src,
-  BasicBlock::iterator FirstInst, BasicBlock *Tgt) {
+                                          BasicBlock::iterator FirstInst,
+                                          BasicBlock *Tgt) {
   assert(Src->getTerminator() && "Can't use splitBasicBlock on degenerate BB!");
   assert(FirstInst != Src->end() &&
          "Trying to get me to create degenerate basic block!");
@@ -307,8 +318,8 @@ void Decompiler::splitBasicBlockIntoBlock(Function::iterator Src,
 
   // Move all of the specified instructions from the original basic block into
   // the new basic block.
-  Tgt->getInstList().splice(Tgt->end(), Src->getInstList(),
-    FirstInst, Src->end());
+  Tgt->getInstList().splice(Tgt->end(), Src->getInstList(), FirstInst,
+                            Src->end());
 
   // Add a branch instruction to the newly formed basic block.
   BranchInst *BI = BranchInst::Create(Tgt, Src);
@@ -337,14 +348,13 @@ void Decompiler::splitBasicBlockIntoBlock(Function::iterator Src,
   }
 }
 
-
 void Decompiler::printInstructions(formatted_raw_ostream &Out,
-  unsigned Address) {
+                                   unsigned Address) {
   Out << *(decompileFunction(Address));
 }
 
-BasicBlock* Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
-  Function *F) {
+BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
+                                            Function *F) {
   // Create a Selection DAG of MachineSDNodes
   DAG = createDAGFromMachineBasicBlock(MBB);
 
@@ -354,82 +364,72 @@ BasicBlock* Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   }
 
   // Run the engine to decompile into SDNodes
-  InvISel->SetDAG(DAG);
   DAG->AssignTopologicalOrder();
+
   // This sets the use on the first node and prevents root from being deleted.
   HandleSDNode Dummy(DAG->getRoot());
-  // Start at root and go to entry token
-  SelectionDAG::allnodes_iterator ISelPosition(DAG->getRoot().getNode());
-  ++ISelPosition;
 
-  // Make sure that ISelPosition gets properly updated when nodes are deleted
-  // in calls made from this function.
-  ISelUpdater ISU(*DAG, ISelPosition);
+  ARMLifterManager *alm = new ARMLifterManager();
 
-  while (ISelPosition != DAG->allnodes_begin()) {
-    SDNode *Node = --ISelPosition;
+  alm->RegisterInfo = DAG->getTarget().getSubtargetImpl()->getRegisterInfo();
+  alm->Mod = Mod;
 
-    for (SelectionDAG::allnodes_iterator beg = DAG->allnodes_begin(),
-           end = DAG->allnodes_end(); beg != end; ++beg) {
-      DEBUG(errs() << "Current Node: ";);
-      DEBUG(Node->dump());
-      DEBUG(beg->dump());
-    }
-
-    // Skip dead nodes
-    // if (Node->use_empty())
-    //   continue;
-
-    SDNode *ResNode = InvISel->Transmogrify(Node);
-
-    if (ResNode == Node || Node->getOpcode() == ISD::DELETED_NODE)
-      continue;
-
-    if (ResNode) {
-      DAG->ReplaceAllUsesWith(Node, ResNode);
-    }
-    if (Node->use_empty()) {
-      DAG->RemoveDeadNode(Node);
-    }
-  }
-  DAG->setRoot(Dummy.getValue());
-
-  printDAG(DAG);
-  if (ViewIRDAGs) {
-    DAG->viewGraph(MBB->getName());
-  }
+  alm->RegMap.grow(Dis->getMCDirector()->getMCRegisterInfo()->getNumRegs());
 
   // Create a new basic block (if necessary)
   BasicBlock *BB = getOrCreateBasicBlock(MBB->getName(), F);
+  llvm::errs() << "Generating BB : " << MBB->getName() << "\n";
 
-  // Convert the SDNodes into instructions inside the basic block
-  // Infos << "OP_END: " << ISD::BUILTIN_OP_END << "\n";
-  // Note: there are about 180 or so ISD's, and only a subset are
-  // instructions.
-  std::stack<SDNode *> NodeStack;
-  std::map<SDValue, Value*> OpMap;
-  NodeStack.push(DAG->getEntryNode().getNode());
-  SDNode *CurNode;
-  Emitter->setDAG(DAG);
-  Emitter->getIRB()->SetInsertPoint(BB);
-  // TODO: Fix this bitrot...
-  while (!NodeStack.empty()) {
-    CurNode = NodeStack.top();
-    NodeStack.pop();
-    Emitter->EmitIR(BB, CurNode, NodeStack, OpMap);
+  // Start at root and go to entry token
+  for (auto b = DAG->allnodes_begin(), e = DAG->allnodes_end(); b != e; b++) {
+    SDNode *Node = b;
+
+    IRBuilder<> *IRB = new IRBuilder<>(BB);
+
+    if (!Node->isMachineOpcode()) {
+      DummyLifter* dummy_lifter = new DummyLifter(alm);
+
+      if (Node->getOpcode() == ISD::CopyFromReg)
+        dummy_lifter->handler(Node, IRB);
+      if (Node->getOpcode() == ISD::CopyToReg)
+        dummy_lifter->handler(Node, IRB);
+      continue;
+    }
+
+    uint16_t TargetOpc = Node->getMachineOpcode();
+
+    llvm::errs() << "----------------------------\n";
+    llvm::errs() << "Next Node : \n";
+    Node->dump();
+
+    // XXX: Emit IR code for each supported node
+    LifterSolver *solver = alm->resolve(TargetOpc);
+    if (solver != NULL) {
+      ARMLifter *lifter = solver->lifter;
+
+      LifterHandler handler = solver->handler;
+
+      (lifter->*handler)(Node, IRB);
+
+      // lifter->handler(Node, IRB);
+      // solver->handler(Node, IRB);
+    } else {
+      llvm::errs() << "Couldn't find lifter for opcode " << TargetOpc << "\n";
+      assert(solver && "Unable to solve opcode ...");
+      break;
+    }
+    llvm::errs() << "\n----------------------------\n";
   }
-  Emitter->endDAG();
-  free(DAG);
+  DAG->setRoot(Dummy.getValue());
 
+  free(DAG);
   return BB;
 }
 
-SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
-  MachineBasicBlock *MBB) {
-
-  SelectionDAG *DAG =
-    new SelectionDAG(*Dis->getMCDirector()->getTargetMachine(),
-      CodeGenOpt::Default);
+SelectionDAG *Decompiler::createDAGFromMachineBasicBlock(
+    MachineBasicBlock *MBB) {
+  SelectionDAG *DAG = new SelectionDAG(
+      *Dis->getMCDirector()->getTargetMachine(), CodeGenOpt::Default);
   DAG->init(*MBB->getParent());
   SDValue prevNode(DAG->getEntryNode());
 
@@ -446,24 +446,23 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
 
     // Detect Chain node and add prevNode to ops list
     bool isChain = false;
-    if (I->mayLoad() || I->mayStore() || I->isBranch() || I->isReturn()
-      || I->isCall()) {
+    if (I->mayLoad() || I->mayStore() || I->isBranch() || I->isReturn() ||
+        I->isCall()) {
       isChain = true;
     }
 
     // Parse Operands for the Instruction
-    SmallVector<MachineOperand*, 8> Defs;
+    SmallVector<MachineOperand *, 8> Defs;
     for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
       MachineOperand *MOp = &I->getOperand(i);
-      if(OpCode == ARM::tBX) {
-
-        if(MOp->isReg() && MOp->getReg() == ARM::LR)
+      if (OpCode == ARM::tBX) {
+        if (MOp->isReg() && MOp->getReg() == ARM::LR)
           OpCode = ARM::tBX_RET;
         else
           OpCode = ARM::tBX_CALL;
 
-    		std::cout << "ARM:tBX replaced by ARM::tBX_RET" << std::endl;
-    	}
+        std::cout << "ARM:tBX replaced by ARM::tBX_RET" << std::endl;
+      }
 
       if (MOp->isReg()) {
         unsigned Reg = MOp->getReg();
@@ -475,8 +474,8 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
         } else {
           // Always create a CopyFromReg Node to define a register.
           // These are also inserted into the Chain.
-          Deps[Reg].first = DAG->getCopyFromReg(prevNode, Loc, Reg,
-            Dis->getMCDirector()->getRegType(Reg));
+          Deps[Reg].first = DAG->getCopyFromReg(
+              prevNode, Loc, Reg, Dis->getMCDirector()->getRegType(Reg));
           Deps[Reg].first->setDebugLoc(I->getDebugLoc());
           prevNode = SDValue(Deps[Reg].first.getNode(), 1);
           Ops.push_back(Deps[Reg].first);
@@ -493,9 +492,9 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
       }
     }
 
-    //assert(Ops.size() && "Number of ops cannot be 0!");
-    if(Ops.size() == 0){
-      //outs() << "Op Size == 0: " << I->getOpcode() << "\n";
+    // assert(Ops.size() && "Number of ops cannot be 0!");
+    if (Ops.size() == 0) {
+      // outs() << "Op Size == 0: " << I->getOpcode() << "\n";
       std::string msg = "Op Size == 0: ";
       msg += I->getOpcode();
       msg += "\n";
@@ -508,28 +507,31 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
       Ops.insert(Ops.begin(), prevNode);
     }
 
-    //This if block handles NOPs (hopefully just) and the else block handles everything else
-    //  NOPs appear to be the only OpCode that has a size of 0, which breaks getMachineNode
-    //  We are going to replace a NOP with an abstract CFR and then C2R which is extremely
-    //  similar to how NOPs are treated in the hardware (xchg).  It should also leave any
-    //  flag registers alone.
-    DEBUG(errs() << "Decompiler::createDAGFromMachineBasicBlock dumping I: \tOpCode: "
-              << OpCode << "\tSize: " << ResultTypes.size() << "\n");
+    // This if block handles NOPs (hopefully just) and the else block handles
+    // everything else
+    //  NOPs appear to be the only OpCode that has a size of 0, which breaks
+    //  getMachineNode We are going to replace a NOP with an abstract CFR and
+    //  then C2R which is extremely similar to how NOPs are treated in the
+    //  hardware (xchg).  It should also leave any flag registers alone.
+    DEBUG(errs()
+          << "Decompiler::createDAGFromMachineBasicBlock dumping I: \tOpCode: "
+          << OpCode << "\tSize: " << ResultTypes.size() << "\n");
     DEBUG(I->dump());
-    if(ResultTypes.size() == 0){
+    if (ResultTypes.size() == 0) {
       uint64_t Address = Dis->getDebugOffset(I->getDebugLoc());
       const long int InstrSize = Dis->getMCInst(Address)->size();
-      for(int j = 0; j<= InstrSize; j++){
-        DebugLoc *Location = Dis->setDebugLoc(Address+j);
+      for (int j = 0; j <= InstrSize; j++) {
+        DebugLoc *Location = Dis->setDebugLoc(Address + j);
         //(unsigned) 1 should be a register on any platform.
-        SDValue CFRNode = DAG->getCopyFromReg(prevNode, Loc, (unsigned) 1, MVT::i32);
+        SDValue CFRNode =
+            DAG->getCopyFromReg(prevNode, Loc, (unsigned)1, MVT::i32);
         CFRNode.getNode()->setDebugLoc(*Location);
-        SDValue C2RNode = DAG->getCopyToReg(SDValue(CFRNode.getNode(),1), Loc, (unsigned) 1, CFRNode);
+        SDValue C2RNode = DAG->getCopyToReg(SDValue(CFRNode.getNode(), 1), Loc,
+                                            (unsigned)1, CFRNode);
         C2RNode.getNode()->setDebugLoc(*Location);
         prevNode = C2RNode;
       }
     } else {
-
       MachineSDNode *MSD = DAG->getMachineNode(OpCode, Loc, ResultTypes, Ops);
       MSD->setDebugLoc(I->getDebugLoc());
       MSD->setMemRefs(I->memoperands_begin(), I->memoperands_end());
@@ -541,11 +543,12 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
       // Update instruction Defs (should always get registers here)
       for (unsigned i = 0, e = Defs.size(); i != e; ++i) {
         Deps[Defs[i]->getReg()].first = SDValue(MSD, i);
-        // Also track the chain at the time this reg is defined (for insert later)
+        // Also track the chain at the time this reg is defined (for insert
+        // later)
         Deps[Defs[i]->getReg()].second = prevNode;
         // Add CopyToReg for every register definition
         SDValue CTR = DAG->getCopyToReg(prevNode, Loc, Defs[i]->getReg(),
-            SDValue(MSD, i));
+                                        SDValue(MSD, i));
         CTR.getNode()->setDebugLoc(I->getDebugLoc());
         prevNode = CTR;
       }
@@ -556,10 +559,10 @@ SelectionDAG* Decompiler::createDAGFromMachineBasicBlock(
   return DAG;
 }
 
-BasicBlock* Decompiler::getOrCreateBasicBlock(unsigned Address, Function *F) {
+BasicBlock *Decompiler::getOrCreateBasicBlock(unsigned Address, Function *F) {
   // Grab offset from the first basic block in the function
   BasicBlock *FB =
-    getOrCreateBasicBlock(StringRef(Twine(F->getName() + "+0").str()), F);
+      getOrCreateBasicBlock(StringRef(Twine(F->getName() + "+0").str()), F);
   if (FB->begin() == FB->end()) {
     printError("Cannot find by address when BasicBlock '+0' is empty!");
     return NULL;
@@ -582,14 +585,14 @@ BasicBlock* Decompiler::getOrCreateBasicBlock(unsigned Address, Function *F) {
   return getOrCreateBasicBlock(StringRef(TBOut.str()), F);
 }
 
-BasicBlock* Decompiler::getOrCreateBasicBlock(StringRef BBName, Function *F) {
+BasicBlock *Decompiler::getOrCreateBasicBlock(StringRef BBName, Function *F) {
   // Set this basic block as the target
   BasicBlock *BBTgt = NULL;
   Function::iterator BI = F->begin(), BE = F->end();
   while (BI->getName() != BBName && BI != BE) ++BI;
   if (BI == BE) {
     BBTgt =
-      BasicBlock::Create(*(Dis->getMCDirector()->getContext()), BBName, F);
+        BasicBlock::Create(*(Dis->getMCDirector()->getContext()), BBName, F);
   } else {
     BBTgt = &(*BI);
   }
@@ -598,7 +601,8 @@ BasicBlock* Decompiler::getOrCreateBasicBlock(StringRef BBName, Function *F) {
 }
 
 void Decompiler::printSDNode(std::map<SDValue, std::string> &OpMap,
-    std::stack<SDNode *> &NodeStack, SDNode *CurNode, SelectionDAG *DAG) {
+                             std::stack<SDNode *> &NodeStack, SDNode *CurNode,
+                             SelectionDAG *DAG) {
   static unsigned curVR = 0;
 
   uint16_t Opc = CurNode->getOpcode();
@@ -610,24 +614,25 @@ void Decompiler::printSDNode(std::map<SDValue, std::string> &OpMap,
 
   // Who uses this node (so we can find the next node)
   for (SDNode::use_iterator I = CurNode->use_begin(), E = CurNode->use_end();
-      I != E; ++I) {
+       I != E; ++I) {
     // Save any chain uses to the Nodestack (to guarantee they get evaluated)
-    //I->dump();
-    //outs() << "EVT String: " << I.getUse().getValueType().getEVTString() << "\n";
+    // I->dump();
+    // outs() << "EVT String: " << I.getUse().getValueType().getEVTString() <<
+    // "\n";
     if (I.getUse().getValueType() == MVT::Other) {
       NodeStack.push(*I);
       continue;
     }
     // If there is a CopyToReg user, set the register name to the OpMap
-    if (I->getOpcode() == ISD::CopyToReg && Opc != ISD::CopyFromReg
-        && Opc != ISD::Constant && Opc != ISD::ConstantFP) {
+    if (I->getOpcode() == ISD::CopyToReg && Opc != ISD::CopyFromReg &&
+        Opc != ISD::Constant && Opc != ISD::ConstantFP) {
       const RegisterSDNode *R = dyn_cast<RegisterSDNode>(I->getOperand(1));
       if (R) {
         std::string RegName;
         raw_string_ostream RP(RegName);
-        RP
-            << PrintReg(R->getReg(),
-              DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0);
+        RP << PrintReg(
+            R->getReg(),
+            DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0);
         OpMap[I.getUse().get()] = RP.str();
       } else {
         errs() << "CopyToReg with no register!?\n";
@@ -637,69 +642,71 @@ void Decompiler::printSDNode(std::map<SDValue, std::string> &OpMap,
 
   // Handle cases which do not print instructions
   switch (Opc) {
-  case ISD::EntryToken:
-    curVR = 0;
-  case ISD::HANDLENODE:
-  case ISD::CopyToReg: {
-    if (CurNode->getNumOperands() != 3)
-      return;
-    // If the 2nd operand doesn't have a chain, add it to the list, too
-    SDNode *Op2 = CurNode->getOperand(2).getNode();
-    if (Op2->getValueType(Op2->getNumValues() - 1) != MVT::Other) {
-      printSDNode(OpMap, NodeStack, Op2, DAG);
-      //NodeStack.push(Op2);
+    case ISD::EntryToken:
+      curVR = 0;
+    case ISD::HANDLENODE:
+    case ISD::CopyToReg: {
+      if (CurNode->getNumOperands() != 3) return;
+      // If the 2nd operand doesn't have a chain, add it to the list, too
+      SDNode *Op2 = CurNode->getOperand(2).getNode();
+      if (Op2->getValueType(Op2->getNumValues() - 1) != MVT::Other) {
+        printSDNode(OpMap, NodeStack, Op2, DAG);
+        // NodeStack.push(Op2);
+      }
+      // If the Op is non-printable, create an equivalence statement
+      // and print it.
+      switch (Op2->getOpcode()) {
+        case ISD::CopyFromReg:
+        case ISD::Constant:
+        case ISD::ConstantFP: {
+          const RegisterSDNode *R =
+              dyn_cast<RegisterSDNode>(CurNode->getOperand(1));
+
+          // call print to make sure OpMap is set up
+          outs() << PrintReg(R->getReg(), DAG ? DAG->getTarget()
+                                                    .getSubtargetImpl()
+                                                    ->getRegisterInfo()
+                                              : 0)
+                 << " = " << OpMap[SDValue(Op2, 0)] << "\n";
+        }
+        default:
+          break;
+      }
     }
-    // If the Op is non-printable, create an equivalence statement
-    // and print it.
-    switch (Op2->getOpcode()) {
-    case ISD::CopyFromReg:
+      return;
+    case ISD::CopyFromReg: {
+      const RegisterSDNode *R =
+          dyn_cast<RegisterSDNode>(CurNode->getOperand(1));
+      if (R) {
+        std::string RegName;
+        raw_string_ostream RP(RegName);
+        RP << PrintReg(
+            R->getReg(),
+            DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0);
+        OpMap[SDValue(CurNode, 0)] = RP.str();
+      } else {
+        errs() << "CopyFromReg with no register!?\n";
+      }
+      return;
+    }
     case ISD::Constant:
     case ISD::ConstantFP: {
-      const RegisterSDNode *R = dyn_cast<RegisterSDNode>(
-          CurNode->getOperand(1));
-
-      // call print to make sure OpMap is set up
-      outs()
-        << PrintReg(R->getReg(),
-          DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0)
-          << " = " << OpMap[SDValue(Op2, 0)] << "\n";
+      std::string CName;
+      raw_string_ostream CP(CName);
+      if (const ConstantSDNode *CSDN = dyn_cast<ConstantSDNode>(CurNode)) {
+        CP << "Constant<" << CSDN->getAPIntValue() << '>';
+      } else if (const ConstantFPSDNode *CSDN =
+                     dyn_cast<ConstantFPSDNode>(CurNode)) {
+        if (&CSDN->getValueAPF().getSemantics() == &APFloat::IEEEsingle)
+          CP << "FPConstant<" << CSDN->getValueAPF().convertToFloat() << '>';
+        else if (&CSDN->getValueAPF().getSemantics() == &APFloat::IEEEdouble)
+          CP << "FPConstant<" << CSDN->getValueAPF().convertToDouble() << '>';
+      }
+      OpMap[SDValue(CurNode, 0)] = CP.str();
+      return;
     }
     default:
       break;
-    }
-  }
-    return;
-  case ISD::CopyFromReg: {
-    const RegisterSDNode *R = dyn_cast<RegisterSDNode>(CurNode->getOperand(1));
-    if (R) {
-      std::string RegName;
-      raw_string_ostream RP(RegName);
-      RP << PrintReg(R->getReg(),
-        DAG ? DAG->getTarget().getSubtargetImpl()->getRegisterInfo() : 0);
-      OpMap[SDValue(CurNode, 0)] = RP.str();
-    } else {
-      errs() << "CopyFromReg with no register!?\n";
-    }
-    return;
-  }
-  case ISD::Constant:
-  case ISD::ConstantFP: {
-    std::string CName;
-    raw_string_ostream CP(CName);
-    if (const ConstantSDNode *CSDN = dyn_cast<ConstantSDNode>(CurNode)) {
-      CP << "Constant<" << CSDN->getAPIntValue() << '>';
-    } else if (const ConstantFPSDNode *CSDN = dyn_cast<ConstantFPSDNode>(
-        CurNode)) {
-      if (&CSDN->getValueAPF().getSemantics() == &APFloat::IEEEsingle)
-        CP << "FPConstant<" << CSDN->getValueAPF().convertToFloat() << '>';
-      else if (&CSDN->getValueAPF().getSemantics() == &APFloat::IEEEdouble)
-        CP << "FPConstant<" << CSDN->getValueAPF().convertToDouble() << '>';
-    }
-    OpMap[SDValue(CurNode, 0)] = CP.str();
-    return;
-  }
-  default:
-    break;
   }
 
   // What are the node's inputs? Output each operand first
@@ -707,8 +714,8 @@ void Decompiler::printSDNode(std::map<SDValue, std::string> &OpMap,
   for (unsigned i = 0, e = CurNode->getNumOperands(); i != e; ++i) {
     SDValue OpVal = CurNode->getOperand(i);
     // Chain and undefined vals get dropped from output.
-    if (OpVal.getValueType() == MVT::Other
-        || OpVal.getNode()->getOpcode() == ISD::UNDEF) {
+    if (OpVal.getValueType() == MVT::Other ||
+        OpVal.getNode()->getOpcode() == ISD::UNDEF) {
       continue;
     }
 
@@ -785,11 +792,11 @@ void Decompiler::printDAG(SelectionDAG *DAG) {
 uint64_t Decompiler::getBasicBlockAddress(BasicBlock *BB) {
   if (BB->empty()) {
     errs() << "Empty basic block encountered, these do not have addresses!\n";
-    return 0;                   // In theory, a BB could have an address of 0
-                                // in practice it is invalid.
+    return 0;  // In theory, a BB could have an address of 0
+               // in practice it is invalid.
   } else {
     return Dis->getDebugOffset(BB->begin()->getDebugLoc());
   }
 }
 
-} // End namespace fracture
+}  // End namespace fracture

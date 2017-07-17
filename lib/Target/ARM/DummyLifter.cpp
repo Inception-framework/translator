@@ -1,4 +1,4 @@
-#include "Target/ARM/ShiftLifter.h"
+#include "Target/ARM/DummyLifter.h"
 
 #include "ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
@@ -9,6 +9,10 @@
 using namespace llvm;
 using namespace fracture;
 
-void ShiftLifter::registerLifter() {
+void DummyLifter::registerLifter() {
   // alm->registerLifter(ADDLifter, ARM::tADDrr, ADDHandler);
+}
+
+void DummyLifter::handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  visit(N, IRB);
 }
