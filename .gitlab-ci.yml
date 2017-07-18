@@ -1,3 +1,4 @@
-before script:
-  - build.sh
+before_script:
+  script:
+    - ./build.sh
 
