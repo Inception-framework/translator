@@ -1,0 +1,3 @@
+before script:
+  - build.sh
+
