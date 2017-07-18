@@ -1,8 +1,0 @@
-before_script:
-  - echo "building compiler"
-  - ./build.sh
-
-job1:
-  script:
-    - echo "running tests"
-
