@@ -1,4 +1,7 @@
 before_script:
+  - echo "building compiler"
+
+job1:
   script:
-    - ./build.sh
+    - echo "running tests"
 
