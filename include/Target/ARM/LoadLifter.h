@@ -15,6 +15,9 @@ class LoadLifter : public ARMLifter{
   LoadLifter(ARMLifterManager* _alm) : ARMLifter(_alm) {};
 
   ~LoadLifter(){};
+
+protected:
+  void LoadHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 };
 
 #endif
