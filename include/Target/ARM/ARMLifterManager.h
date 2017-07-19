@@ -58,6 +58,8 @@ class ARMLifterManager {
 
   StringMap<StringRef> BaseNames;
 
+  llvm::SelectionDAG *DAG;
+
  private:
   std::map<unsigned, LifterSolver*> solver;
 
