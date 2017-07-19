@@ -1,7 +1,0 @@
-before_script:
-  - echo "hello from Compiler"
-  - bash build.sh
-
-job1:
-  script:
-    - echo "running tests"
