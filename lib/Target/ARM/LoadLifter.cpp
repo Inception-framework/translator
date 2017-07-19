@@ -220,7 +220,9 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   } else {
     for (unsigned i = layout->Dst_start; i < layout->Dst_end; ++i) {
       // Retrieve destination register
-      Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
+      // Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
+      SDNode* pred = info->N->getOperand(i).getNode();
+      Value* Op = visitRegister(pred->getOperand(1).getNode(), IRB);
 
       // Load value
       Res = CreateLoad(info, IRB, Addr);
