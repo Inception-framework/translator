@@ -18,9 +18,25 @@ void LoadLifter::registerLifter() {
   alm->registerLifter(this, std::string("LoadLifter"),
                       (unsigned)ARM::t2LDR_POST,
                       (LifterHandler)&LoadLifter::t2LDR_POSTHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"),
-  //                     (unsigned)ARM::t2LDMIA_UPD,
-  //                     (LifterHandler)&LoadLifter::t2LDMIA_UPDHandler);
+  alm->registerLifter(this, std::string("LoadLifter"),
+                      (unsigned)ARM::t2LDMIA_UPD,
+                      (LifterHandler)&LoadLifter::t2LDMIA_UPDHandler);
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDMIA,
+                      (LifterHandler)&LoadLifter::t2LDMIAHandler);
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::tLDRr,
+                      (LifterHandler)&LoadLifter::tLDRrHandler);
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDRHi12,
+                      (LifterHandler)&LoadLifter::t2LDRHi12Handler);
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDRDi8,
+                      (LifterHandler)&LoadLifter::t2LDRDi8Handler);
+  alm->registerLifter(this, std::string("LoadLifter"),
+                      (unsigned)ARM::t2LDMDB_UPD,
+                      (LifterHandler)&LoadLifter::t2LDMDB_UPDHandler);
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDMDB,
+                      (LifterHandler)&LoadLifter::t2LDMDBHandler);
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDR_PRE,
+                      (LifterHandler)&LoadLifter::t2LDR_PREHandler);
+
   // alm->registerLifter(this, std::string("LoadLifter"),
   // (unsigned)ARM::LDMIB_UPD,
   //                     (LifterHandler)&LoadLifter::LDMIB_UPDHandler);
@@ -48,7 +64,7 @@ void LoadLifter::tPOPHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(3, max - 1, -1, max-1);
+  LoadNodeLayout* layout = new LoadNodeLayout(3, max - 1, -1, max - 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info = new LoadInfo(N, true, true, false, layout, true, false);
@@ -92,7 +108,7 @@ void LoadLifter::t2LDMIAHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LifteNode(info, IRB);
 }
 
-void LoadLifter::tLDRHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+void LoadLifter::tLDRrHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
