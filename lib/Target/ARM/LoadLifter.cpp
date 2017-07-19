@@ -115,7 +115,7 @@ void LoadLifter::tLDRrHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, false);
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true);
 
   LifteNode(info, IRB);
 }
