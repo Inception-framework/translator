@@ -63,8 +63,7 @@ class LoadLifter : public ARMLifter {
  protected:
   void LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB);
 
-  llvm::Value* UpdateAddress(LoadInfo* info,
-                                         llvm::IRBuilder<>* IRB);
+  llvm::Value* UpdateAddress(LoadInfo* info, llvm::IRBuilder<>* IRB);
 
   llvm::Value* CreateLoad(LoadInfo* info, IRBuilder<>* IRB, Value* Addr);
 
@@ -74,19 +73,23 @@ class LoadLifter : public ARMLifter {
   llvm::Value* IncPointer(LoadInfo* info, IRBuilder<>* IRB, Value* Addr_int);
 
 // Declare each handler
-#define HANDLER(name) void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB);
+#define HANDLER_LOAD(name) \
+  void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB);
 
-  HANDLER(tPOP)
-  HANDLER(t2LDMIA_UPD)
-  HANDLER(t2LDMIA)
-  HANDLER(tLDRr)
-  HANDLER(t2LDRi12)
-  HANDLER(t2LDRHi12)
-  HANDLER(t2LDRDi8)
-  HANDLER(t2LDR_POST)
-  HANDLER(t2LDMDB_UPD)
-  HANDLER(t2LDMDB)
-  HANDLER(t2LDR_PRE)
+  HANDLER_LOAD(tPOP)
+  HANDLER_LOAD(t2LDMIA_UPD)
+  HANDLER_LOAD(t2LDMIA)
+  HANDLER_LOAD(tLDRr)
+  HANDLER_LOAD(t2LDRi12)
+  HANDLER_LOAD(t2LDRHi12)
+  HANDLER_LOAD(t2LDRDi8)
+  HANDLER_LOAD(t2LDR_POST)
+  HANDLER_LOAD(t2LDMDB_UPD)
+  HANDLER_LOAD(t2LDMDB)
+  HANDLER_LOAD(t2LDR_PRE)
+  HANDLER_LOAD(t2LDRBi8)
+  HANDLER_LOAD(t2LDRBi12)
+  // HANDLER(t2LDDRBi8)
 };
 
 #endif

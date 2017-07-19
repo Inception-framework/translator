@@ -10,54 +10,50 @@ using namespace llvm;
 using namespace fracture;
 
 void LoadLifter::registerLifter() {
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::tPOP,
-                      (LifterHandler)&LoadLifter::tPOPHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"),
-  // (unsigned)ARM::tLDRspi,
-  //                     (LifterHandler)&LoadLifter::tLDRspiHandler);
-  alm->registerLifter(this, std::string("LoadLifter"),
-                      (unsigned)ARM::t2LDR_POST,
-                      (LifterHandler)&LoadLifter::t2LDR_POSTHandler);
-  alm->registerLifter(this, std::string("LoadLifter"),
-                      (unsigned)ARM::t2LDMIA_UPD,
-                      (LifterHandler)&LoadLifter::t2LDMIA_UPDHandler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDMIA,
-                      (LifterHandler)&LoadLifter::t2LDMIAHandler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::tLDRr,
-                      (LifterHandler)&LoadLifter::tLDRrHandler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDRHi12,
-                      (LifterHandler)&LoadLifter::t2LDRHi12Handler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDRDi8,
-                      (LifterHandler)&LoadLifter::t2LDRDi8Handler);
-  alm->registerLifter(this, std::string("LoadLifter"),
-                      (unsigned)ARM::t2LDMDB_UPD,
-                      (LifterHandler)&LoadLifter::t2LDMDB_UPDHandler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDMDB,
-                      (LifterHandler)&LoadLifter::t2LDMDBHandler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDR_PRE,
-                      (LifterHandler)&LoadLifter::t2LDR_PREHandler);
+// alm->registerLifter(this, std::string("LoadLifter"),
+// (unsigned)ARM::tLDRspi,
+//                     (LifterHandler)&LoadLifter::tLDRspiHandler);
+#define REGISTER(opcode, handler)                                             \
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::opcode, \
+                      (LifterHandler)&LoadLifter::handler##Handler);
 
-  // alm->registerLifter(this, std::string("LoadLifter"),
-  // (unsigned)ARM::LDMIB_UPD,
-  //                     (LifterHandler)&LoadLifter::LDMIB_UPDHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"),
-  // (unsigned)ARM::LDMDA_UPD,
-  //                     (LifterHandler)&LoadLifter::LDMDA_UPDHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"),
-  // (unsigned)ARM::LDMDB_UPD,
-  //                     (LifterHandler)&LoadLifter::LDMDB_UPDHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::LDMIA,
-  //                     (LifterHandler)&LoadLifter::LDMIAHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::LDMIB,
-  //                     (LifterHandler)&LoadLifter::LDMIBHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::LDMDA,
-  //                     (LifterHandler)&LoadLifter::LDMDAHandler);
-  // alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::LDMDB,
-  //                     (LifterHandler)&LoadLifter::LDMDBHandler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDRi12,
-                      (LifterHandler)&LoadLifter::t2LDRi12Handler);
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::t2LDR_PRE,
-                      (LifterHandler)&LoadLifter::t2LDR_PREHandler);
+  REGISTER(tPOP, tPOP)
+  REGISTER(t2LDR_POST, t2LDR_POST)
+  REGISTER(t2LDMIA_UPD, t2LDMIA_UPD)
+  REGISTER(t2LDMIA, t2LDMIA)
+  REGISTER(tLDRr, tLDRr)
+  REGISTER(t2LDRHi12, t2LDRHi12)
+  REGISTER(t2LDRDi8, t2LDRDi8)
+  REGISTER(t2LDMDB_UPD, t2LDMDB_UPD)
+  REGISTER(t2LDMDB, t2LDMDB)
+  REGISTER(t2LDR_PRE, t2LDR_PRE)
+  REGISTER(t2LDRBi8, t2LDRBi8)
+  REGISTER(t2LDRBi12, t2LDRBi12)
+  REGISTER(t2LDRi12, t2LDRi12)
+}
+
+void LoadLifter::t2LDRBi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, false);
+
+  LifteNode(info, IRB);
+}
+
+void LoadLifter::t2LDRBi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, false);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::tPOPHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -139,7 +135,7 @@ void LoadLifter::t2LDRDi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, false);
+  LoadInfo* info = new LoadInfo(N, true, false, true, layout, true, true);
 
   LifteNode(info, IRB);
 }
@@ -184,10 +180,10 @@ void LoadLifter::t2LDR_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 1, 0);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, true, true, layout, true, true);
+  LoadInfo* info = new LoadInfo(N, false, false, false, layout, true, true);
 
   LifteNode(info, IRB);
 }
@@ -209,7 +205,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   // Backup Ptr
   Value* Addr_int = Addr;
 
-  if (!info->MultiDest) {
+  if (!info->MultiDest && info->OutputDst) {
     // Load value
     Res = CreateLoad(info, IRB, Addr);
 
@@ -217,7 +213,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
       Addr = UpdateAddress(info, IRB);
     }
 
-  } else {
+  } else if (!info->OutputDst && info->MultiDest) {
     for (unsigned i = layout->Dst_start; i < layout->Dst_end; ++i) {
       // Retrieve destination register
       // Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
@@ -230,10 +226,29 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
       if (!info->OutputDst) Res = CreateStore(info, IRB, Op, Res);
 
       // Increment SP
-      if (info->MultiDest) {
+      Addr = IncPointer(info, IRB, Addr_int);
+      Addr_int = Addr;
+    }
+  } else {
+    unsigned i = 0;
+    for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
+         I != E; ++I) {
+      if (i >= 2) break;
+
+      if (I->getOpcode() == ISD::CopyToReg) {
+        SDNode* pred = *I;
+
+        // Load value
+        Res = CreateLoad(info, IRB, Addr);
+
+        alm->VisitMap[info->N] = Res;
+
+        visit(pred, IRB);
+
         Addr = IncPointer(info, IRB, Addr_int);
-        Addr_int = Addr;
+
       }
+      i++;
     }
   }
 
