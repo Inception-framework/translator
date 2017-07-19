@@ -11,23 +11,36 @@ using namespace fracture;
 
 void LoadLifter::registerLifter() {
 
-#define REGISTER(opcode, handler)                                             \
+#define REGISTER_LOAD_OPCODE(opcode, handler)                                             \
   alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::opcode, \
                       (LifterHandler)&LoadLifter::handler##Handler);
 
-  REGISTER(tPOP, tPOP)
-  REGISTER(t2LDR_POST, t2LDR_POST)
-  REGISTER(t2LDMIA_UPD, t2LDMIA_UPD)
-  REGISTER(t2LDMIA, t2LDMIA)
-  REGISTER(tLDRr, tLDRr)
-  REGISTER(t2LDRHi12, t2LDRHi12)
-  REGISTER(t2LDRDi8, t2LDRDi8)
-  REGISTER(t2LDMDB_UPD, t2LDMDB_UPD)
-  REGISTER(t2LDMDB, t2LDMDB)
-  REGISTER(t2LDR_PRE, t2LDR_PRE)
-  REGISTER(t2LDRBi8, t2LDRBi8)
-  REGISTER(t2LDRBi12, t2LDRBi12)
-  REGISTER(t2LDRi12, t2LDRi12)
+  REGISTER_LOAD_OPCODE(tPOP, tPOP)
+  REGISTER_LOAD_OPCODE(t2LDR_POST, t2LDR_POST)
+  REGISTER_LOAD_OPCODE(t2LDMIA_UPD, t2LDMIA_UPD)
+  REGISTER_LOAD_OPCODE(t2LDMIA, t2LDMIA)
+  REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
+  REGISTER_LOAD_OPCODE(t2LDRHi12, t2LDRHi12)
+  REGISTER_LOAD_OPCODE(t2LDRDi8, t2LDRDi8)
+  REGISTER_LOAD_OPCODE(t2LDMDB_UPD, t2LDMDB_UPD)
+  REGISTER_LOAD_OPCODE(t2LDMDB, t2LDMDB)
+  REGISTER_LOAD_OPCODE(t2LDR_PRE, t2LDR_PRE)
+  REGISTER_LOAD_OPCODE(t2LDRBi8, t2LDRBi8)
+  REGISTER_LOAD_OPCODE(t2LDRBi12, t2LDRBi12)
+  REGISTER_LOAD_OPCODE(t2LDRi12, t2LDRi12)
+  REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
+}
+
+void LoadLifter::tLDRiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::t2LDRBi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
