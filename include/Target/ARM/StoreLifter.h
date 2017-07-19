@@ -18,7 +18,7 @@ class StoreLifter : public ARMLifter{
 
   #define HANDLER_LOAD(name) void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB);
 
-    HANDLER_LOAD(tSTR)
+    HANDLER_LOAD(t2STRi12)
 };
 
 #endif

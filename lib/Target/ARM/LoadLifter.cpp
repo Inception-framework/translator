@@ -10,9 +10,7 @@ using namespace llvm;
 using namespace fracture;
 
 void LoadLifter::registerLifter() {
-// alm->registerLifter(this, std::string("LoadLifter"),
-// (unsigned)ARM::tLDRspi,
-//                     (LifterHandler)&LoadLifter::tLDRspiHandler);
+
 #define REGISTER(opcode, handler)                                             \
   alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::opcode, \
                       (LifterHandler)&LoadLifter::handler##Handler);
