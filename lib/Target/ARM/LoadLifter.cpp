@@ -29,6 +29,19 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRBi12, t2LDRBi12)
   REGISTER_LOAD_OPCODE(t2LDRi12, t2LDRi12)
   REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
+  REGISTER_LOAD_OPCODE(t2LDRi8, t2LDRi8)
+}
+
+void LoadLifter::t2LDRi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::tLDRiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -270,7 +283,8 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
     for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
          I != E; ++I) {
-      if (I->getOpcode() == ISD::CopyToReg) {
+
+      if (I->getOpcode() == ISD::CopyToReg && i<info->N->getNumOperands() -1) {
         SDNode* pred = *I;
 
         pred->dump();
