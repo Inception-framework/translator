@@ -35,6 +35,22 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
   REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
   REGISTER_LOAD_OPCODE(t2LDRs, t2LDRs)
+  REGISTER_LOAD_OPCODE(t2LDRBs, t2LDRBs)
+}
+
+void LoadLifter::t2LDRBsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1, 3);
+
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info =
+      new LoadInfo(N, false, false, true, layout, true, true, true, Ty, true);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::t2LDRsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
