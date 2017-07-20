@@ -30,6 +30,21 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRi12, t2LDRi12)
   REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
   REGISTER_LOAD_OPCODE(t2LDRi8, t2LDRi8)
+  REGISTER_LOAD_OPCODE(tLDRBi, tLDRBi)
+}
+
+void LoadLifter::tLDRBiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc, Type
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true, true, Ty);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::t2LDRi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -275,6 +290,17 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
       }
       i++;
     }
+  }
+
+  if(info->Trunc) {
+    StringRef BaseName = getBaseValueName(Res->getName());
+    StringRef Name = getIndexedValueName(BaseName);
+    Res = IRB->CreateTrunc (Res, info->Ty, Name);
+
+    Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
+
+    Name = getIndexedValueName(BaseName);
+    Res = IRB->CreateZExt (Res, Ty, Name);
   }
 
   if (info->OutputDst && !info->OutputAddr) alm->VisitMap[info->N] = Res;

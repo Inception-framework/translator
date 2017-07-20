@@ -41,15 +41,23 @@ typedef struct LoadInfo {
   // Update stack pointer before ?
   bool Before;
 
+  // Trunc the result ?
+  bool Trunc;
+
+  Type* Ty;
+
   LoadInfo(llvm::SDNode* _N, bool _MultiDest, bool _OutputAddr, bool _OutputDst,
-           LoadNodeLayout* _Layout, bool _Increment, bool _Before)
+           LoadNodeLayout* _Layout, bool _Increment, bool _Before,
+           bool _Trunc = false, Type* _Ty=NULL)
       : N(_N),
         Layout(_Layout),
         MultiDest(_MultiDest),
         OutputAddr(_OutputAddr),
         OutputDst(_OutputDst),
         Increment(_Increment),
-        Before(_Before) {}
+        Before(_Before),
+        Trunc(_Trunc),
+        Ty(_Ty) {}
 } LoadInfo;
 
 class LoadLifter : public ARMLifter {
@@ -91,6 +99,7 @@ class LoadLifter : public ARMLifter {
   HANDLER_LOAD(t2LDRBi12)
   HANDLER_LOAD(tLDRi)
   HANDLER_LOAD(t2LDRi8)
+  HANDLER_LOAD(tLDRBi)
   // HANDLER(t2LDDRBi8)
 };
 
