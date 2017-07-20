@@ -49,6 +49,8 @@ class ARMLifter {
 
   ARMLifterManager* alm;
 
+  std::string getReg(const SDNode* N);
+
   llvm::StringRef getIndexedValueName(llvm::StringRef BaseName);
 
   llvm::StringRef getBaseValueName(llvm::StringRef BaseName);

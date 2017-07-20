@@ -399,9 +399,9 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
 
     uint16_t TargetOpc = Node->getMachineOpcode();
 
-    llvm::errs() << "----------------------------\n";
-    llvm::errs() << "Next Node : \n";
-    Node->dump();
+    // llvm::errs() << "----------------------------\n";
+    // llvm::errs() << "Next Node : \n";
+    // Node->dump();
 
     // XXX: Emit IR code for each supported node
     LifterSolver *solver = alm->resolve(TargetOpc);
@@ -419,7 +419,7 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
       assert(solver && "Unable to solve opcode ...");
       break;
     }
-    llvm::errs() << "\n----------------------------\n";
+    // llvm::errs() << "\n----------------------------\n";
   }
   DAG->setRoot(Dummy.getValue());
 

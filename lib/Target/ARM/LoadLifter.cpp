@@ -66,7 +66,7 @@ void LoadLifter::t2LDRD_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 1, 0);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info = new LoadInfo(N, true, true, true, layout, true, true);
@@ -419,13 +419,19 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
       Addr_int = Addr;
     }
   } else {
+    std::string AddrRegName =
+        getReg(info->N->getOperand(info->Layout->Addr).getNode());
+
     unsigned i = 0;
     for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
          I != E; ++I) {
-      if (i >= 2) break;
-
-      if (I->getOpcode() == ISD::CopyToReg) {
+      if (i++<= 2 && I->getOpcode() == ISD::CopyToReg) {
         SDNode* pred = *I;
+
+        // Check if we output the address or the readsVirtualRegister
+        std::string DestRegName = getReg(pred);
+
+        if (DestRegName.find(AddrRegName) != std::string::npos) continue;
 
         // Load value
         Res = CreateLoad(info, IRB, Addr);
@@ -436,7 +442,6 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
         Addr = IncPointer(info, IRB, Addr_int);
       }
-      i++;
     }
   }
 
@@ -454,26 +459,24 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   if (info->OutputDst && !info->OutputAddr) alm->VisitMap[info->N] = Res;
   if (!info->OutputDst && info->OutputAddr) alm->VisitMap[info->N] = Addr;
   if (info->OutputDst && info->OutputAddr) {
-    uint32_t i = 0;
+    std::string AddrRegName =
+        getReg(info->N->getOperand(info->Layout->Addr).getNode());
 
     for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
          I != E; ++I) {
-      if (I->getOpcode() == ISD::CopyToReg &&
-          i < info->N->getNumOperands() - 1) {
+      if (I->getOpcode() == ISD::CopyToReg) {
         SDNode* pred = *I;
 
-        pred->dump();
+        // Check if we output the address or the readsVirtualRegister
+        std::string DestRegName = getReg(pred);
 
-        if (i == 1) {
+        if (DestRegName.find(AddrRegName) != std::string::npos) {
+          alm->VisitMap[info->N] = Addr;
+          visit(pred, IRB);
+        } else {
           alm->VisitMap[info->N] = Res;
           visit(pred, IRB);
         }
-
-        if (i == 0) {
-          alm->VisitMap[info->N] = Addr;
-          visit(pred, IRB);
-        }
-        i++;
       }
     }
   }

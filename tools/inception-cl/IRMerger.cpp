@@ -141,8 +141,8 @@ void IRMerger::InsertDump(llvm::Instruction* inst) {
 Function* IRMerger::Decompile() {
   uint64_t Address;
 
-  outs() << "[Inception] The funcion " << *function_name;
-  outs() << " needs to be replaced...\n";
+  // outs() << "[Inception] The funcion " << *function_name;
+  // outs() << " needs to be replaced...\n";
 
   if (nameLookupAddr(*function_name, Address) == false) {
     return NULL;
@@ -155,9 +155,9 @@ Function* IRMerger::Decompile() {
 
   DEC->decompile(Address);
 
-  outs() << "-----------New IR Code --------------------\n";
-  DEC->printInstructions(Out, Address);
-  outs() << "-------------------------------------------\n";
+  // outs() << "-----------New IR Code --------------------\n";
+  // DEC->printInstructions(Out, Address);
+  // outs() << "-------------------------------------------\n";
 
   return DEC->getModule()->getFunction(*function_name);
 }
@@ -296,7 +296,7 @@ void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
   }
   Metadata.clear();
 
-  outs() << "Removing : " << *instruction << "\n";
+  // outs() << "Removing : " << *instruction << "\n";
   instruction->dropAllReferences();
   // instruction->removeFromParent();
   instruction->eraseFromParent();

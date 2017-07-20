@@ -104,6 +104,25 @@ StringRef ARMLifter::getInstructionName(const SDNode* N, IRBuilder<>* IRB) {
   return StringRef();
 }
 
+std::string ARMLifter::getReg(const SDNode* N)  {
+
+  const RegisterSDNode* R = dyn_cast<RegisterSDNode>(N->getOperand(1).getNode());
+  if (R == NULL) {
+    errs() << "visitRegister with no register!?\n";
+    return NULL;
+  }
+
+  std::string RegName;
+  raw_string_ostream RP(RegName);
+
+  RP << PrintReg(R->getReg(),
+                 alm->RegisterInfo);
+
+  RegName = RP.str().substr(1, RP.str().size());
+
+  return RegName;
+}
+
 Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
   const RegisterSDNode* R = dyn_cast<RegisterSDNode>(N);
   if (R == NULL) {
@@ -201,13 +220,13 @@ Value* ARMLifter::visitCopyToReg(const SDNode* N, IRBuilder<>* IRB) {
     return NULL;
   }
 
-  errs() << "V:\t"
-         << "Output Type: " << V->getType()->getTypeID() << "\n";
-  V->dump();
-  errs() << "RegVal:\t"
-         << "Output Type: " << RegVal->getType()->getTypeID() << "\n";
-  RegVal->dump();
-  errs() << "\n\n";
+  // errs() << "V:\t"
+  //        << "Output Type: " << V->getType()->getTypeID() << "\n";
+  // V->dump();
+  // errs() << "RegVal:\t"
+  //        << "Output Type: " << RegVal->getType()->getTypeID() << "\n";
+  // RegVal->dump();
+  // errs() << "\n\n";
 
   StringRef BaseName = getBaseValueName(RegVal->getName());
   StringRef Name = getIndexedValueName(BaseName);
