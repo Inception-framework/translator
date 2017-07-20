@@ -169,7 +169,7 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
           llvm::errs() << "Unable to find main function needed to init SP !";
 
         ConstantInt* const_int32 = ConstantInt::get(
-            alm->Mod->getContext(), APInt(32, StringRef("268435456"), 10));
+            alm->Mod->getContext(), APInt(32, StringRef("536875008"), 10));
 
         Instruction* inst = main_fct->getEntryBlock().begin();
 
