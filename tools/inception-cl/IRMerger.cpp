@@ -41,7 +41,7 @@ void IRMerger::Run() {
     Value* Reg = DEC->getModule()->getGlobalVariable("STACK");
     if (Reg == NULL) {
       Type* Ty = ArrayType::get(
-          IntegerType::get(DEC->getModule()->getContext(), 4), 10000);
+          IntegerType::get(DEC->getModule()->getContext(), 4), 1025);
 
       Constant* Initializer = Constant::getNullValue(Ty);
 
