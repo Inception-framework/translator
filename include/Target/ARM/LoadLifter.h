@@ -100,6 +100,7 @@ class LoadLifter : public ARMLifter {
   HANDLER_LOAD(tLDRi)
   HANDLER_LOAD(t2LDRi8)
   HANDLER_LOAD(tLDRBi)
+  HANDLER_LOAD(t2LDRB_PRE)
   // HANDLER(t2LDDRBi8)
 };
 
