@@ -28,7 +28,7 @@ void StoreLifter::t2STRi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   StringRef Name = getIndexedValueName(BaseName);
 
   // Add Offset to Address
-  Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, Offset, Name));
+  Addr = dyn_cast<Instruction>(IRB->CreateSub(Addr, Offset, Name));
   dyn_cast<Instruction>(Addr)->setDebugLoc(N->getDebugLoc());
 
   BaseName = getBaseValueName(Addr->getName());
