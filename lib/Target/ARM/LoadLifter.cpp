@@ -35,6 +35,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(tLDRHi, tLDRHi)
   REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
   REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
+  REGISTER_LOAD_OPCODE(t2LDRs, tLDRr)
 }
 
 void LoadLifter::t2LDRH_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
