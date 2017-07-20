@@ -469,7 +469,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
         visit(pred, IRB);
 
-        Addr = IncPointer(info, IRB, Addr_int);
+        Addr = IncPointer(info, IRB, Addr);
       }
     }
   }
