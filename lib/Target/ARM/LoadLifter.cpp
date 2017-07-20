@@ -10,8 +10,7 @@ using namespace llvm;
 using namespace fracture;
 
 void LoadLifter::registerLifter() {
-
-#define REGISTER_LOAD_OPCODE(opcode, handler)                                             \
+#define REGISTER_LOAD_OPCODE(opcode, handler)                                 \
   alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::opcode, \
                       (LifterHandler)&LoadLifter::handler##Handler);
 
@@ -35,7 +34,20 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(tLDRHi, tLDRHi)
   REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
   REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
-  REGISTER_LOAD_OPCODE(t2LDRs, tLDRr)
+  REGISTER_LOAD_OPCODE(t2LDRs, t2LDRs)
+}
+
+void LoadLifter::t2LDRsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1, 3);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info =
+      new LoadInfo(N, false, false, true, layout, true, true, false, NULL, true);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::t2LDRH_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -47,7 +59,8 @@ void LoadLifter::t2LDRH_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, true, true, layout, true, false, true, Ty);
+  LoadInfo* info =
+      new LoadInfo(N, false, true, true, layout, true, false, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -60,8 +73,10 @@ void LoadLifter::t2LDRH_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
 
-  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc, Type
-  LoadInfo* info = new LoadInfo(N, false, true, true, layout, true, true, true, Ty);
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
+  // Type
+  LoadInfo* info =
+      new LoadInfo(N, false, true, true, layout, true, true, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -74,8 +89,10 @@ void LoadLifter::t2LDRB_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
 
-  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc, Type
-  LoadInfo* info = new LoadInfo(N, false, true, true, layout, true, true, true, Ty);
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
+  // Type
+  LoadInfo* info =
+      new LoadInfo(N, false, true, true, layout, true, true, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -88,8 +105,10 @@ void LoadLifter::tLDRHiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
 
-  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc, Type
-  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true, true, Ty);
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
+  // Type
+  LoadInfo* info =
+      new LoadInfo(N, false, false, true, layout, true, true, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -102,8 +121,10 @@ void LoadLifter::tLDRBiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
 
-  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc, Type
-  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true, true, Ty);
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
+  // Type
+  LoadInfo* info =
+      new LoadInfo(N, false, false, true, layout, true, true, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -276,7 +297,7 @@ void LoadLifter::t2LDMDBHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LifteNode(info, IRB);
 }
 
-//XXX: FIXED 20/07/2017
+// XXX: FIXED 20/07/2017
 void LoadLifter::t2LDR_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
@@ -347,21 +368,20 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
         visit(pred, IRB);
 
         Addr = IncPointer(info, IRB, Addr_int);
-
       }
       i++;
     }
   }
 
-  if(info->Trunc) {
+  if (info->Trunc) {
     StringRef BaseName = getBaseValueName(Res->getName());
     StringRef Name = getIndexedValueName(BaseName);
-    Res = IRB->CreateTrunc (Res, info->Ty, Name);
+    Res = IRB->CreateTrunc(Res, info->Ty, Name);
 
     Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
 
     Name = getIndexedValueName(BaseName);
-    Res = IRB->CreateZExt (Res, Ty, Name);
+    Res = IRB->CreateZExt(Res, Ty, Name);
   }
 
   if (info->OutputDst && !info->OutputAddr) alm->VisitMap[info->N] = Res;
@@ -371,8 +391,8 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
     for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
          I != E; ++I) {
-
-      if (I->getOpcode() == ISD::CopyToReg && i<info->N->getNumOperands() -1) {
+      if (I->getOpcode() == ISD::CopyToReg &&
+          i < info->N->getNumOperands() - 1) {
         SDNode* pred = *I;
 
         pred->dump();
@@ -400,6 +420,18 @@ llvm::Value* LoadLifter::UpdateAddress(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   Value* Offset = visit(info->N->getOperand(i).getNode(), IRB);
   i = info->Layout->Addr;
   Value* Addr = visit(info->N->getOperand(i).getNode(), IRB);
+
+  if (info->Shift) {
+
+    // Compute Register Value
+    StringRef BaseName = getBaseValueName(Offset->getName());
+    StringRef Name = getIndexedValueName(BaseName);
+
+    i = info->Layout->Shift;
+    Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
+
+    Addr = IRB->CreateLShr(Offset, Op, Name);
+  }
 
   // Compute Register Value
   StringRef BaseName = getBaseValueName(Addr->getName());
