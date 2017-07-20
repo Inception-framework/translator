@@ -20,9 +20,11 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDMIA, t2LDMIA)
 
   REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
-  REGISTER_LOAD_OPCODE(t2LDRDi8, t2LDRDi8)
   REGISTER_LOAD_OPCODE(t2LDMDB_UPD, t2LDMDB_UPD)
   REGISTER_LOAD_OPCODE(t2LDMDB, t2LDMDB)
+
+  REGISTER_LOAD_OPCODE(t2LDRDi8, t2LDRDi8)
+  REGISTER_LOAD_OPCODE(t2LDRD_PRE, t2LDRD_PRE)
 
   REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
   REGISTER_LOAD_OPCODE(t2LDRi8, t2LDRi8)
@@ -39,9 +41,37 @@ void LoadLifter::registerLifter() {
 
   REGISTER_LOAD_OPCODE(tLDRHi, tLDRHi)
   REGISTER_LOAD_OPCODE(t2LDRHi12, t2LDRHi12)
+  REGISTER_LOAD_OPCODE(t2LDRHi8, t2LDRHi8)
   REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
   REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
   REGISTER_LOAD_OPCODE(t2LDRHs, t2LDRHs)
+}
+
+void LoadLifter::t2LDRHi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info =
+      new LoadInfo(N, false, false, true, layout, true, true, true, Ty, false);
+
+  LifteNode(info, IRB);
+}
+
+void LoadLifter::t2LDRD_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info = new LoadInfo(N, true, true, true, layout, true, true);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::t2LDRHsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -81,8 +111,8 @@ void LoadLifter::t2LDRsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1, 3);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info =
-      new LoadInfo(N, false, false, true, layout, true, true, false, NULL, true);
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true,
+                                false, NULL, true);
 
   LifteNode(info, IRB);
 }
@@ -459,7 +489,6 @@ llvm::Value* LoadLifter::UpdateAddress(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   Value* Addr = visit(info->N->getOperand(i).getNode(), IRB);
 
   if (info->Shift) {
-
     // Compute Register Value
     StringRef BaseName = getBaseValueName(Offset->getName());
     StringRef Name = getIndexedValueName(BaseName);
