@@ -37,6 +37,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRBi8, t2LDRBi8)
   REGISTER_LOAD_OPCODE(t2LDRBi12, t2LDRBi12)
   REGISTER_LOAD_OPCODE(t2LDRB_PRE, t2LDRB_PRE)
+  REGISTER_LOAD_OPCODE(t2LDRB_POST, t2LDRB_POST)
   REGISTER_LOAD_OPCODE(t2LDRBs, t2LDRBs)
 
   REGISTER_LOAD_OPCODE(tLDRHi, tLDRHi)
@@ -45,6 +46,21 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
   REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
   REGISTER_LOAD_OPCODE(t2LDRHs, t2LDRHs)
+}
+
+void LoadLifter::t2LDRB_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t max = N->getNumOperands();
+
+  // Dst_start Dst_end Offset Addr
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
+
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+
+  // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
+  LoadInfo* info =
+      new LoadInfo(N, false, true, true, layout, true, false, true, Ty);
+
+  LifteNode(info, IRB);
 }
 
 void LoadLifter::t2LDRHi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -425,7 +441,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     unsigned i = 0;
     for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
          I != E; ++I) {
-      if (i++<= 2 && I->getOpcode() == ISD::CopyToReg) {
+      if (i++ <= 2 && I->getOpcode() == ISD::CopyToReg) {
         SDNode* pred = *I;
 
         // Check if we output the address or the readsVirtualRegister
