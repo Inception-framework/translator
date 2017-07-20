@@ -200,14 +200,15 @@ void LoadLifter::t2LDMDBHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LifteNode(info, IRB);
 }
 
+//XXX: FIXED 20/07/2017
 void LoadLifter::t2LDR_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 1, 0);
+  LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, false, false, layout, true, true);
+  LoadInfo* info = new LoadInfo(N, false, true, true, layout, true, true);
 
   LifteNode(info, IRB);
 }
