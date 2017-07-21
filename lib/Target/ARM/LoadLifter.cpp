@@ -445,7 +445,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
       // Increment SP
       Addr = IncPointer(info, IRB, Addr_int);
-      Addr_int = Addr;
+      // Addr_int = Addr;
     }
   } else {
     std::string AddrRegName =
@@ -502,7 +502,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
         std::string DestRegName = getReg(pred);
 
         if (DestRegName.find(AddrRegName) != std::string::npos) {
-          alm->VisitMap[info->N] = Addr;
+          alm->VisitMap[info->N] = Addr_int;
           visit(pred, IRB);
         } else {
           alm->VisitMap[info->N] = Res;
