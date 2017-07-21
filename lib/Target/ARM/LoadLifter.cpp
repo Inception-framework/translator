@@ -454,7 +454,8 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     unsigned i = 0;
     for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
          I != E; ++I) {
-      if (i++ <= 2 && I->getOpcode() == ISD::CopyToReg) {
+      if (i++ < info->N->getNumOperands() &&
+          I->getOpcode() == ISD::CopyToReg) {
         SDNode* pred = *I;
 
         // Check if we output the address or the readsVirtualRegister
@@ -469,7 +470,8 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
         visit(pred, IRB);
 
-        Addr = IncPointer(info, IRB, Addr);
+        if(i < info->N->getNumOperands()-1)
+          Addr = IncPointer(info, IRB, Addr);
       }
     }
   }
