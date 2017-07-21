@@ -376,7 +376,7 @@ void LoadLifter::t2LDMDB_UPDHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, true, true, false, layout, true, true);
+  LoadInfo* info = new LoadInfo(N, true, true, false, layout, false, true);
 
   LifteNode(info, IRB);
 }
@@ -388,7 +388,7 @@ void LoadLifter::t2LDMDBHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, true, false, false, layout, true, false);
+  LoadInfo* info = new LoadInfo(N, true, false, false, layout, false, true);
 
   LifteNode(info, IRB);
 }
@@ -435,8 +435,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     for (unsigned i = layout->Dst_start; i < layout->Dst_end; ++i) {
       // Retrieve destination register
       // Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
-      if(info->Before)
-        Addr = IncPointer(info, IRB, Addr);
+      if (info->Before) Addr = IncPointer(info, IRB, Addr);
 
       SDNode* pred = info->N->getOperand(i).getNode();
       Value* Op = visitRegister(pred->getOperand(1).getNode(), IRB);
@@ -447,8 +446,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
       if (!info->OutputDst) Res = CreateStore(info, IRB, Op, Res);
 
       // Increment SP
-      if(!info->Before)
-        Addr = IncPointer(info, IRB, Addr);
+      if (!info->Before) Addr = IncPointer(info, IRB, Addr);
       // Addr_int = Addr;
     }
   } else {
@@ -458,8 +456,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     unsigned i = 0;
     for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
          I != E; ++I) {
-      if (i++ < info->N->getNumOperands() &&
-          I->getOpcode() == ISD::CopyToReg) {
+      if (i++ < info->N->getNumOperands() && I->getOpcode() == ISD::CopyToReg) {
         SDNode* pred = *I;
 
         // Check if we output the address or the readsVirtualRegister
@@ -474,7 +471,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
         visit(pred, IRB);
 
-        if(i < info->N->getNumOperands()-1)
+        if (i < info->N->getNumOperands() - 1)
           Addr = IncPointer(info, IRB, Addr);
       }
     }
@@ -589,7 +586,10 @@ llvm::Value* LoadLifter::IncPointer(LoadInfo* info, IRBuilder<>* IRB,
 
   StringRef Name = getIndexedValueName(BaseName);
 
-  Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, const_4, Name));
+  if (info->Increment)
+    Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, const_4, Name));
+  else
+    Addr = dyn_cast<Instruction>(IRB->CreateSub(Addr, const_4, Name));
 
   dyn_cast<Instruction>(Addr)->setDebugLoc(info->N->getDebugLoc());
 
