@@ -444,7 +444,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
       if (!info->OutputDst) Res = CreateStore(info, IRB, Op, Res);
 
       // Increment SP
-      Addr = IncPointer(info, IRB, Addr_int);
+      Addr = IncPointer(info, IRB, Addr);
       // Addr_int = Addr;
     }
   } else {
