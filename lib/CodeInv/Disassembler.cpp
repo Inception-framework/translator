@@ -620,6 +620,42 @@ const StringRef Disassembler::getFunctionName(unsigned Address) const {
   return NameRef;
 }
 
+const StringRef Disassembler::getDataName(unsigned Address) const {
+  uint64_t SymAddr;
+  std::error_code ec;
+  StringRef NameRef;
+  // Check in the regular symbol table first
+  for (object::symbol_iterator I = Executable->symbols().begin(),
+                               E = Executable->symbols().end();
+       I != E; ++I) {
+    object::SymbolRef::Type SymbolTy;
+    if ((ec = I->getType(SymbolTy))) {
+      errs() << ec.message() << "\n";
+      continue;
+    }
+    if (SymbolTy != object::SymbolRef::ST_Data) {
+      continue;
+    }
+    if ((ec = I->getAddress(SymAddr))) {
+      errs() << ec.message() << "\n";
+      continue;
+    }
+    if ((unsigned)SymAddr == Address) {
+      if ((ec = I->getName(NameRef))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+      break;
+    }
+  }
+  if (NameRef.empty()) {
+    std::string *FName = new std::string();
+    raw_string_ostream FOut(*FName);
+    FOut << "func_" << format("%1" PRIx64, Address);
+    return StringRef(FOut.str());
+  }
+  return NameRef;
+}
 
 void Disassembler::setSection(std::string SectionName) {
   setSection(getSectionByName(SectionName));
