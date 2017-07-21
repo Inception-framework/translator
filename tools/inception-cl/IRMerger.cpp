@@ -1,5 +1,7 @@
 #include "IRMerger.h"
 
+#include "FunctionsHelperWriter.h"
+
 extern bool nameLookupAddr(StringRef funcName, uint64_t& Address);
 
 namespace fracture {
@@ -79,63 +81,9 @@ void IRMerger::Run() {
     RemoveUseless();
   }
 
+  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, DEC->getModule());
+  FunctionsHelperWriter::Write(BEGIN, INIT_STACK, DEC->getModule());
   // DEC->getModule()->dump();
-}
-
-void IRMerger::InsertDump(llvm::Instruction* inst) {
-  Module* mod = DEC->getModule();
-
-  std::vector<Type*> FuncTy_3_args;
-  FunctionType* FuncTy_3 = FunctionType::get(
-      /*Result=*/Type::getVoidTy(mod->getContext()),
-      /*Params=*/FuncTy_3_args,
-      /*isVarArg=*/false);
-
-  PointerType* PointerTy_1 = PointerType::get(FuncTy_3, 0);
-
-  std::vector<Type*> FuncTy_4_args;
-  FunctionType* FuncTy_4 = FunctionType::get(
-      /*Result=*/Type::getVoidTy(mod->getContext()),
-      /*Params=*/FuncTy_4_args,
-      /*isVarArg=*/true);
-
-  // Function Declarations
-  Function* func_inception_dump_registers =
-      mod->getFunction("inception_dump_registers");
-  if (!func_inception_dump_registers) {
-    func_inception_dump_registers = Function::Create(
-        /*Type=*/FuncTy_4,
-        /*Linkage=*/GlobalValue::ExternalLinkage,
-        /*Name=*/"inception_dump_registers", mod);  // (external, no body)
-    func_inception_dump_registers->setCallingConv(CallingConv::C);
-  }
-  AttributeSet func_inception_dump_registers_PAL;
-  {
-    SmallVector<AttributeSet, 4> Attrs;
-    AttributeSet PAS;
-    {
-      AttrBuilder B;
-      PAS = AttributeSet::get(mod->getContext(), ~0U, B);
-    }
-
-    Attrs.push_back(PAS);
-    func_inception_dump_registers_PAL =
-        AttributeSet::get(mod->getContext(), Attrs);
-  }
-  func_inception_dump_registers->setAttributes(
-      func_inception_dump_registers_PAL);
-
-  // Constant Definitions
-  Constant* const_ptr_7 = ConstantExpr::getCast(
-      Instruction::BitCast, func_inception_dump_registers, PointerTy_1);
-  std::vector<Value*> params;
-
-  // Function: main (func_main)
-  {
-    CallInst* void_10 = CallInst::Create(const_ptr_7, params, "", inst);
-    void_10->setCallingConv(CallingConv::C);
-    void_10->setTailCall(false);
-  }
 }
 
 Function* IRMerger::Decompile() {
@@ -225,14 +173,10 @@ void IRMerger::RemoveUseless() {
           Type* FType = fct->getReturnType();
 
           if (FType->isVoidTy()) {
-            InsertDump(&old_inst);
-
             IRB->CreateRetVoid();
 
             continue;
           }
-
-          InsertDump(&old_inst);
 
           Value* Reg = DEC->getModule()->getGlobalVariable("R0");
           if (Reg == NULL) {
@@ -252,7 +196,8 @@ void IRMerger::RemoveUseless() {
             // \n\n"; return;
           }
 
-          if (FType->isPointerTy()) IRB->CreateRet(Reg);
+          if (FType->isPointerTy())
+            IRB->CreateRet(Reg);
 
           if (FType->isIntegerTy()) {
             std::string ret_name = "R0_RET" + std::to_string(ret_counter);
@@ -319,11 +264,9 @@ void IRMerger::MapArgsToRegs() {
     if (Reg == NULL) {
       // ConstantInt* Ty = ConstantInt::get(DEC->getModule()->getContext(),
       // APInt(32,0));
-      // PointerType::get(IntegerType::get( DEC->getModule()->getContext(), 32),
-      // 0);
-      // std::map<std::string, SDNode*>::iterator it;
-      // it = registersNodes.find(reg_name);
-      // if (it != registersNodes.end()) {
+      // PointerType::get(IntegerType::get( DEC->getModule()->getContext(),
+      // 32), 0); std::map<std::string, SDNode*>::iterator it; it =
+      // registersNodes.find(reg_name); if (it != registersNodes.end()) {
       //
       //   SDNode* node = it->second;
       //
@@ -347,7 +290,8 @@ void IRMerger::MapArgsToRegs() {
 
       Reg = gvar_i32;
 
-      // outs() << "\n[Inception]\tAdding new register " << reg_name << "\n";
+      // outs() << "\n[Inception]\tAdding new register " << reg_name <<
+      // "\n";
     }
     // Reg->dump();
 

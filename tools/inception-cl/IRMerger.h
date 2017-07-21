@@ -97,8 +97,6 @@ class IRMerger {
 
   void RemoveInstruction(llvm::Instruction* instruction);
 
-  void InsertDump(llvm::Instruction *inst);
-
   Function *fct;
 
   BasicBlock *entry_bb;
