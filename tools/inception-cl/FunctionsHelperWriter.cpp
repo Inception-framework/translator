@@ -166,8 +166,6 @@ void FunctionsHelperWriter::FNHInitStack(llvm::Module* mod,
       ConstantInt::get(mod->getContext(), APInt(32, StringRef("0"), 10));
   ConstantInt* const_int32_8 =
       ConstantInt::get(mod->getContext(), APInt(32, StringRef("8200"), 10));
-  ConstantInt* const_int8_9 =
-      ConstantInt::get(mod->getContext(), APInt(8, StringRef("0"), 10));
 
   // Global Variable Definitions
   gvar_array_STACK->setInitializer(const_array_5);
@@ -191,22 +189,26 @@ void FunctionsHelperWriter::FNHInitStack(llvm::Module* mod,
     AllocaInst* ptr_i = new AllocaInst(IntegerType::get(mod->getContext(), 32),
                                        "i", label_entry);
     ptr_i->setAlignment(4);
+    StoreInst* void_9 = new StoreInst(const_int32_7, ptr_i, false, label_entry);
+    void_9->setAlignment(4);
     StoreInst* void_10 =
         new StoreInst(const_int32_7, ptr_i, false, label_entry);
     void_10->setAlignment(4);
-    StoreInst* void_11 =
-        new StoreInst(const_int32_7, ptr_i, false, label_entry);
-    void_11->setAlignment(4);
     BranchInst::Create(label_for_cond, label_entry);
 
     // Block for.cond (label_for_cond)
-    LoadInst* int32_13 = new LoadInst(ptr_i, "", false, label_for_cond);
-    int32_13->setAlignment(4);
+    LoadInst* int32_12 = new LoadInst(ptr_i, "", false, label_for_cond);
+    int32_12->setAlignment(4);
     ICmpInst* int1_cmp = new ICmpInst(*label_for_cond, ICmpInst::ICMP_ULT,
-                                      int32_13, const_int32_8, "cmp");
+                                      int32_12, const_int32_8, "cmp");
     BranchInst::Create(label_for_body, label_for_end, int1_cmp, label_for_cond);
 
     // Block for.body (label_for_body)
+    LoadInst* int32_14 = new LoadInst(ptr_i, "", false, label_for_body);
+    int32_14->setAlignment(4);
+    CastInst* int8_conv =
+        new TruncInst(int32_14, IntegerType::get(mod->getContext(), 8), "conv",
+                      label_for_body);
     LoadInst* int32_15 = new LoadInst(ptr_i, "", false, label_for_body);
     int32_15->setAlignment(4);
     std::vector<Value*> ptr_arrayidx_indices;
@@ -215,7 +217,7 @@ void FunctionsHelperWriter::FNHInitStack(llvm::Module* mod,
     Instruction* ptr_arrayidx = GetElementPtrInst::Create(
         gvar_array_STACK, ptr_arrayidx_indices, "arrayidx", label_for_body);
     StoreInst* void_16 =
-        new StoreInst(const_int8_9, ptr_arrayidx, false, label_for_body);
+        new StoreInst(int8_conv, ptr_arrayidx, false, label_for_body);
     void_16->setAlignment(1);
     BranchInst::Create(label_for_inc, label_for_body);
 
@@ -230,27 +232,27 @@ void FunctionsHelperWriter::FNHInitStack(llvm::Module* mod,
 
     // Block for.end (label_for_end)
     ReturnInst::Create(mod->getContext(), label_for_end);
-  }
 
-  PointerType* PointerTy_1 = PointerType::get(FuncTy_2, 0);
+    PointerType* PointerTy_1 = PointerType::get(FuncTy_2, 0);
 
-  // Constant Definitions
-  Constant* const_ptr_7 = ConstantExpr::getCast(
-      Instruction::BitCast, func___INCEPTION_INIT_STACK, PointerTy_1);
-  std::vector<Value*> params;
-  // Function: main (func_main)
-  {
-    CallInst* void_10;
+    // Constant Definitions
+    Constant* const_ptr_7 = ConstantExpr::getCast(
+        Instruction::BitCast, func___INCEPTION_INIT_STACK, PointerTy_1);
+    std::vector<Value*> params;
+    // Function: main (func_main)
+    {
+      CallInst* void_10;
 
-    const ReturnInst* ret = dyn_cast<ReturnInst>(inst);
-    if (ret != NULL) {
-      void_10 = CallInst::Create(const_ptr_7, params, "");
+      const ReturnInst* ret = dyn_cast<ReturnInst>(inst);
+      if (ret != NULL) {
+        void_10 = CallInst::Create(const_ptr_7, params, "");
 
-      void_10->insertBefore(inst);
-    } else
-      void_10 = CallInst::Create(const_ptr_7, params, "", inst);
+        void_10->insertBefore(inst);
+      } else
+        void_10 = CallInst::Create(const_ptr_7, params, "", inst);
 
-    void_10->setCallingConv(CallingConv::C);
-    void_10->setTailCall(false);
+      void_10->setCallingConv(CallingConv::C);
+      void_10->setTailCall(false);
+    }
   }
 }
