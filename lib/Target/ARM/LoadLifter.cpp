@@ -531,7 +531,7 @@ llvm::Value* LoadLifter::UpdateAddress(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     i = info->Layout->Shift;
     Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
 
-    Addr = IRB->CreateLShr(Offset, Op, Name);
+    Offset = IRB->CreateLShr(Offset, Op, Name);
   }
 
   // Compute Register Value
