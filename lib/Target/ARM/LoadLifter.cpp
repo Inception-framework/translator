@@ -301,7 +301,7 @@ void LoadLifter::t2LDMIA_UPDHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(4, max - 1, -1, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info = new LoadInfo(N, true, true, false, layout, true, false);
@@ -313,7 +313,7 @@ void LoadLifter::t2LDMIAHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(4, max - 1, -1, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info = new LoadInfo(N, true, false, false, layout, true, false);
@@ -373,10 +373,10 @@ void LoadLifter::t2LDMDB_UPDHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(4, max - 1, -1, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, true, true, false, layout, true, false);
+  LoadInfo* info = new LoadInfo(N, true, true, false, layout, true, true);
 
   LifteNode(info, IRB);
 }
@@ -385,7 +385,7 @@ void LoadLifter::t2LDMDBHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(4, max - 1, -1, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info = new LoadInfo(N, true, false, false, layout, true, false);
@@ -435,6 +435,9 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     for (unsigned i = layout->Dst_start; i < layout->Dst_end; ++i) {
       // Retrieve destination register
       // Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
+      if(info->Before)
+        Addr = IncPointer(info, IRB, Addr);
+
       SDNode* pred = info->N->getOperand(i).getNode();
       Value* Op = visitRegister(pred->getOperand(1).getNode(), IRB);
 
@@ -444,7 +447,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
       if (!info->OutputDst) Res = CreateStore(info, IRB, Op, Res);
 
       // Increment SP
-      if(i < layout->Dst_end-1)
+      if(!info->Before)
         Addr = IncPointer(info, IRB, Addr);
       // Addr_int = Addr;
     }
