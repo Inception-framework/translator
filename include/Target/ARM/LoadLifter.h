@@ -50,9 +50,12 @@ typedef struct LoadInfo {
 
   bool Shift;
 
+  bool Post;
+
   LoadInfo(llvm::SDNode* _N, bool _MultiDest, bool _OutputAddr, bool _OutputDst,
            LoadNodeLayout* _Layout, bool _Increment, bool _Before,
-           bool _Trunc = false, Type* _Ty = NULL, bool _Shift=false)
+           bool _Trunc = false, Type* _Ty = NULL, bool _Shift = false,
+           bool _Post = false)
       : N(_N),
         Layout(_Layout),
         MultiDest(_MultiDest),
@@ -62,6 +65,7 @@ typedef struct LoadInfo {
         Before(_Before),
         Trunc(_Trunc),
         Shift(_Shift),
+        Post(_Post),
         Ty(_Ty) {}
 } LoadInfo;
 

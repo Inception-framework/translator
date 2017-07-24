@@ -56,7 +56,8 @@ void LoadLifter::t2LDRD_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 1, 0);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, true, true, true, layout, true, true);
+  LoadInfo* info = new LoadInfo(N, true, true, true, layout, true, false, false,
+                                NULL, false, true);
 
   LifteNode(info, IRB);
 }
@@ -473,6 +474,10 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
         if (DestRegName.find(AddrRegName) != std::string::npos) continue;
 
+        if (info->Before) Addr = IncPointer(info, IRB, Addr);
+
+        info->Increment = false;
+
         // Load value
         Res = CreateLoad(info, IRB, Addr);
 
@@ -480,7 +485,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
         visit(pred, IRB);
 
-        if (i < info->N->getNumOperands() - 1)
+        if (!info->Before && i < info->N->getNumOperands() - 1)
           Addr = IncPointer(info, IRB, Addr);
       }
     }
@@ -512,7 +517,12 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
         std::string DestRegName = getReg(pred);
 
         if (DestRegName.find(AddrRegName) != std::string::npos) {
-          alm->VisitMap[info->N] = Addr_int;
+          if (info->Post || (!info->Before && layout->Offset != -1)) {
+            Addr = UpdateAddress(info, IRB);
+          }
+
+          alm->VisitMap[info->N] = Addr;
+          // alm->VisitMap[info->N] = Addr_int;
           visit(pred, IRB);
         } else {
           alm->VisitMap[info->N] = Res;
