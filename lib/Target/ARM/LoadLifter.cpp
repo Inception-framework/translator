@@ -379,7 +379,7 @@ void LoadLifter::t2LDMDB_UPDHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(max - 1, 4, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info = new LoadInfo(N, true, true, false, layout, false, true);
@@ -391,7 +391,7 @@ void LoadLifter::t2LDMDBHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
   // Dst_start Dst_end Offset Addr
-  LoadNodeLayout* layout = new LoadNodeLayout(4, max, -1, 1);
+  LoadNodeLayout* layout = new LoadNodeLayout(max - 1, 4, -1, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info = new LoadInfo(N, true, false, false, layout, false, true);
@@ -438,7 +438,10 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     }
 
   } else if (!info->OutputDst && info->MultiDest) {
-    for (unsigned i = layout->Dst_start; i < layout->Dst_end; ++i) {
+    bool db = (layout->Dst_start > layout->Dst_end);
+
+    for (unsigned i = layout->Dst_start;
+         db ? i >= layout->Dst_end : i < layout->Dst_end; db ? --i : ++i) {
       // Retrieve destination register
       // Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
       if (info->Before) Addr = IncPointer(info, IRB, Addr);
