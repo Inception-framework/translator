@@ -49,6 +49,12 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRHs, t2LDRHs)
 }
 
+// void LoadLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+//
+//   Value* Addr =
+//
+// }
+
 void LoadLifter::t2LDRD_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
 
@@ -59,7 +65,69 @@ void LoadLifter::t2LDRD_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadInfo* info = new LoadInfo(N, true, true, true, layout, true, false, false,
                                 NULL, false, true);
 
-  LifteNode(info, IRB);
+  // Retrieve Address
+  Value* SavedAddr;
+  Value* Addr;
+  Value* Res;
+
+  SavedAddr = Addr = visit(info->N->getOperand(layout->Addr).getNode(), IRB);
+  Value* Addr_int = Addr;
+
+  std::string AddrRegName =
+      getReg(info->N->getOperand(info->Layout->Addr).getNode());
+
+  unsigned i = 0;
+  for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
+       I != E; ++I) {
+    if (i++ < info->N->getNumOperands() && I->getOpcode() == ISD::CopyToReg) {
+      SDNode* pred = *I;
+
+      // Check if we output the address or the readsVirtualRegister
+      std::string DestRegName = getReg(pred);
+
+      if (DestRegName.find(AddrRegName) != std::string::npos) continue;
+
+      Addr = IncPointer(info, IRB, Addr);
+
+      info->Increment = false;
+
+      // Load value
+      Res = CreateLoad(info, IRB, Addr);
+
+      alm->VisitMap[info->N] = Res;
+
+      visit(pred, IRB);
+
+      // if (i < info->N->getNumOperands() - 1)
+      //   Addr = IncPointer(info, IRB, Addr);
+    }
+  }
+
+  if (info->OutputDst && info->OutputAddr) {
+    std::string AddrRegName =
+        getReg(info->N->getOperand(info->Layout->Addr).getNode());
+
+    for (SDNode::use_iterator I = info->N->use_begin(), E = info->N->use_end();
+         I != E; ++I) {
+      if (I->getOpcode() == ISD::CopyToReg) {
+        SDNode* pred = *I;
+
+        // Check if we output the address or the readsVirtualRegister
+        std::string DestRegName = getReg(pred);
+
+        if (DestRegName.find(AddrRegName) != std::string::npos) {
+          Addr = UpdateAddress(info, IRB);
+
+          alm->VisitMap[info->N] = Addr;
+
+          visit(pred, IRB);
+        } else {
+          alm->VisitMap[info->N] = Res;
+          visit(pred, IRB);
+        }
+      }
+    }
+  }
 }
 
 void LoadLifter::t2LDRB_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
