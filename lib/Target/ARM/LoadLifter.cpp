@@ -255,8 +255,11 @@ void LoadLifter::t2LDRBi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, false);
+  LoadInfo* info =
+      new LoadInfo(N, false, false, true, layout, true, false, true Ty);
 
   LifteNode(info, IRB);
 }
@@ -267,8 +270,11 @@ void LoadLifter::t2LDRBi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, false);
+  LoadInfo* info =
+      new LoadInfo(N, false, false, true, layout, true, false, true, Ty);
 
   LifteNode(info, IRB);
 }
