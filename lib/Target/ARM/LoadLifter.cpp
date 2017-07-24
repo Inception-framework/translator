@@ -259,7 +259,7 @@ void LoadLifter::t2LDRBi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
-      new LoadInfo(N, false, false, true, layout, true, false, true Ty);
+      new LoadInfo(N, false, false, true, layout, true, false, true, Ty);
 
   LifteNode(info, IRB);
 }
