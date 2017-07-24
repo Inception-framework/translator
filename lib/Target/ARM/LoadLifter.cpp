@@ -71,7 +71,7 @@ void LoadLifter::t2LDRB_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
-      new LoadInfo(N, false, true, true, layout, true, true, true, Ty);
+      new LoadInfo(N, false, true, true, layout, true, false, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -156,7 +156,7 @@ void LoadLifter::t2LDRH_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
-      new LoadInfo(N, false, true, true, layout, true, true, true, Ty);
+      new LoadInfo(N, false, true, true, layout, true, false, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -274,7 +274,7 @@ void LoadLifter::t2LDRBi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
-      new LoadInfo(N, false, false, true, layout, true, false, true, Ty);
+      new LoadInfo(N, false, false, true, layout, true, true, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -370,7 +370,7 @@ void LoadLifter::t2LDR_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, true, true, layout, true, true);
+  LoadInfo* info = new LoadInfo(N, false, true, true, layout, true, false);
 
   LifteNode(info, IRB);
 }
@@ -537,7 +537,7 @@ llvm::Value* LoadLifter::UpdateAddress(LoadInfo* info, llvm::IRBuilder<>* IRB) {
     i = info->Layout->Shift;
     Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
 
-    Offset = IRB->CreateLShr(Offset, Op, Name);
+    Offset = IRB->CreateShl(Offset, Op, Name);
   }
 
   // Compute Register Value
