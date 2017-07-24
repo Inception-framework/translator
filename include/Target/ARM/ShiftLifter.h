@@ -25,16 +25,18 @@ class ShiftLifter : public ARMLifter{
 
   ~ShiftLifter(){};
 
-// Declare each handler
-#define HANDLER(name)                                     \
-  void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB) { \
-    ShiftHandler(N, IRB);                                 \
-  };
-
-  HANDLER(t2LSLri)
-
+  //// Declare each handler
+  //#define HANDLER(name)                                     \
+//  void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB) { \
+//    ShiftHandler(N, IRB);                                 \
+//  };
+  //
+  //  HANDLER(t2LSLri)
+  //
  protected:
-  void ShiftHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void ShiftHandlerLSL(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void ShiftHandlerLSR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void ShiftHandlerASR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 
   ARMSHIFTInfo* RetrieveGraphInformation(llvm::SDNode* N,
                                          llvm::IRBuilder<>* IRB);
