@@ -203,7 +203,7 @@ void FlagsLifter::WriteSF(IRBuilder<> *IRB, llvm::Value *written) {
   //                                CONST_V<width>(b, 0));
 
   // extract sign bit
-  auto signBit = IRB->CreateLShr(written, getConstant("32"));
+  auto signBit = IRB->CreateLShr(written, getConstant("31"));
 
   auto trunc = Bool2Int(signBit, IRB);
 
