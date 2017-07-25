@@ -25,6 +25,11 @@ void ShiftLifter::registerLifter() {
                       (LifterHandler)&ShiftLifter::ShiftHandlerASR);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2ASRrr,
                       (LifterHandler)&ShiftLifter::ShiftHandlerASR);
+  // ROR rd,rm,<rs|sh>
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2RORri,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerROR);
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2RORrr,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerROR);
 }
 
 void ShiftLifter::ShiftHandlerLSL(SDNode *N, IRBuilder<> *IRB) {
@@ -114,6 +119,25 @@ void ShiftLifter::ShiftHandlerASR(SDNode *N, IRBuilder<> *IRB) {
   alm->VisitMap[N] = Res;
 }
 
+// Note: llvm does not have ror
+void ShiftLifter::ShiftHandlerROR(SDNode *N, IRBuilder<> *IRB) {
+  ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
+
+  ConstantInt *const_32 =
+      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("32"), 10));
+
+  Value *lshift_amount = IRB->CreateSub(const_32, info->Op1);
+  Value *high = IRB->CreateShl(info->Op0, lshift_amount);
+  Value *low = IRB->CreateLShr(info->Op0, info->Op1);
+
+  Instruction *Res =
+      dyn_cast<Instruction>(IRB->CreateOr(high, low, info->Name));
+
+  Res->setDebugLoc(N->getDebugLoc());
+
+  alm->VisitMap[N] = Res;
+}
+
 ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
                                                     IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
@@ -134,3 +158,5 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
 
   return info;
 }
+
+
