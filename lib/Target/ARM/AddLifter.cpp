@@ -60,9 +60,9 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 
   // Write the flag updates.
   // Compute AF.
-  // FlagsLifter* flags = dyn_cast<FlagsLifter*>(alm->resolve("FLAGS"));
+  FlagsLifter* flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
 
-  // flags->WriteAFAddSub(IRB, Res, info->Op0, info->Op1);
+  flags->WriteAFAddSub(IRB, Res, info->Op0, info->Op1);
   // Compute SF.
   // flagsLifter->WriteSF(IRB, Res, Ty);
   // // Compute ZF.

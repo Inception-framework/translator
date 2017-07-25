@@ -78,7 +78,23 @@ void FlagsLifter::WriteAFAddSub(llvm::IRBuilder<> *IRB, llvm::Value *res,
   auto c =
       IRB->CreateICmp(llvm::CmpInst::ICMP_NE, v3, getConstant("0"), Name);
 
-  WriteReg(Reg("AF"), c, NULL, IRB);
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
+
+  Name = getIndexedValueName(BaseNameO1);
+
+  auto &C = alm->Mod->getContext();
+
+  auto bool_ty = llvm::Type::getInt1Ty(C);
+  auto int32_ty = llvm::Type::getInt32Ty(C);
+
+  if (c->getType() != bool_ty) {
+    Name = getIndexedValueName(BaseNameO1);
+    c = IRB->CreateTrunc(c, bool_ty, Name);
+  }
+  Name = getIndexedValueName(BaseNameO1);
+  c = IRB->CreateZExt(c, int32_ty, Name);
+
+  WriteReg(c, Reg("AF"), NULL, IRB);
 }
 
 // template <int width>

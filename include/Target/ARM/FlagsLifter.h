@@ -14,10 +14,10 @@ class FlagsLifter : public ARMLifter {
   FlagsLifter(ARMLifterManager* _alm) : ARMLifter(_alm) {};
 
   // Methods for support type inquiry through isa, cast, and dyn_cast:
-  //TODO : Lifter should retain their name !
-  // static inline bool classof(ARMLifter *I) {
-  //   return true;
-  // }
+  // TODO : Lifter should retain their name !
+  static bool classof(const ARMLifter *From) {
+    return true;
+  }
 
   void registerLifter() {};
 
