@@ -5,6 +5,21 @@
 
 using namespace llvm;
 
+Value* ARMLifter::Bool2Int(Value* v, IRBuilder<>* IRB) {
+
+  auto& C = alm->Mod->getContext();
+
+  auto bool_ty = llvm::Type::getInt1Ty(C);
+  auto int32_ty = llvm::Type::getInt32Ty(C);
+
+  if (v->getType() != bool_ty) {
+    v = IRB->CreateTrunc(v, bool_ty);
+  }
+  v = IRB->CreateZExt(v, int32_ty);
+
+  return v;
+}
+
 Value* ARMLifter::Reg(StringRef name) {
   Value* Reg = alm->Mod->getGlobalVariable(name);
 
@@ -13,11 +28,10 @@ Value* ARMLifter::Reg(StringRef name) {
 
     Constant* Initializer = Constant::getNullValue(Ty);
 
-    Reg = new GlobalVariable(
-        *alm->Mod,  // Module
-        Ty,                 // Type
-        false,              // isConstant
-        GlobalValue::CommonLinkage, Initializer, name);
+    Reg = new GlobalVariable(*alm->Mod,  // Module
+                             Ty,         // Type
+                             false,      // isConstant
+                             GlobalValue::CommonLinkage, Initializer, name);
   }
 
   return Reg;

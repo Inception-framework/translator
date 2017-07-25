@@ -64,15 +64,15 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 
   flags->WriteAFAddSub(IRB, Res, info->Op0, info->Op1);
   // Compute SF.
-  // flagsLifter->WriteSF(IRB, Res, Ty);
-  // // Compute ZF.
-  // flagsLifter->WriteZF(IRB, Res, Ty);
-  // // Ccompute OF.
-  // flagsLifter->WriteOFAdd(IRB, Res, info->Op0, info->Op1, Ty);
-  // // Compute PF.
-  // flagsLifter->WritePF(IRB, Res, Ty);
-  // // Compute CF.
-  // flagsLifter->WriteCFAdd(IRB, Res, info->Op0, Ty);
+  flags->WriteSF(IRB, Res);
+  // Compute ZF.
+  flags->WriteZF(IRB, Res);
+  // Ccompute OF.
+  flags->WriteOFAdd(IRB, Res, info->Op0, info->Op1);
+  // Compute PF.
+  flags->WritePF(IRB, Res);
+  // Compute CF.
+  flags->WriteCFAdd(IRB, Res, info->Op0);
 
   alm->VisitMap[N] = Res;
 }
