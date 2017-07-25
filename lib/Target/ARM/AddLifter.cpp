@@ -6,6 +6,8 @@
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
+#include "Target/ARM/FlagsLifter.h"
+
 using namespace llvm;
 using namespace fracture;
 
@@ -53,6 +55,24 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
       dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1, info->Name));
 
   Res->setDebugLoc(N->getDebugLoc());
+
+  Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
+
+  // Write the flag updates.
+  // Compute AF.
+  // FlagsLifter* flags = dyn_cast<FlagsLifter*>(alm->resolve("FLAGS"));
+
+  // flags->WriteAFAddSub(IRB, Res, info->Op0, info->Op1);
+  // Compute SF.
+  // flagsLifter->WriteSF(IRB, Res, Ty);
+  // // Compute ZF.
+  // flagsLifter->WriteZF(IRB, Res, Ty);
+  // // Ccompute OF.
+  // flagsLifter->WriteOFAdd(IRB, Res, info->Op0, info->Op1, Ty);
+  // // Compute PF.
+  // flagsLifter->WritePF(IRB, Res, Ty);
+  // // Compute CF.
+  // flagsLifter->WriteCFAdd(IRB, Res, info->Op0, Ty);
 
   alm->VisitMap[N] = Res;
 }

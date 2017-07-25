@@ -48,6 +48,8 @@ class ARMLifterManager {
 
   void registerAll();
 
+  ARMLifter* resolve(StringRef name);
+
   const TargetRegisterInfo* RegisterInfo;
 
   llvm::Module* Mod;

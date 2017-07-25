@@ -5,6 +5,31 @@
 
 using namespace llvm;
 
+Value* ARMLifter::Reg(StringRef name) {
+  Value* Reg = alm->Mod->getGlobalVariable(name);
+
+  if (Reg == NULL) {
+    Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
+
+    Constant* Initializer = Constant::getNullValue(Ty);
+
+    Reg = new GlobalVariable(
+        *alm->Mod,  // Module
+        Ty,                 // Type
+        false,              // isConstant
+        GlobalValue::CommonLinkage, Initializer, name);
+  }
+
+  return Reg;
+}
+
+Value* ARMLifter::getConstant(StringRef value) {
+  ConstantInt* constante =
+      ConstantInt::get(alm->Mod->getContext(), APInt(32, value, 10));
+
+  return constante;
+}
+
 Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
 

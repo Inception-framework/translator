@@ -73,6 +73,10 @@ class ARMLifter {
   Value* saveNodeValue(SDNode* N, Value* Rn);
 
   Value* UpdateRd(Value* Rn, Value* Offset, IRBuilder<>* IRB, bool Increment);
+
+  Value* getConstant(StringRef value);
+
+  Value* Reg(StringRef name);
 };
 
 #endif

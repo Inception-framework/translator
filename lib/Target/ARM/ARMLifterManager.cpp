@@ -10,6 +10,7 @@
 #include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/StoreLifter.h"
 #include "Target/ARM/SubtractLifter.h"
+#include "Target/ARM/FlagsLifter.h"
 
 #include "llvm/Support/ErrorHandling.h"
 
@@ -45,6 +46,9 @@ ARMLifterManager::ARMLifterManager() {
   lifters.insert(
       std::pair<std::string, ARMLifter*>("STORE", new StoreLifter(this)));
 
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("FLAGS", new FlagsLifter(this)));
+
   registerAll();
 }
 
@@ -76,4 +80,19 @@ void ARMLifterManager::registerLifter(ARMLifter* lifter,
   LifterSolver* lifter_solver = new LifterSolver(lifter, lifter_name, handler);
 
   solver.insert(std::pair<unsigned, LifterSolver*>(opcode, lifter_solver));
+}
+
+/*
+ * This function select the correct Lifter for a giving name
+ */
+ARMLifter* ARMLifterManager::resolve(StringRef name) {
+  auto search = lifters.find(name);
+
+  if (search != lifters.end()) {
+    ARMLifter* lifter = search->second;
+
+    return lifter;
+  } else {
+    return NULL;
+  }
 }
