@@ -19,7 +19,6 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDMIA_UPD, t2LDMIA_UPD)
   REGISTER_LOAD_OPCODE(t2LDMIA, t2LDMIA)
 
-  REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
   REGISTER_LOAD_OPCODE(t2LDMDB_UPD, t2LDMDB_UPD)
   REGISTER_LOAD_OPCODE(t2LDMDB, t2LDMDB)
 
@@ -28,6 +27,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRD_POST, t2LDRD_POST)
 
   REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
+  REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
   REGISTER_LOAD_OPCODE(t2LDRi8, t2LDRi8)
   REGISTER_LOAD_OPCODE(t2LDRi12, t2LDRi12)
   REGISTER_LOAD_OPCODE(t2LDRs, t2LDRs)
@@ -35,6 +35,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDR_POST, t2LDR_POST)
 
   REGISTER_LOAD_OPCODE(tLDRBi, tLDRBi)
+  REGISTER_LOAD_OPCODE(tLDRBr, tLDRBi)
   REGISTER_LOAD_OPCODE(t2LDRBi8, t2LDRBi8)
   REGISTER_LOAD_OPCODE(t2LDRBi12, t2LDRBi12)
   REGISTER_LOAD_OPCODE(t2LDRB_PRE, t2LDRB_PRE)
@@ -42,6 +43,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(t2LDRBs, t2LDRBs)
 
   REGISTER_LOAD_OPCODE(tLDRHi, tLDRHi)
+  REGISTER_LOAD_OPCODE(tLDRHr, tLDRHi)
   REGISTER_LOAD_OPCODE(t2LDRHi12, t2LDRHi12)
   REGISTER_LOAD_OPCODE(t2LDRHi8, t2LDRHi8)
   REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
@@ -328,7 +330,7 @@ void LoadLifter::t2LDRBi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
-      new LoadInfo(N, false, false, true, layout, true, false, true, Ty);
+      new LoadInfo(N, false, false, true, layout, true, true, true, Ty);
 
   LifteNode(info, IRB);
 }
@@ -415,7 +417,7 @@ void LoadLifter::t2LDRHi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
-  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, false);
+  LoadInfo* info = new LoadInfo(N, false, false, true, layout, true, true);
 
   LifteNode(info, IRB);
 }
