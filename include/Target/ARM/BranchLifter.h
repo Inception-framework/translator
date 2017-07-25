@@ -22,11 +22,12 @@ class BranchLifter : public ARMLifter{
     BranchHandler(N, IRB); \
   };
 
-  HANDLER(tBX_RET);
+  // HANDLER(tBX_RET);
+  // HANDLER(tB);
 
-protected:
+ protected:
   void BranchHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
-
+  void BranchHandlerB(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 };
 
 #endif

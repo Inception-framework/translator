@@ -374,7 +374,7 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   alm->RegisterInfo = DAG->getTarget().getSubtargetImpl()->getRegisterInfo();
   alm->Mod = Mod;
   alm->DAG = DAG;
-
+  alm->Dec = this;
   alm->RegMap.grow(Dis->getMCDirector()->getMCRegisterInfo()->getNumRegs());
 
   // Create a new basic block (if necessary)

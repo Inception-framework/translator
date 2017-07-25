@@ -5,6 +5,7 @@
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/IR/IRBuilder.h"
 
+#include "CodeInv/Decompiler.h"
 #include "Target/ARM/ARMLifter.h"
 
 #include <iostream>
@@ -61,6 +62,8 @@ class ARMLifterManager {
   StringMap<StringRef> BaseNames;
 
   llvm::SelectionDAG *DAG;
+
+  fracture::Decompiler* Dec;
 
  private:
   std::map<unsigned, LifterSolver*> solver;
