@@ -5,6 +5,76 @@
 
 using namespace llvm;
 
+Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
+  Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
+
+  StringRef BaseName = getBaseValueName(Rd->getName());
+
+  if (!Rd->getType()->isPointerTy()) {
+    StringRef Name = getIndexedValueName(BaseName);
+    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo(), Name);
+  }
+
+  if (Ty != NULL && Ty != Ty_word) {
+    StringRef BaseName = getBaseValueName(Rd->getName());
+    StringRef Name = getIndexedValueName(BaseName);
+
+    Rd = IRB->CreateTrunc(Rd, Ty, Name);
+
+    Name = getIndexedValueName(BaseName);
+    Rd = IRB->CreateZExt(Rd, Ty_word, Name);
+  }
+
+  StringRef Name = getIndexedValueName(BaseName);
+  Rd = IRB->CreateLoad(Rd, Name);
+
+  return Rd;
+}
+
+Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, Type* Ty, IRBuilder<>* IRB) {
+  Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
+
+  StringRef BaseName = getBaseValueName(Rd->getName());
+
+  if (!Rd->getType()->isPointerTy()) {
+    StringRef Name = getIndexedValueName(BaseName);
+    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo(), Name);
+  }
+
+  if (Ty != NULL && Ty != Ty_word) {
+    StringRef BaseName = getBaseValueName(Rn->getName());
+    StringRef Name = getIndexedValueName(BaseName);
+
+    Rn = IRB->CreateTrunc(Rn, Ty, Name);
+
+    Name = getIndexedValueName(BaseName);
+    Rn = IRB->CreateZExt(Rn, Ty_word, Name);
+  }
+
+  Instruction* store = IRB->CreateStore(Rn, Rd);
+
+  return store;
+}
+
+Value* ARMLifter::UpdateRd(Value* Rn, Value* Offset, IRBuilder<>* IRB,
+                           bool Increment) {
+  uint32_t i;
+
+  // Compute Register Name
+  StringRef BaseName = getBaseValueName(Rn->getName());
+  StringRef Name = getIndexedValueName(BaseName);
+
+  // Add Offset to Address
+  if (Increment)
+    Rn = IRB->CreateAdd(Rn, Offset, Name);
+  else
+    Rn = IRB->CreateSub(Rn, Offset, Name);
+
+  return Rn;
+}
+
+Value* ARMLifter::saveNodeValue(SDNode* N, Value* Rn) { alm->VisitMap[N] = Rn; }
+
 Value* ARMLifter::visit(const SDNode* N, IRBuilder<>* IRB) {
   if (alm->VisitMap.find(N) != alm->VisitMap.end()) {
     return alm->VisitMap[N];
@@ -104,9 +174,9 @@ StringRef ARMLifter::getInstructionName(const SDNode* N, IRBuilder<>* IRB) {
   return StringRef();
 }
 
-std::string ARMLifter::getReg(const SDNode* N)  {
-
-  const RegisterSDNode* R = dyn_cast<RegisterSDNode>(N->getOperand(1).getNode());
+std::string ARMLifter::getReg(const SDNode* N) {
+  const RegisterSDNode* R =
+      dyn_cast<RegisterSDNode>(N->getOperand(1).getNode());
   if (R == NULL) {
     errs() << "visitRegister with no register!?\n";
     return NULL;
@@ -115,8 +185,7 @@ std::string ARMLifter::getReg(const SDNode* N)  {
   std::string RegName;
   raw_string_ostream RP(RegName);
 
-  RP << PrintReg(R->getReg(),
-                 alm->RegisterInfo);
+  RP << PrintReg(R->getReg(), alm->RegisterInfo);
 
   RegName = RP.str().substr(1, RP.str().size());
 
@@ -140,8 +209,7 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
 
     RegName = RP.str().substr(1, RP.str().size());
 
-    if(RegName.find("noreg")!=std::string::npos)
-      return NULL;
+    if (RegName.find("noreg") != std::string::npos) return NULL;
 
     Type* Ty = R->getValueType(0).getTypeForEVT(alm->Mod->getContext());
 
