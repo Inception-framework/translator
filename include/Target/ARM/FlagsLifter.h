@@ -19,6 +19,8 @@ class FlagsLifter : public ARMLifter {
 
   void registerLifter(){};
 
+  void WriteNFAdd(IRBuilder<> *IRB, llvm::Value *res);
+
   void WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *val, llvm::Value *shiftAmt);
 
   void WriteZF(IRBuilder<> *IRB, llvm::Value *w);

@@ -36,6 +36,21 @@
 
 using namespace llvm;
 
+void FlagsLifter::WriteNFAdd(IRBuilder<> *IRB, llvm::Value *res) {
+
+  auto shifted = IRB->CreateLShr(res, getConstant("31"));
+
+
+  auto *icmp = IRB->CreateICmp(llvm::CmpInst::ICMP_EQ, shifted,
+                               getConstant("1"));
+
+  // truncate anded1
+  auto trunced = Bool2Int(icmp, IRB);
+
+  // write to NF
+  WriteReg(trunced, Reg("NF"), NULL, IRB);
+}
+
 void FlagsLifter::WriteZF(IRBuilder<> *IRB, llvm::Value *w) {
   // set ZF
   // ZF is set if the result is 0 and clear otherwise

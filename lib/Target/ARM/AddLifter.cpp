@@ -45,7 +45,28 @@ void AddLifter::registerLifter() {
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADDrs,
                       (LifterHandler)&AddLifter::AddHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADCri,
-                      (LifterHandler)&AddLifter::AddHandler);
+                      (LifterHandler)&AddLifter::AdcHandler);
+  alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADCrr,
+                      (LifterHandler)&AddLifter::AdcHandler);
+}
+
+void AddLifter::AdcHandler(SDNode *N, IRBuilder<> *IRB) {
+  // AddHandler(N, IRB);  // Si opérande à la même position
+  // Value *Res_add = alm->VisitMap[N];
+  //
+  // // then
+  // Value *Res_adc = IRB->CreateAdd(Res_add, Reg("VF"));
+  //
+  // // Compute SF.
+  // flags->WriteSF(IRB, Res);
+  // // Compute ZF.
+  // flags->WriteZF(IRB, Res);
+  // // Ccompute VF.
+  // flags->WriteVFAdd(IRB, Res_adc, Res_add, Reg("VF"));
+  // // Compute CF.
+  // flags->WriteCFAdd(IRB, Res_addc, Res_add);
+  //
+  // alm->VisitMap[N] = Res_adc;
 }
 
 void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
@@ -56,17 +77,19 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
+  Type *Ty = IntegerType::get(alm->Mod->getContext(), 32);
 
   // Write the flag updates.
   // Compute AF.
-  FlagsLifter* flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+  FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
 
+  //Compute NF
+  flags->WriteNFAdd(IRB, Res);
   // Compute SF.
   flags->WriteSF(IRB, Res);
   // Compute ZF.
   flags->WriteZF(IRB, Res);
-  // Ccompute OF.
+  // Ccompute VF.
   flags->WriteVFAdd(IRB, Res, info->Op0, info->Op1);
   // Compute CF.
   flags->WriteCFAdd(IRB, Res, info->Op0);

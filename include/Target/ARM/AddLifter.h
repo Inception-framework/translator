@@ -28,26 +28,28 @@ class AddLifter : public ARMLifter{
       AddHandler(N, IRB); \
     };
 
-    HANDLER(tADDrr);
-    HANDLER(tADDhirr)
-    HANDLER(tADDrSPi)
-    HANDLER(tADDspi)
-    HANDLER(tADDi8)
-    HANDLER(tADDframe)
-    HANDLER(tADDi3)
-    HANDLER(tADDrSP)
-    HANDLER(tADDspr)
-    HANDLER(t2ADDSri)
-    HANDLER(t2ADDSrr)
-    HANDLER(t2ADDSrs)
-    HANDLER(t2ADDri)
-    HANDLER(t2ADDri12)
-    HANDLER(t2ADDrr)
-    HANDLER(t2ADDrs)
-    HANDLER(t2ADCri)
+    // HANDLER(tADDrr);
+    // HANDLER(tADDhirr)
+    // HANDLER(tADDrSPi)
+    // HANDLER(tADDspi)
+    // HANDLER(tADDi8)
+    // HANDLER(tADDframe)
+    // HANDLER(tADDi3)
+    // HANDLER(tADDrSP)
+    // HANDLER(tADDspr)
+    // HANDLER(t2ADDSri)
+    // HANDLER(t2ADDSrr)
+    // HANDLER(t2ADDSrs)
+    // HANDLER(t2ADDri)
+    // HANDLER(t2ADDri12)
+    // HANDLER(t2ADDrr)
+    // HANDLER(t2ADDrs)
+    // HANDLER(t2ADCri)
 
   protected:
     void AddHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+
+    void AdcHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 
     ARMADDInfo* RetrieveGraphInformation(llvm::SDNode *N, llvm::IRBuilder<>* IRB);
 };
