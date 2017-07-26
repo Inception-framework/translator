@@ -6,7 +6,6 @@
 using namespace llvm;
 
 Value* ARMLifter::Bool2Int(Value* v, IRBuilder<>* IRB) {
-
   auto& C = alm->Mod->getContext();
 
   auto bool_ty = llvm::Type::getInt1Ty(C);
@@ -71,7 +70,6 @@ Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
 }
 
 Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB) {
-
   Instruction* store = IRB->CreateLoad(Rn);
 
   return store;
@@ -167,9 +165,10 @@ StringRef ARMLifter::getIndexedValueName(StringRef BaseName) {
   }
 
   // Otherwise, there is a naming conflict.  Rename this value.
-  // FIXME: AFAIK this is never deallocated (memory leak). It should be free'd
-  // after it gets added to the symbol table (which appears to do a copy as
-  // indicated by the original code that stack allocated this variable).
+  // FIXME: AFAIK this is never deallocated (memory leak). It should be
+  // free'd after it gets added to the symbol table (which appears to do a
+  // copy as indicated by the original code that stack allocated this
+  // variable).
   SmallString<256>* UniqueName =
       new SmallString<256>(BaseName.begin(), BaseName.end());
   unsigned Size = BaseName.size();
@@ -189,8 +188,9 @@ StringRef ARMLifter::getIndexedValueName(StringRef BaseName) {
 
     // Try insert the vmap entry with this suffix.
     V = ST.lookup(*UniqueName);
-    // FIXME: ^^ this lookup does not appear to be working on non-globals...
-    // Temporary Fix: check if it has a alm->BaseNames entry
+    // FIXME: ^^ this lookup does not appear to be working on
+    // non-globals... Temporary Fix: check if it has a alm->BaseNames
+    // entry
     if (V == NULL && alm->BaseNames[*UniqueName].empty()) {
       alm->BaseNames[*UniqueName] = BaseName;
       return *UniqueName;
@@ -271,13 +271,14 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
 
       if (RegName.find("SP") != std::string::npos) {
         // Initializer = ConstantInt::get(
-        // Dec->getModule()->getContext(), APInt(32, StringRef("268435456"),
-        // 10));
+        // Dec->getModule()->getContext(), APInt(32,
+        // StringRef("268435456"), 10));
         //
         // gvar_ptr->setInitializer(Initializer);
 
         // XXX: SP cannot be initialized with other than 0
-        // XXX: Therefore, We introduce a store before the first instruction
+        // XXX: Therefore, We introduce a store before the first
+        // instruction
         Function* main_fct = alm->Mod->getFunction("main");
         if (!main_fct)
           llvm::errs() << "Unable to find main function needed to init SP !";
@@ -301,10 +302,12 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
 
 Value* ARMLifter::visitCopyFromReg(const SDNode* N, IRBuilder<>* IRB) {
   // Operand 0 - Chain node (ignored)
-  // Operand 1 - RegisterSDNode, a machine register. We create an alloca, which
+  // Operand 1 - RegisterSDNode, a machine register. We create an alloca,
+  // which
   //             is typically removed in a mem2reg pass
 
-  // Skip if the register is never used. This happens for %noreg registers.
+  // Skip if the register is never used. This happens for %noreg
+  // registers.
   if (!N->hasAnyUseOfValue(0)) {
     return NULL;
   }

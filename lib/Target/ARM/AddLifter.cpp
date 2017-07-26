@@ -13,7 +13,7 @@ using namespace fracture;
 
 void AddLifter::registerLifter() {
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADDrr,
-                      (LifterHandler)&AddLifter::AddHandler);
+                      (LifterHandler)&AddLifter::AddsHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADDhirr,
                       (LifterHandler)&AddLifter::AddHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADDrSPi,
@@ -83,7 +83,18 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  Type *Ty = IntegerType::get(alm->Mod->getContext(), 32);
+  alm->VisitMap[N] = Res;
+}
+
+void AddLifter::AddsHandler(SDNode *N, IRBuilder<> *IRB) {
+  ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
+
+  Instruction *Res =
+      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1, info->Name));
+
+  Res->setDebugLoc(N->getDebugLoc());
+
+  alm->VisitMap[N] = Res;
 
   // Write the flag updates.
   // Compute AF.
@@ -99,8 +110,6 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   flags->WriteVFAdd(IRB, Res, info->Op0, info->Op1);
   // Compute CF.
   flags->WriteCFAdd(IRB, Res, info->Op0);
-
-  alm->VisitMap[N] = Res;
 }
 
 ARMADDInfo *AddLifter::RetrieveGraphInformation(SDNode *N, IRBuilder<> *IRB) {
