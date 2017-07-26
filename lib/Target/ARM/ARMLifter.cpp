@@ -70,6 +70,13 @@ Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   return Rd;
 }
 
+Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB) {
+
+  Instruction* store = IRB->CreateLoad(Rn);
+
+  return store;
+}
+
 Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
 

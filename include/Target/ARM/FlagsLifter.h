@@ -26,22 +26,21 @@ class FlagsLifter : public ARMLifter {
   void WriteZF(IRBuilder<> *IRB, llvm::Value *w);
 
   void WriteAF2(IRBuilder<> *IRB, llvm::Value *r, llvm::Value *lhs,
-                             llvm::Value *rhs);
+                llvm::Value *rhs);
 
-  void WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
-                               llvm::Value *argL);
+  void WriteCFAdc(IRBuilder<> *IRB, llvm::Value *res, llvm::Value *argL);
 
-  void WriteCFSub(IRBuilder<> *IRB, llvm::Value *argL,
-                               llvm::Value *argR);
+  void WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res, llvm::Value *argL);
 
-  void WriteVFSub(IRBuilder<> *IRB, llvm::Value *res,
-                               llvm::Value *lhs, llvm::Value *rhs);
+  void WriteCFSub(IRBuilder<> *IRB, llvm::Value *argL, llvm::Value *argR);
 
-  void WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res,
-                               llvm::Value *lhs, llvm::Value *rhs);
+  void WriteVFSub(IRBuilder<> *IRB, llvm::Value *res, llvm::Value *lhs,
+                  llvm::Value *rhs);
+
+  void WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res, llvm::Value *lhs,
+                  llvm::Value *rhs);
 
   void WriteSF(IRBuilder<> *IRB, llvm::Value *written);
-
 };
 
 #endif

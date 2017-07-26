@@ -68,6 +68,8 @@ class ARMLifter {
 
   Value* WriteReg(Value* Rn, Value* Rd, Type* Ty, IRBuilder<>* IRB);
 
+  Value* ReadReg(Value* Rd, IRBuilder<>* IRB);
+
   Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB);
 
   Value* saveNodeValue(SDNode* N, Value* Rn);

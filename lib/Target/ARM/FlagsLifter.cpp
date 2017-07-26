@@ -37,12 +37,10 @@
 using namespace llvm;
 
 void FlagsLifter::WriteNFAdd(IRBuilder<> *IRB, llvm::Value *res) {
-
   auto shifted = IRB->CreateLShr(res, getConstant("31"));
 
-
-  auto *icmp = IRB->CreateICmp(llvm::CmpInst::ICMP_EQ, shifted,
-                               getConstant("1"));
+  auto *icmp =
+      IRB->CreateICmp(llvm::CmpInst::ICMP_EQ, shifted, getConstant("1"));
 
   // truncate anded1
   auto trunced = Bool2Int(icmp, IRB);
@@ -69,6 +67,19 @@ void FlagsLifter::WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *val,
   v = Bool2Int(v, IRB);
 
   WriteReg(v, Reg("CF"), NULL, IRB);
+}
+
+void FlagsLifter::WriteCFAdc(IRBuilder<> *IRB, llvm::Value *res,
+                             llvm::Value *argL) {
+  auto cmpRes = IRB->CreateICmp(llvm::CmpInst::ICMP_ULT, res, argL);
+
+  cmpRes = Bool2Int(cmpRes, IRB);
+
+  auto cf = ReadReg(Reg("CF"), IRB);
+
+  auto xor1 = IRB->CreateOr(cmpRes, cf);
+
+  WriteReg(cmpRes, Reg("CF"), NULL, IRB);
 }
 
 void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,

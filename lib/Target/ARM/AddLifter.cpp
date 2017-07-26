@@ -51,22 +51,28 @@ void AddLifter::registerLifter() {
 }
 
 void AddLifter::AdcHandler(SDNode *N, IRBuilder<> *IRB) {
-  // AddHandler(N, IRB);  // Si opérande à la même position
-  // Value *Res_add = alm->VisitMap[N];
-  //
-  // // then
-  // Value *Res_adc = IRB->CreateAdd(Res_add, Reg("VF"));
-  //
-  // // Compute SF.
-  // flags->WriteSF(IRB, Res);
-  // // Compute ZF.
-  // flags->WriteZF(IRB, Res);
-  // // Ccompute VF.
-  // flags->WriteVFAdd(IRB, Res_adc, Res_add, Reg("VF"));
-  // // Compute CF.
-  // flags->WriteCFAdd(IRB, Res_addc, Res_add);
-  //
-  // alm->VisitMap[N] = Res_adc;
+  AddHandler(N, IRB);  // Si opérande à la même position
+  Value *Res_add = alm->VisitMap[N];
+
+  auto cf = ReadReg(Reg("CF"), IRB);
+
+  // then
+  Value *Res_adc = IRB->CreateAdd(Res_add, cf);
+
+  // Write the flag updates.
+  // Compute AF.
+  FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+  // Compute SF.
+  flags->WriteSF(IRB, Res_adc);
+  // Compute ZF.
+  flags->WriteZF(IRB, Res_adc);
+  // Ccompute VF.
+  flags->WriteVFAdd(IRB, Res_adc, Res_add, cf);
+  // Compute CF.
+  flags->WriteCFAdc(IRB, Res_adc, Res_add);
+
+  alm->VisitMap[N] = Res_adc;
 }
 
 void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
