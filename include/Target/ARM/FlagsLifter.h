@@ -19,9 +19,6 @@ class FlagsLifter : public ARMLifter {
 
   void registerLifter(){};
 
-  void WriteAFAddSub(llvm::IRBuilder<> *IRB, llvm::Value *res, llvm::Value *o1,
-                     llvm::Value *o2);
-
   void WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *val, llvm::Value *shiftAmt);
 
   void WriteZF(IRBuilder<> *IRB, llvm::Value *w);
@@ -35,13 +32,11 @@ class FlagsLifter : public ARMLifter {
   void WriteCFSub(IRBuilder<> *IRB, llvm::Value *argL,
                                llvm::Value *argR);
 
-  void WriteOFSub(IRBuilder<> *IRB, llvm::Value *res,
+  void WriteVFSub(IRBuilder<> *IRB, llvm::Value *res,
                                llvm::Value *lhs, llvm::Value *rhs);
 
-  void WriteOFAdd(IRBuilder<> *IRB, llvm::Value *res,
+  void WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res,
                                llvm::Value *lhs, llvm::Value *rhs);
-
-  void WritePF(IRBuilder<> *IRB, llvm::Value *written);
 
   void WriteSF(IRBuilder<> *IRB, llvm::Value *written);
 

@@ -159,4 +159,3 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   //  Br->setDebugLoc(N->getDebugLoc());
   // return Br;
 }
-

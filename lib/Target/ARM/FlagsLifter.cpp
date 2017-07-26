@@ -56,45 +56,6 @@ void FlagsLifter::WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *val,
   WriteReg(v, Reg("CF"), NULL, IRB);
 }
 
-void FlagsLifter::WriteAFAddSub(llvm::IRBuilder<> *IRB, llvm::Value *res,
-                                llvm::Value *o1, llvm::Value *o2) {
-  StringRef BaseNameO1 = getBaseValueName(o1->getName());
-  StringRef Name;
-
-  Name = getIndexedValueName(BaseNameO1);
-  auto v1 = IRB->CreateXor(res, o1, Name);
-
-  Name = getIndexedValueName(BaseNameO1);
-  auto v2 = IRB->CreateXor(v1, o2, Name);
-
-  Name = getIndexedValueName(BaseNameO1);
-  auto v3 = IRB->CreateAnd(v2, getConstant("0"), Name);
-
-  Name = getIndexedValueName(BaseNameO1);
-  auto c = IRB->CreateICmp(llvm::CmpInst::ICMP_NE, v3, getConstant("0"), Name);
-
-  Type *Ty = IntegerType::get(alm->Mod->getContext(), 32);
-
-  c = Bool2Int(c, IRB);
-
-  WriteReg(c, Reg("AF"), NULL, IRB);
-}
-
-void FlagsLifter::WriteAF2(IRBuilder<> *IRB, llvm::Value *r, llvm::Value *lhs,
-                           llvm::Value *rhs) {
-  // this will implement the (r ^ lhs ^ rhs) & 0x10 approach used by VEX
-  // but it will also assume that the values as input are full width
-  auto t1 = IRB->CreateXor(r, lhs);
-  auto t2 = IRB->CreateXor(t1, rhs);
-  auto t3 = IRB->CreateAnd(t2, getConstant("16"));
-
-  auto cr = IRB->CreateICmp(llvm::CmpInst::ICMP_NE, t3, getConstant("0"));
-
-  cr = Bool2Int(cr, IRB);
-
-  WriteReg(cr, Reg("AF"), NULL, IRB);
-}
-
 void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
                              llvm::Value *argL) {
   // cf = res < argL
@@ -114,7 +75,7 @@ void FlagsLifter::WriteCFSub(IRBuilder<> *IRB, llvm::Value *argL,
   WriteReg(cmpRes, Reg("CF"), NULL, IRB);
 }
 
-void FlagsLifter::WriteOFSub(IRBuilder<> *IRB, llvm::Value *res,
+void FlagsLifter::WriteVFSub(IRBuilder<> *IRB, llvm::Value *res,
                              llvm::Value *lhs, llvm::Value *rhs) {
   // of = lshift((lhs ^ rhs ) & (lhs ^ res), 12 - width) & 2048
   // where lshift is written as if n >= 0, x << n, else x >> (-n)
@@ -130,10 +91,10 @@ void FlagsLifter::WriteOFSub(IRBuilder<> *IRB, llvm::Value *res,
   auto trunced = Bool2Int(shifted, IRB);
 
   // write to OF
-  WriteReg(trunced, Reg("OF"), NULL, IRB);
+  WriteReg(trunced, Reg("VF"), NULL, IRB);
 }
 
-void FlagsLifter::WriteOFAdd(IRBuilder<> *IRB, llvm::Value *res,
+void FlagsLifter::WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res,
                              llvm::Value *lhs, llvm::Value *rhs) {
   // of = lshift((lhs ^ rhs ^ -1) & (lhs ^ res), 12 - width) & 2048
   // where lshift is written as if n >= 0, x << n, else x >> (-n)
@@ -156,43 +117,7 @@ void FlagsLifter::WriteOFAdd(IRBuilder<> *IRB, llvm::Value *res,
   auto trunced = Bool2Int(anded1, IRB);
 
   // write to OF
-  WriteReg(trunced, Reg("OF"), NULL, IRB);
-}
-
-void FlagsLifter::WritePF(IRBuilder<> *IRB, llvm::Value *written) {
-  // auto M = b->getParent()->getParent();
-  // // truncate the written value to one byte
-  // // if the width is already 8, we don't need to do this
-  // llvm::Value *lsb = nullptr;
-  // if (width > 8) {
-  //   lsb = new llvm::TruncInst(written,
-  //   llvm::Type::getInt8Ty(b->getContext()),
-  //                             "", b);
-  // } else {
-  //   lsb = written;
-  // }
-  //
-  // // use llvm.ctpop.i8 to count the bits set in this byte
-  // auto &C = b->getContext();
-  // llvm::Type *s[] = {llvm::Type::getInt8Ty(C)};
-  // auto popCntFun =
-  //     llvm::Intrinsic::getDeclaration(M, llvm::Intrinsic::ctpop, s);
-  //
-  // std::vector<llvm::Value *> countArgs;
-  // countArgs.push_back(lsb);
-  //
-  // auto count = llvm::CallInst::Create(popCntFun, countArgs, "", b);
-  //
-  // // truncate the count to a bit
-  // auto ty = llvm::Type::getInt1Ty(C);
-  // auto countTrunc = new llvm::ZExtInst(new llvm::TruncInst(count, ty, "", b),
-  //                                      llvm::Type::getInt8Ty(C), "", b);
-  //
-  // // negate that bit via xor 1
-  // auto neg = IRB->CreateXor(countTrunc, CONST_V<8>(b, 1), "", b);
-  //
-  // // write to OF
-  // WriteReg(neg, Reg("PF"), NULL, IRB);
+  WriteReg(trunced, Reg("VF"), NULL, IRB);
 }
 
 void FlagsLifter::WriteSF(IRBuilder<> *IRB, llvm::Value *written) {
