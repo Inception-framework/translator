@@ -40,7 +40,10 @@ class FlagsLifter : public ARMLifter {
   void WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res, llvm::Value *lhs,
                   llvm::Value *rhs);
 
-  void WriteSF(IRBuilder<> *IRB, llvm::Value *written);
+  void WriteVFAdc(IRBuilder<> *IRB, llvm::Value *res, llvm::Value *lhs,
+                  llvm::Value *rhs);
+
+  void WriteNF(IRBuilder<> *IRB, llvm::Value *written);
 };
 
 #endif

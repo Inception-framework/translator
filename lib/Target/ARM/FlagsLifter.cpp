@@ -36,18 +36,18 @@
 
 using namespace llvm;
 
-void FlagsLifter::WriteNFAdd(IRBuilder<> *IRB, llvm::Value *res) {
-  auto shifted = IRB->CreateLShr(res, getConstant("31"));
-
-  auto *icmp =
-      IRB->CreateICmp(llvm::CmpInst::ICMP_EQ, shifted, getConstant("1"));
-
-  // truncate anded1
-  auto trunced = Bool2Int(icmp, IRB);
-
-  // write to NF
-  WriteReg(trunced, Reg("NF"), NULL, IRB);
-}
+// void FlagsLifter::WriteNFAdd(IRBuilder<> *IRB, llvm::Value *res) {
+//  auto shifted = IRB->CreateLShr(res, getConstant("31"));
+//
+//  auto *icmp =
+//      IRB->CreateICmp(llvm::CmpInst::ICMP_EQ, shifted, getConstant("1"));
+//
+//  // truncate anded1
+//  auto trunced = Bool2Int(icmp, IRB);
+//
+//  // write to NF
+//  WriteReg(trunced, Reg("NF"), NULL, IRB);
+//}
 
 void FlagsLifter::WriteZF(IRBuilder<> *IRB, llvm::Value *w) {
   // set ZF
@@ -79,7 +79,7 @@ void FlagsLifter::WriteCFAdc(IRBuilder<> *IRB, llvm::Value *res,
 
   auto xor1 = IRB->CreateOr(cmpRes, cf);
 
-  WriteReg(cmpRes, Reg("CF"), NULL, IRB);
+  WriteReg(xor1, Reg("CF"), NULL, IRB);
 }
 
 void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
@@ -146,7 +146,37 @@ void FlagsLifter::WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res,
   WriteReg(trunced, Reg("VF"), NULL, IRB);
 }
 
-void FlagsLifter::WriteSF(IRBuilder<> *IRB, llvm::Value *written) {
+void FlagsLifter::WriteVFAdc(IRBuilder<> *IRB, llvm::Value *res,
+                             llvm::Value *lhs, llvm::Value *rhs) {
+  // of = lshift((lhs ^ rhs ^ -1) & (lhs ^ res), 12 - width) & 2048
+  // where lshift is written as if n >= 0, x << n, else x >> (-n)
+
+  auto xor1 = IRB->CreateXor(lhs, rhs);
+  auto xor2 = IRB->CreateXor(xor1, getConstant("31"));
+  auto xor3 = IRB->CreateXor(lhs, res);
+  auto anded = IRB->CreateAnd(xor2, xor3);
+
+  llvm::Value *shifted = nullptr;
+  // shifts corrected to always place the OF bit
+  // in the bit 0 position. This way it works for
+  // all sized ints
+  shifted = IRB->CreateLShr(anded, getConstant("31"));
+
+  // and by 1
+  auto vf2 = IRB->CreateAnd(shifted, getConstant("1"));
+
+  // total ovf = (ovf1 + ovf2) mod 2
+  auto vf1 = ReadReg(Reg("VF"), IRB);
+  auto add = IRB->CreateAdd(vf1, vf2);
+  auto anded1 = IRB->CreateAnd(add, getConstant("1"));
+
+  // truncate anded1
+  auto trunced = Bool2Int(anded1, IRB);
+
+  WriteReg(trunced, Reg("VF"), NULL, IRB);
+}
+
+void FlagsLifter::WriteNF(IRBuilder<> *IRB, llvm::Value *written) {
   //%1 = SIGNED CMP %written < 0
   // Value   *scmp = new ICmpInst(   *b,
   //                                ICmpInst::ICMP_SLT,
@@ -158,5 +188,5 @@ void FlagsLifter::WriteSF(IRBuilder<> *IRB, llvm::Value *written) {
 
   auto trunc = Bool2Int(signBit, IRB);
 
-  WriteReg(trunc, Reg("SF"), NULL, IRB);
+  WriteReg(trunc, Reg("NF"), NULL, IRB);
 }
