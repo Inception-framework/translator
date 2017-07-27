@@ -31,7 +31,7 @@ void StoreLifter::registerLifter() {
   //
   // REGISTER_LOAD_OPCODE(t2STRDi8, t2STRDi8)
   // REGISTER_LOAD_OPCODE(t2STRD_PRE, t2STRD_PRE)
-  REGISTER_STORE_OPCODE(ARM::t2STRD_POST, Post, new StoreInfo(0, 2, 3, NULL, 1))
+  REGISTER_STORE_OPCODE(ARM::t2STRD_POST, Post, new StoreInfo(0, 2, 3, NULL, 2))
 
   // REGISTER_LOAD_OPCODE(tSTRi, tSTRi)
   // REGISTER_LOAD_OPCODE(t2STRi8, t2STRi8)
@@ -66,11 +66,10 @@ void StoreLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   index = info->iRd;
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+  Value* Rd_temp = Rd;
 
   index = info->iOffset;
   Value* Offset = visit(N->getOperand(index).getNode(), IRB);
-
-  Value* Rd_temp = Rd = UpdateRd(Rd, Offset, IRB, true);
 
   Value* Rn = NULL;
   while ((index = info->getNext()) != -1) {
@@ -82,6 +81,8 @@ void StoreLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
     if(info->hasManyUses())
       Rd_temp = UpdateRd(Rd_temp, c4, IRB, false);
   }
+
+  Rd = UpdateRd(Rd, Offset, IRB, true);
 
   saveNodeValue(N, Rd);
 }

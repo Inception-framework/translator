@@ -33,7 +33,7 @@ class StoreInfo {
 
     static int32_t next = iRn;
 
-    if (next > iRn_max) return -1;
+    if (next >= iRn_max) return -1;
     return next++;
   };
 
