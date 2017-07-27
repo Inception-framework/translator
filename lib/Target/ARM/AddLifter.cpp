@@ -13,7 +13,7 @@ using namespace fracture;
 
 void AddLifter::registerLifter() {
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADDrr,
-                      (LifterHandler)&AddLifter::AddsHandler);
+                      (LifterHandler)&AddLifter::AddHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADDhirr,
                       (LifterHandler)&AddLifter::AddHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADDrSPi,

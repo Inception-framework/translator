@@ -126,7 +126,7 @@ void FlagsLifter::WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res,
   // where lshift is written as if n >= 0, x << n, else x >> (-n)
 
   auto xor1 = IRB->CreateXor(lhs, rhs);
-  auto xor2 = IRB->CreateXor(xor1, getConstant("31"));
+  auto xor2 = IRB->CreateXor(xor1, getConstant("-1"));
   auto xor3 = IRB->CreateXor(lhs, res);
   auto anded = IRB->CreateAnd(xor2, xor3);
 
@@ -152,7 +152,7 @@ void FlagsLifter::WriteVFAdc(IRBuilder<> *IRB, llvm::Value *res,
   // where lshift is written as if n >= 0, x << n, else x >> (-n)
 
   auto xor1 = IRB->CreateXor(lhs, rhs);
-  auto xor2 = IRB->CreateXor(xor1, getConstant("31"));
+  auto xor2 = IRB->CreateXor(xor1, getConstant("-1"));
   auto xor3 = IRB->CreateXor(lhs, res);
   auto anded = IRB->CreateAnd(xor2, xor3);
 
