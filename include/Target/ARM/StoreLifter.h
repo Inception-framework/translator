@@ -64,6 +64,7 @@ class StoreLifter : public ARMLifter {
 #define HANDLER_STORE(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
 
   HANDLER_STORE(Post)
+  HANDLER_STORE(Pre)
 
   // HANDLER_LOAD(tPUSH)
   //
