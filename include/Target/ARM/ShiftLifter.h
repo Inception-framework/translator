@@ -9,9 +9,8 @@
 typedef struct ARMSHIFTInfo {
   llvm::Value* Op0;
   llvm::Value* Op1;
-  llvm::StringRef Name;
-  ARMSHIFTInfo(llvm::Value* _Op0, llvm::Value* _Op1, llvm::StringRef Name)
-      : Op0(_Op0), Op1(_Op1), Name(Name) {}
+  ARMSHIFTInfo(llvm::Value* _Op0, llvm::Value* _Op1)
+      : Op0(_Op0), Op1(_Op1) {}
 } ARMSHIFTInfo;
 
 class ARMLifterManager;

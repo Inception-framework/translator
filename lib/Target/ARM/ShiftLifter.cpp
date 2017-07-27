@@ -36,7 +36,7 @@ void ShiftLifter::ShiftHandlerLSL(SDNode *N, IRBuilder<> *IRB) {
   ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
 
   Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateShl(info->Op0, info->Op1, info->Name));
+      dyn_cast<Instruction>(IRB->CreateShl(info->Op0, info->Op1));
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -60,8 +60,6 @@ void ShiftLifter::ShiftHandlerLSR(SDNode *N, IRBuilder<> *IRB) {
       ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("0"), 10));
 
   Value *shift_amount_min1;
-  // StringRef BaseName = getBaseValueName(shift_amount_min1->getName());
-  // StringRef Name = getIndexedValueName(BaseName);
   if (info->Op1 == const_0) {
     shift_amount_min1 = IRB->CreateAdd(info->Op1, const_31);
   } else {
@@ -69,12 +67,10 @@ void ShiftLifter::ShiftHandlerLSR(SDNode *N, IRBuilder<> *IRB) {
   }
 
   Value *partial_res;
-  // BaseName = getBaseValueName(partial_res->getName());
-  // Name = getIndexedValueName(BaseName);
   partial_res = IRB->CreateLShr(info->Op0, shift_amount_min1);
 
   Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateLShr(partial_res, const_1, info->Name));
+      dyn_cast<Instruction>(IRB->CreateLShr(partial_res, const_1));
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -112,7 +108,7 @@ void ShiftLifter::ShiftHandlerASR(SDNode *N, IRBuilder<> *IRB) {
   partial_res = IRB->CreateAShr(info->Op0, shift_amount_min1);
 
   Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateAShr(partial_res, const_1, info->Name));
+      dyn_cast<Instruction>(IRB->CreateAShr(partial_res, const_1));
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -131,7 +127,7 @@ void ShiftLifter::ShiftHandlerROR(SDNode *N, IRBuilder<> *IRB) {
   Value *low = IRB->CreateLShr(info->Op0, info->Op1);
 
   Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateOr(high, low, info->Name));
+      dyn_cast<Instruction>(IRB->CreateOr(high, low));
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -143,20 +139,7 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
 
-  StringRef BaseName = getInstructionName(N, IRB);
-  if (BaseName.empty()) {
-    BaseName = getBaseValueName(Op0->getName());
-  }
-
-  if (BaseName.empty()) {
-    BaseName = getBaseValueName(Op1->getName());
-  }
-
-  StringRef Name = getIndexedValueName(BaseName);
-
-  ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1, Name);
+  ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1);
 
   return info;
 }
-
-

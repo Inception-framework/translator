@@ -46,25 +46,16 @@ Value* ARMLifter::getConstant(StringRef value) {
 Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
 
-  StringRef BaseName = getBaseValueName(Rd->getName());
-
   if (!Rd->getType()->isPointerTy()) {
-    StringRef Name = getIndexedValueName(BaseName);
-    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo(), Name);
+    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
   }
 
   if (Ty != NULL && Ty != Ty_word) {
-    StringRef BaseName = getBaseValueName(Rd->getName());
-    StringRef Name = getIndexedValueName(BaseName);
-
-    Rd = IRB->CreateTrunc(Rd, Ty, Name);
-
-    Name = getIndexedValueName(BaseName);
-    Rd = IRB->CreateZExt(Rd, Ty_word, Name);
+    Rd = IRB->CreateTrunc(Rd, Ty);
+    Rd = IRB->CreateZExt(Rd, Ty_word);
   }
 
-  StringRef Name = getIndexedValueName(BaseName);
-  Rd = IRB->CreateLoad(Rd, Name);
+  Rd = IRB->CreateLoad(Rd);
 
   return Rd;
 }
@@ -78,21 +69,14 @@ Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB) {
 Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
 
-  StringRef BaseName = getBaseValueName(Rd->getName());
-
   if (!Rd->getType()->isPointerTy()) {
-    StringRef Name = getIndexedValueName(BaseName);
-    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo(), Name);
+    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
   }
 
   if (Ty != NULL && Ty != Ty_word) {
-    StringRef BaseName = getBaseValueName(Rn->getName());
-    StringRef Name = getIndexedValueName(BaseName);
+    Rn = IRB->CreateTrunc(Rn, Ty);
 
-    Rn = IRB->CreateTrunc(Rn, Ty, Name);
-
-    Name = getIndexedValueName(BaseName);
-    Rn = IRB->CreateZExt(Rn, Ty_word, Name);
+    Rn = IRB->CreateZExt(Rn, Ty_word);
   }
 
   Instruction* store = IRB->CreateStore(Rn, Rd);
@@ -104,15 +88,11 @@ Value* ARMLifter::UpdateRd(Value* Rn, Value* Offset, IRBuilder<>* IRB,
                            bool Increment) {
   uint32_t i;
 
-  // Compute Register Name
-  StringRef BaseName = getBaseValueName(Rn->getName());
-  StringRef Name = getIndexedValueName(BaseName);
-
   // Add Offset to Address
   if (Increment)
-    Rn = IRB->CreateAdd(Rn, Offset, Name);
+    Rn = IRB->CreateAdd(Rn, Offset);
   else
-    Rn = IRB->CreateSub(Rn, Offset, Name);
+    Rn = IRB->CreateSub(Rn, Offset);
 
   return Rn;
 }
@@ -153,71 +133,6 @@ Value* ARMLifter::visit(const SDNode* N, IRBuilder<>* IRB) {
       return visitConstant(N);
   }
   return NULL;
-}
-
-StringRef ARMLifter::getIndexedValueName(StringRef BaseName) {
-  const ValueSymbolTable& ST = alm->Mod->getValueSymbolTable();
-
-  // In the common case, the name is not already in the symbol table.
-  Value* V = ST.lookup(BaseName);
-  if (V == NULL) {
-    return BaseName;
-  }
-
-  // Otherwise, there is a naming conflict.  Rename this value.
-  // FIXME: AFAIK this is never deallocated (memory leak). It should be
-  // free'd after it gets added to the symbol table (which appears to do a
-  // copy as indicated by the original code that stack allocated this
-  // variable).
-  SmallString<256>* UniqueName =
-      new SmallString<256>(BaseName.begin(), BaseName.end());
-  unsigned Size = BaseName.size();
-
-  // Add '_' as the last character when BaseName ends in a number
-  if (BaseName[Size - 1] <= '9' && BaseName[Size - 1] >= '0') {
-    UniqueName->resize(Size + 1);
-    (*UniqueName)[Size] = '_';
-    Size++;
-  }
-
-  unsigned LastUnique = 0;
-  while (1) {
-    // Trim any suffix off and append the next number.
-    UniqueName->resize(Size);
-    raw_svector_ostream(*UniqueName) << ++LastUnique;
-
-    // Try insert the vmap entry with this suffix.
-    V = ST.lookup(*UniqueName);
-    // FIXME: ^^ this lookup does not appear to be working on
-    // non-globals... Temporary Fix: check if it has a alm->BaseNames
-    // entry
-    if (V == NULL && alm->BaseNames[*UniqueName].empty()) {
-      alm->BaseNames[*UniqueName] = BaseName;
-      return *UniqueName;
-    }
-  }
-}
-
-StringRef ARMLifter::getBaseValueName(StringRef BaseName) {
-  // Note: An alternate approach would be to pull the Symbol table and
-  // do a string search, but this is much easier to implement.
-  StringRef Res = alm->BaseNames.lookup(BaseName);
-  if (Res.empty()) {
-    return BaseName;
-  }
-  return Res;
-}
-
-StringRef ARMLifter::getInstructionName(const SDNode* N, IRBuilder<>* IRB) {
-  // Look for register name in CopyToReg user
-  for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
-    if (I->getOpcode() == ISD::CopyToReg) {
-      return getIndexedValueName(
-          visitRegister(I->getOperand(1).getNode(), IRB)->getName());
-      // FIXME - Favor the first result number.  (EFLAGS vs ESI x86)
-    }
-  }
-  return StringRef();
 }
 
 std::string ARMLifter::getReg(const SDNode* N) {
@@ -318,8 +233,7 @@ Value* ARMLifter::visitCopyFromReg(const SDNode* N, IRBuilder<>* IRB) {
     return NULL;
   }
 
-  StringRef Name = getIndexedValueName(RegVal->getName());
-  Instruction* Res = IRB->CreateLoad(RegVal, Name);
+  Instruction* Res = IRB->CreateLoad(RegVal);
   alm->VisitMap[N] = Res;
   Res->setDebugLoc(N->getDebugLoc());
   return Res;
@@ -337,20 +251,9 @@ Value* ARMLifter::visitCopyToReg(const SDNode* N, IRBuilder<>* IRB) {
     return NULL;
   }
 
-  // errs() << "V:\t"
-  //        << "Output Type: " << V->getType()->getTypeID() << "\n";
-  // V->dump();
-  // errs() << "RegVal:\t"
-  //        << "Output Type: " << RegVal->getType()->getTypeID() << "\n";
-  // RegVal->dump();
-  // errs() << "\n\n";
-
-  StringRef BaseName = getBaseValueName(RegVal->getName());
-  StringRef Name = getIndexedValueName(BaseName);
-
   if (!RegVal->getType()->isPointerTy()) {
     RegVal =
-        IRB->CreateIntToPtr(RegVal, RegVal->getType()->getPointerTo(), Name);
+        IRB->CreateIntToPtr(RegVal, RegVal->getType()->getPointerTo());
   }
 
   Instruction* Res = IRB->CreateStore(V, RegVal);

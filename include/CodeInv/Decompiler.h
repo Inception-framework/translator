@@ -36,6 +36,7 @@
 
 #include "CodeInv/Disassembler.h"
 #include "Transforms/TypeRecovery.h"
+#include "Transforms/NameRecovery.h"
 
 using namespace llvm;
 

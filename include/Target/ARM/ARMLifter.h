@@ -51,13 +51,6 @@ class ARMLifter {
 
   std::string getReg(const SDNode* N);
 
-  llvm::StringRef getIndexedValueName(llvm::StringRef BaseName);
-
-  llvm::StringRef getBaseValueName(llvm::StringRef BaseName);
-
-  llvm::StringRef getInstructionName(const llvm::SDNode* N,
-                                     llvm::IRBuilder<>* IRB);
-
   llvm::Value* visitRegister(const llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 
   llvm::Value* visitCopyFromReg(const llvm::SDNode* N, llvm::IRBuilder<>* IRB);
