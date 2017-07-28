@@ -15,6 +15,10 @@ class CompareLifter : public ARMLifter{
   CompareLifter(ARMLifterManager* _alm) : ARMLifter(_alm) {};
 
   ~CompareLifter(){};
+
+ protected:
+  void CompareHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void CompareNHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 };
 
 #endif
