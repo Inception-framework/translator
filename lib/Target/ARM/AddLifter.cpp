@@ -80,7 +80,7 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
 
   Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1, info->Name));
+      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -91,7 +91,7 @@ void AddLifter::AddsHandler(SDNode *N, IRBuilder<> *IRB) {
   ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
 
   Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1, info->Name));
+      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -117,18 +117,7 @@ ARMADDInfo *AddLifter::RetrieveGraphInformation(SDNode *N, IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
 
-  StringRef BaseName = getInstructionName(N, IRB);
-  if (BaseName.empty()) {
-    BaseName = getBaseValueName(Op0->getName());
-  }
-
-  if (BaseName.empty()) {
-    BaseName = getBaseValueName(Op1->getName());
-  }
-
-  StringRef Name = getIndexedValueName(BaseName);
-
-  ARMADDInfo *info = new ARMADDInfo(Op0, Op1, Name);
+  ARMADDInfo *info = new ARMADDInfo(Op0, Op1);
 
   return info;
 }

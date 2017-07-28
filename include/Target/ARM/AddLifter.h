@@ -9,9 +9,8 @@
 typedef struct ARMADDInfo {
   llvm::Value* Op0;
   llvm::Value* Op1;
-  llvm::StringRef Name;
-  ARMADDInfo(llvm::Value* _Op0, llvm::Value* _Op1, llvm::StringRef Name)
-      : Op0(_Op0), Op1(_Op1), Name(Name) {}
+  ARMADDInfo(llvm::Value* _Op0, llvm::Value* _Op1)
+      : Op0(_Op0), Op1(_Op1) {}
 } ARMADDInfo;
 
 class AddLifter : public ARMLifter {

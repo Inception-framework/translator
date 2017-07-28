@@ -266,6 +266,7 @@ Function *Decompiler::decompileFunction(unsigned Address) {
   //    This is where to focus for type recovery.
   // FPM.add(createPromoteMemoryToRegisterPass()); // See Scalar.h for more.
   // FPM.add(createTypeRecoveryPass());
+  FPM.add(createNameRecoveryPass());
   FPM.run(*F);
 
   return F;

@@ -562,14 +562,11 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   }
 
   if (info->Trunc) {
-    StringRef BaseName = getBaseValueName(Res->getName());
-    StringRef Name = getIndexedValueName(BaseName);
-    Res = IRB->CreateTrunc(Res, info->Ty, Name);
+    Res = IRB->CreateTrunc(Res, info->Ty);
 
     Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
 
-    Name = getIndexedValueName(BaseName);
-    Res = IRB->CreateZExt(Res, Ty, Name);
+    Res = IRB->CreateZExt(Res, Ty);
   }
 
   if (info->OutputDst && !info->OutputAddr) alm->VisitMap[info->N] = Res;
@@ -613,22 +610,14 @@ llvm::Value* LoadLifter::UpdateAddress(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   Value* Addr = visit(info->N->getOperand(i).getNode(), IRB);
 
   if (info->Shift) {
-    // Compute Register Value
-    StringRef BaseName = getBaseValueName(Offset->getName());
-    StringRef Name = getIndexedValueName(BaseName);
-
     i = info->Layout->Shift;
     Value* Op = visit(info->N->getOperand(i).getNode(), IRB);
 
-    Offset = IRB->CreateShl(Offset, Op, Name);
+    Offset = IRB->CreateShl(Offset, Op);
   }
 
-  // Compute Register Value
-  StringRef BaseName = getBaseValueName(Addr->getName());
-  StringRef Name = getIndexedValueName(BaseName);
-
   // Add Offset to Address
-  Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, Offset, Name));
+  Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, Offset));
   dyn_cast<Instruction>(Addr)->setDebugLoc(info->N->getDebugLoc());
 
   return Addr;
@@ -636,16 +625,12 @@ llvm::Value* LoadLifter::UpdateAddress(LoadInfo* info, llvm::IRBuilder<>* IRB) {
 
 llvm::Value* LoadLifter::CreateLoad(LoadInfo* info, IRBuilder<>* IRB,
                                     Value* Addr) {
-  StringRef BaseName = getBaseValueName(Addr->getName());
-
   if (!Addr->getType()->isPointerTy()) {
-    StringRef Name = getIndexedValueName(BaseName);
-    Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
+    Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo());
     (dyn_cast<Instruction>(Addr))->setDebugLoc(info->N->getDebugLoc());
   }
 
-  StringRef Name = getIndexedValueName(BaseName);
-  Value* load = IRB->CreateLoad(Addr, Name);
+  Value* load = IRB->CreateLoad(Addr);
   dyn_cast<Instruction>(load)->setDebugLoc(info->N->getDebugLoc());
 
   return load;
@@ -653,11 +638,8 @@ llvm::Value* LoadLifter::CreateLoad(LoadInfo* info, IRBuilder<>* IRB,
 
 llvm::Value* LoadLifter::CreateStore(LoadInfo* info, IRBuilder<>* IRB,
                                      Value* Addr, Value* Src) {
-  StringRef BaseName = getBaseValueName(Addr->getName());
-
   if (!Addr->getType()->isPointerTy()) {
-    StringRef Name = getIndexedValueName(BaseName);
-    Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(), Name);
+    Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo());
   }
 
   Instruction* store = IRB->CreateStore(Src, Addr);
@@ -668,17 +650,13 @@ llvm::Value* LoadLifter::CreateStore(LoadInfo* info, IRBuilder<>* IRB,
 
 llvm::Value* LoadLifter::IncPointer(LoadInfo* info, IRBuilder<>* IRB,
                                     Value* Addr) {
-  StringRef BaseName = getBaseValueName(Addr->getName());
-
   ConstantInt* const_4 =
       ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("4"), 10));
 
-  StringRef Name = getIndexedValueName(BaseName);
-
   if (info->Increment)
-    Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, const_4, Name));
+    Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, const_4));
   else
-    Addr = dyn_cast<Instruction>(IRB->CreateSub(Addr, const_4, Name));
+    Addr = dyn_cast<Instruction>(IRB->CreateSub(Addr, const_4));
 
   dyn_cast<Instruction>(Addr)->setDebugLoc(info->N->getDebugLoc());
 

@@ -33,7 +33,7 @@ class StoreInfo {
 
     static int32_t next = iRn;
 
-    if (next > iRn_max) return -1;
+    if (next >= iRn_max) return -1;
     return next++;
   };
 
@@ -64,6 +64,8 @@ class StoreLifter : public ARMLifter {
 #define HANDLER_STORE(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
 
   HANDLER_STORE(Post)
+  HANDLER_STORE(Pre)
+  HANDLER_STORE(Signed)
 
   // HANDLER_LOAD(tPUSH)
   //

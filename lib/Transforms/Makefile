@@ -8,7 +8,7 @@
 ##===----------------------------------------------------------------------===##
 
 LEVEL = ../..
-PARALLEL_DIRS = TypeRecovery
+PARALLEL_DIRS = TypeRecovery NameRecovery
 
 # include $(LEVEL)/Makefile.config
 
