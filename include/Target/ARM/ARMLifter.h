@@ -74,6 +74,10 @@ class ARMLifter {
   Value* Reg(StringRef name);
 
   Value* Bool2Int(Value* v, IRBuilder<>* IRB);
+
+  bool IsSigned(SDNode* N);
+
+  bool IsCPSR(SDNode* N);
 };
 
 #endif

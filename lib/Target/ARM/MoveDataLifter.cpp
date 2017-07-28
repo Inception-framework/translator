@@ -50,7 +50,6 @@ void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
   N->dump();
 
   Value* Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Op0->dump();
 
   alm->VisitMap[N] = Op0;
 }

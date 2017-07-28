@@ -5,6 +5,51 @@
 
 using namespace llvm;
 
+bool ARMLifter::IsSigned(SDNode* N) {
+  llvm::errs() << "\n\n\nLooking for signed node \n";
+
+  for (SDNode::use_iterator U = N->use_begin(), EU = N->use_end(); U != EU; ++U)
+    for (SDNode::op_iterator O = U->op_begin(), EO = U->op_end(); O != EO; ++O)
+      if (IsCPSR(O->getNode())) return true;
+
+  for (SDNode::op_iterator O = N->op_begin(), EO = N->op_end(); O != EO; ++O)
+    for (SDNode::use_iterator U = O->getNode()->use_begin(),
+                              EU = O->getNode()->use_end();
+         U != EU; ++U) {
+      SDNode* node = dyn_cast<SDNode>(*U);
+      if (IsCPSR(node)) return true;
+    }
+
+  return false;
+}
+
+bool ARMLifter::IsCPSR(SDNode* N) {
+  N->dump();
+
+  if (N->getOpcode() == ISD::Register) {
+    const RegisterSDNode* R = dyn_cast<RegisterSDNode>(N);
+    if (R == NULL) {
+      return false;
+    }
+
+    std::string RegName;
+    raw_string_ostream RP(RegName);
+
+    RP << PrintReg(R->getReg(), alm->RegisterInfo);
+
+    RegName = RP.str().substr(1, RegName.size());
+
+    llvm::errs() << " Found -" << RegName << "- \n";
+
+    if (RegName.compare("CPSR") == 0) {
+      llvm::errs() << " Match \n";
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
 Value* ARMLifter::Bool2Int(Value* v, IRBuilder<>* IRB) {
   auto& C = alm->Mod->getContext();
 
@@ -252,8 +297,7 @@ Value* ARMLifter::visitCopyToReg(const SDNode* N, IRBuilder<>* IRB) {
   }
 
   if (!RegVal->getType()->isPointerTy()) {
-    RegVal =
-        IRB->CreateIntToPtr(RegVal, RegVal->getType()->getPointerTo());
+    RegVal = IRB->CreateIntToPtr(RegVal, RegVal->getType()->getPointerTo());
   }
 
   Instruction* Res = IRB->CreateStore(V, RegVal);

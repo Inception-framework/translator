@@ -180,18 +180,18 @@ StringRef NameRecovery::getInstructionName(Instruction* I) {
   // if(I->hasName())
   //   return StringRef();
 
-  llvm::errs() << "NameRecovery found : \n";
-  I->dump();
+  // llvm::errs() << "NameRecovery found : \n";
+  // I->dump();
 
   // Look for register name in CopyToReg user
   for (auto i = 0; i < I->getNumOperands(); i++) {
     Value* value = I->getOperand(i);
 
-    llvm::errs() << "Operand(" << i++ << ") : " << value->getName() << "\n";
+    // llvm::errs() << "Operand(" << i++ << ") : " << value->getName() << "\n";
 
     return getBaseValueName(value->getName());
   }
-  llvm::errs() << "------------------------\n\n";
+  // llvm::errs() << "------------------------\n\n";
 
   return StringRef();
 }
