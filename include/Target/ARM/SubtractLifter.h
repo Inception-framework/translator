@@ -8,13 +8,15 @@
 class ARMLifterManager;
 
 class SubtractLifter : public ARMLifter{
-  public :
+public:
 
   void registerLifter();
 
   SubtractLifter(ARMLifterManager* _alm) : ARMLifter(_alm) {};
 
   ~SubtractLifter(){};
+
+  void SubHandler(SDNode *N, IRBuilder<> *IRB);
 };
 
 #endif

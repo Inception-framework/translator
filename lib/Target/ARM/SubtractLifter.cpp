@@ -10,5 +10,22 @@ using namespace llvm;
 using namespace fracture;
 
 void SubtractLifter::registerLifter() {
-  // alm->registerLifter(ADDLifter, ARM::tADDrr, ADDHandler);
+  alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::tSUBi3,
+                      (LifterHandler)&SubtractLifter::SubHandler);
+  alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::tSUBi8,
+                      (LifterHandler)&SubtractLifter::SubHandler);
+  alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::tSUBrr,
+                      (LifterHandler)&SubtractLifter::SubHandler);
+  alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::tSUBspi,
+                      (LifterHandler)&SubtractLifter::SubHandler);
+}
+
+void SubtractLifter::SubHandler(SDNode *N, IRBuilder<> *IRB) {
+  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
+  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+
+  Instruction *Res =
+      dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1));
+
+  saveNodeValue(N, Res);
 }
