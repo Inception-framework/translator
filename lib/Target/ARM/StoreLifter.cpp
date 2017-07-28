@@ -239,7 +239,7 @@ void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Rd = UpdateRd(Rd, Offset, IRB, true);
 
   Value* Rn = NULL;
-  Rn = visit(N->getOperand(info->getNext()).getNode(), IRB);
+  Rn = visit(N->getOperand(info->iRn).getNode(), IRB);
 
   Rn = WriteReg(Rn, Rd, info->Ty, IRB);
 
