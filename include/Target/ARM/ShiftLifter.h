@@ -1,5 +1,5 @@
-#ifndef SUB_LIFTER_H
-#define SUB_LIFTER_H
+#ifndef SHIFT_LIFTER_H
+#define SHIFT_LIFTER_H
 
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
