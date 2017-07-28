@@ -19,10 +19,9 @@ void StoreLifter::registerLifter() {
   Type* Ty_hword = IntegerType::get(alm->Mod->getContext(), 16);
   Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 32);
 
-  //
   // REGISTER_LOAD_OPCODE(tPUSH, tPUSH)
-  //
-  // REGISTER_LOAD_OPCODE(t2LDMIA_UPD, t2LDMIA_UPD)
+  // REGISTER_LOAD_OPCODE(, t2LDMIA_UPD)
+  REGISTER_STORE_OPCODE(ARM::t2STMIA_UPD, Multi, new StoreInfo(4, 1, 0))
   // REGISTER_LOAD_OPCODE(t2LDMIA, t2LDMIA)
   //
   // REGISTER_LOAD_OPCODE(tSTRr, tSTRr)
@@ -54,6 +53,32 @@ void StoreLifter::registerLifter() {
   REGISTER_STORE_OPCODE(ARM::t2STRH_POST, Post,
                         new StoreInfo(1, 2, 3, Ty_hword))
   REGISTER_STORE_OPCODE(ARM::t2STRHs, Signed, new StoreInfo(1, 2, 3, Ty_hword))
+}
+
+void StoreLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 32);
+
+  c4 = ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("4"), 10));
+
+  StoreInfo* info = getInfo(N->getMachineOpcode());
+
+  info->iRn_max = N->getNumOperands();
+  index = info->iRd;
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  Value* Rn = NULL;
+  while ((index = info->getNext()) != -1) {
+    Rn = visit(N->getOperand(index).getNode(), IRB);
+
+    Rn = WriteReg(Rn, Rd, info->Ty, IRB);
+
+    if (info->hasManyUses()) Rd = UpdateRd(Rd, c4, IRB, true);
+  }
+
+  saveNodeValue(N, Rd);
 }
 
 void StoreLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {

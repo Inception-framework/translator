@@ -66,7 +66,7 @@ class StoreLifter : public ARMLifter {
   HANDLER_STORE(Post)
   HANDLER_STORE(Pre)
   HANDLER_STORE(Signed)
-
+  HANDLER_STORE(Multi)
   // HANDLER_LOAD(tPUSH)
   //
   // HANDLER_LOAD(t2LDMIA_UPD)
