@@ -19,7 +19,10 @@ void BranchLifter::registerLifter() {
 }
 
 void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
-  IRB->CreateRetVoid();
+  Instruction *Ret = IRB->CreateRetVoid();
+  Ret->setDebugLoc(N->getDebugLoc());
+  alm->VisitMap[N] = Ret;
+  return;
 }
 
 void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
@@ -58,7 +61,7 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
     return;
   }
 
-  // If not a conditional branch, find the successor block and look at CC
+  // If conditional branch, find the successor block and look at CC
   BasicBlock *NextBB = NULL;
   Function::iterator BI = F->begin(), BE = F->end();
   while (BI != BE && BI->getName() != CurBB->getName()) ++BI;
