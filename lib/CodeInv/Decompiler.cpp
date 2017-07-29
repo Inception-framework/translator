@@ -165,9 +165,10 @@ Function *Decompiler::decompileFunction(unsigned Address) {
 
   // For each basic block
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
+  outs() << "BEGIN: First BB iteration\n";
   while (BI != BE) {
-    // outs() << "-----BI------\n";
-    // BI->dump();
+    outs() << "-----BI------\n";
+    BI->dump();
     // Add branch from "entry"
     if (BI == MF->begin()) {
       entry->getInstList().push_back(
@@ -177,17 +178,21 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     }
     ++BI;
   }
+  outs() << "END: First BB iteration\n";
 
+  outs() << "BEGIN: Decompile basic blocks\n";
   BI = MF->begin();
   while (BI != BE) {
-    // outs() << "\n[decompileFunction] call decompileBasicBlock \n";
-    // BI->dump();
+    outs() << "\n[decompileFunction] call decompileBasicBlock \n";
+    BI->dump();
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
     }
     ++BI;
     // outs() << "\n--> done\n\n";
   }
+  outs() << "END: Decompile basic blocks\n";
+  outs() << "BEGIN: handling new basic blocks\n";
 
   // During Decompilation, did any "in-between" basic blocks get created?
   // Nothing ever splits the entry block, so we skip it.
@@ -204,45 +209,48 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     size_t Off = F->getName().size() + 1;
     size_t Size = Name.size() - Off;
 
-    // outs() << "-----I------\n";
-    // outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size <<
-    // "\n";  I->dump();
+    outs() << "-----I------\n";
+    outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size
+           << "\n";
+    I->dump();
 
     StringRef BBAddrStr = Name.substr(Off, Size);
     unsigned long long BBAddr;
     getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
     BBAddr += Address;
-    DEBUG(errs() << "Split Target: " << Name << "\t Address: " << BBAddr
-                 << "\n");
+    outs() << "Split Target: " << Name << "\t Address: " << BBAddr << "\n";
     // split Block at AddrStr
     Function::iterator SB;        // Split basic block
     BasicBlock::iterator SI, SE;  // Split instruction
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
-      DEBUG(SB->dump());
+      SB->dump();
       if (SB->empty() || BBAddr < getBasicBlockAddress(SB)) {
+        outs() << "SB->empty() || BBAddr < getBasicBlockAddress(SB)\n";
         continue;
       }
       assert(SB->getTerminator() &&
              "Decompiler::decompileFunction - getTerminator (missing llvm "
              "unreachable?)");
-      DEBUG(outs() << "SB: " << SB->getName() << "\tRange: "
-                   << Dis->getDebugOffset(SB->begin()->getDebugLoc()) << " "
-                   << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
-                   << "\n");
+      outs() << "SB: " << SB->getName()
+             << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
+             << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
+             << "\n";
       if (BBAddr > Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())) {
+        outs() << "BBAddr > "
+                  "Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())\n";
         continue;
       }
 
       // Reorder instructions based on Debug Location
       sortBasicBlock(SB);
-      DEBUG(errs() << "Found Split Block: " << SB->getName() << "\n");
+      outs() << "Found Split Block: " << SB->getName() << "\n";
       // Find iterator to split on.
       for (SI = SB->begin(), SE = SB->end(); SI != SE; ++SI) {
-        // outs() << "SI: " << SI->getDebugLoc().getLine() << "\n";
+        outs() << "SI: " << SI->getDebugLoc().getLine() << "\n";
         if (Dis->getDebugOffset(SI->getDebugLoc()) == BBAddr) break;
         if (Dis->getDebugOffset(SI->getDebugLoc()) > BBAddr) {
-          errs() << "Could not find address inside basic block!\n"
+          outs() << "Could not find address inside basic block!\n"
                  << "SI: " << Dis->getDebugOffset(SI->getDebugLoc()) << "\n"
                  << "BBAddr: " << BBAddr << "\n";
           break;
@@ -251,13 +259,14 @@ Function *Decompiler::decompileFunction(unsigned Address) {
       break;
     }
     if (!SB || SI == SE || SB == E) {
-      errs() << "Decompiler: Failed to find instruction offset in function!\n";
+      outs() << "Decompiler: Failed to find instruction offset in function!\n";
       continue;
     }
     // outs() << SB->getName() << " " << SI->getName() << "\n";
     // outs() << "Creating Block...";
     splitBasicBlockIntoBlock(SB, SI, I);
   }
+  outs() << "END: handling new basic blocks\n";
 
   // Clean up unnecessary stores and loads
   FunctionPassManager FPM(Mod);
