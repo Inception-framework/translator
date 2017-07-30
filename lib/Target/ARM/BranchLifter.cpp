@@ -148,14 +148,16 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
     case ARMCC::HI:
       // HI - unsigned higher
       // Cmp = IRB->CreateICmpUGT(LHS, RHS);
-      Cmp =
-          IRB->CreateICmpUGT(ReadReg(Reg("CF"), IRB), ReadReg(Reg("NF"), IRB));
+      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("1"));
+      Cmp2 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("0"));
+      Cmp = IRB->CreateAnd(Cmp1, Cmp2);
       break;
     case ARMCC::LS:
       // LS - unsigned lower or same
       // Cmp = IRB->CreateICmpULE(LHS, RHS);
-      Cmp =
-          IRB->CreateICmpULT(ReadReg(Reg("CF"), IRB), ReadReg(Reg("NF"), IRB));
+      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("0"));
+      Cmp2 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("1"));
+      Cmp = IRB->CreateOr(Cmp1, Cmp2);
       break;
     case ARMCC::GE:
       // GE - signed greater or equal
