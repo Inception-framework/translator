@@ -243,7 +243,7 @@ Function *Decompiler::decompileFunction(unsigned Address) {
       }
 
       // Reorder instructions based on Debug Location
-      sortBasicBlock(SB);
+      // sortBasicBlock(SB);
       outs() << "Found Split Block: " << SB->getName() << "\n";
       // Find iterator to split on.
       for (SI = SB->begin(), SE = SB->end(); SI != SE; ++SI) {
@@ -262,8 +262,8 @@ Function *Decompiler::decompileFunction(unsigned Address) {
       outs() << "Decompiler: Failed to find instruction offset in function!\n";
       continue;
     }
-    // outs() << SB->getName() << " " << SI->getName() << "\n";
-    // outs() << "Creating Block...";
+    outs() << SB->getName() << " " << SI->getName() << "\n";
+    outs() << "Creating Block...\n";
     splitBasicBlockIntoBlock(SB, SI, I);
   }
   outs() << "END: handling new basic blocks\n";
