@@ -92,15 +92,6 @@ void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
   WriteReg(cmpRes, Reg("CF"), NULL, IRB);
 }
 
-void FlagsLifter::WriteCFSub(IRBuilder<> *IRB, llvm::Value *argL,
-                             llvm::Value *argR) {
-  auto cmpRes = IRB->CreateICmp(llvm::CmpInst::ICMP_ULT, argL, argR);
-
-  cmpRes = Bool2Int(cmpRes, IRB);
-
-  WriteReg(cmpRes, Reg("CF"), NULL, IRB);
-}
-
 void FlagsLifter::WriteVFSub(IRBuilder<> *IRB, llvm::Value *res,
                              llvm::Value *lhs, llvm::Value *rhs) {
   // of = lshift((lhs ^ rhs ) & (lhs ^ res), 12 - width) & 2048

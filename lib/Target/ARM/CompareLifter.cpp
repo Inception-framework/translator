@@ -43,9 +43,12 @@ void CompareLifter::CompareHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
 
-  Instruction *Res = dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1));
+  // subtraction
+  Value *onescompl = IRB->CreateNot(Op1);
+  Value *Res_add = IRB->CreateAdd(Op0, onescompl);
+  Value *Res = IRB->CreateAdd(Res_add, getConstant("1"));
 
-  Res->setDebugLoc(N->getDebugLoc());
+  // Res->setDebugLoc(N->getDebugLoc());
 
   // Write the flag updates.
   // Compute AF.
@@ -55,9 +58,11 @@ void CompareLifter::CompareHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Compute ZF.
   flags->WriteZF(IRB, Res);
   // Ccompute VF.
-  flags->WriteVFSub(IRB, Res, Op0, Op1);
+  flags->WriteVFAdd(IRB, Res_add, Op0, onescompl);
+  flags->WriteVFAdc(IRB, Res, Res_add, getConstant("1"));
   // Compute CF.
-  flags->WriteCFAdd(IRB, Res, Op0);
+  flags->WriteCFAdd(IRB, Res_add, Op0);
+  flags->WriteCFAdc(IRB, Res, Res_add);
 
   // Dummy CPSR, not used, Flags are used instead if necessary
   Value *dummyCPSR = getConstant("0");
