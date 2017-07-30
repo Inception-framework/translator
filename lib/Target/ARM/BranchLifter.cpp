@@ -125,25 +125,25 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
       // MI - minus (negative)
       // errs() << "Condition code MI is not handled at this time!\n";
       Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), getConstant("1"));
-      return;
+      break;
     // break;
     case ARMCC::PL:
       // PL - plus (positive or zero)
       // errs() << "Condition code PL is not handled at this time!\n";
       Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), getConstant("0"));
-      return;
+      break;
     // break;
     case ARMCC::VS:
       // VS - V Set (signed overflow)
       // errs() << "Condition code VS is not handled at this time!\n";
       Cmp = IRB->CreateICmpEQ(ReadReg(Reg("VF"), IRB), getConstant("1"));
-      return;
+      break;
     // break;
     case ARMCC::VC:
       // VC - V clear (no signed overflow)
       // errs() << "Condition code VC is not handled at this time!\n";
       Cmp = IRB->CreateICmpEQ(ReadReg(Reg("VF"), IRB), getConstant("0"));
-      return;
+      break;
     // break;
     case ARMCC::HI:
       // HI - unsigned higher
