@@ -16,6 +16,8 @@ void BranchLifter::registerLifter() {
                       (LifterHandler)&BranchLifter::BranchHandlerB);
   alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tBcc,
                       (LifterHandler)&BranchLifter::BranchHandlerB);
+  alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tBL,
+                      (LifterHandler)&BranchLifter::BranchHandlerBL);
 }
 
 void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
@@ -194,3 +196,71 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   alm->VisitMap[N] = Br;
   return;
 }
+
+// TODO: handle conditions in factorized code for all branch types
+// This version of BL does not handle conditions
+void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
+  const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(3));
+  if (!DestNode) {
+    outs() << "visitCALL: Not a constant integer for call!";
+    return;
+  }
+
+  int64_t DestInt = DestNode->getSExtValue();
+  int64_t PC = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+  int64_t Tgt = PC + 4 + DestInt;
+
+  // TODO: Look up address in symbol table.
+  std::string FName = alm->Dec->getDisassembler()->getFunctionName(Tgt);
+
+  Module *Mod = IRB->GetInsertBlock()->getParent()->getParent();
+
+  Function *Func = Mod->getFunction(FName);
+  if (Func == NULL) {
+    outs() << "Error, Func == NULL\n";
+    exit(0);
+  }
+
+  std::vector<Value *> Args;
+  std::vector<Type *> ArgTypes;
+  char reg_name[3] = "R0";
+  for (Function::arg_iterator I = Func->arg_begin(), E = Func->arg_end();
+       I != E; ++I) {
+    ArgTypes.push_back(I->getType());
+    Args.push_back(ReadReg(Reg(reg_name), IRB));
+    reg_name[1]++;
+  }
+
+  FunctionType *FT = FunctionType::get(
+      // Type::getPrimitiveType(Mod->getContext(), Type::VoidTyID), false);
+      Func->getReturnType(), ArgTypes, false);
+
+  Twine TgtAddr(Tgt);
+
+  outs() << " =========================== \n\n";
+  outs() << "Tgt        :  " << format("%8" PRIx64, Tgt) << '\n';
+  outs() << "instrSize  :  " << format("%8" PRIx64, 4) << '\n';
+  outs() << "DestInt    :  " << format("%8" PRIx64, DestInt) << '\n';
+  outs() << "PC         :  " << format("%8" PRIx64, PC) << '\n';
+  outs() << "FName      :  " << FName << '\n';
+  outs() << " =========================== \n\n";
+
+  AttributeSet AS;
+  AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+                       "Address", TgtAddr.str());
+
+  Function *Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
+  // Value *Proto = Mod->getOrInsertFunction(
+  //    FName, FunctionType::get(Func->getReturnType(), ArgTypes, false), AS);
+
+  Proto->setCallingConv(Func->getCallingConv());
+  Value *Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
+  if (!Func->getReturnType()->isVoidTy()) WriteReg(Call, Reg("R0"), NULL, IRB);
+
+  Value *dummyLR = getConstant("0");
+  alm->VisitMap[N] = dummyLR;
+  return;
+
+  // TODO: Technically visitCall sets the LR to IP+8. We should return that.
+}
+

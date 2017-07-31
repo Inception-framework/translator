@@ -241,7 +241,7 @@ void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
   }
   Metadata.clear();
 
-  // outs() << "Removing : " << *instruction << "\n";
+  outs() << "Removing : " << *instruction << "\n";
   instruction->dropAllReferences();
   // instruction->removeFromParent();
   instruction->eraseFromParent();
