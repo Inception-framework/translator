@@ -10,14 +10,20 @@ bool ARMLifter::IsSigned(SDNode* N) {
 
   for (SDNode::use_iterator U = N->use_begin(), EU = N->use_end(); U != EU; ++U)
     for (SDNode::op_iterator O = U->op_begin(), EO = U->op_end(); O != EO; ++O)
-      if (IsCPSR(O->getNode())) return true;
+      if (IsCPSR(O->getNode())) {
+        outs() << "Found CPSR in output\n";
+        return true;
+      }
 
   for (SDNode::op_iterator O = N->op_begin(), EO = N->op_end(); O != EO; ++O)
     for (SDNode::use_iterator U = O->getNode()->use_begin(),
                               EU = O->getNode()->use_end();
          U != EU; ++U) {
       SDNode* node = dyn_cast<SDNode>(*U);
-      if (IsCPSR(node)) return true;
+      if (IsCPSR(node)) {
+        outs() << "Found CPSR in input\n";
+        return true;
+      }
     }
 
   return false;
@@ -37,7 +43,7 @@ bool ARMLifter::IsCPSR(SDNode* N) {
 
     RP << PrintReg(R->getReg(), alm->RegisterInfo);
 
-    RegName = RP.str().substr(1, RegName.size());
+    RegName = RP.str().substr(1, RP.str().size());
 
     llvm::errs() << " Found -" << RegName << "- \n";
 
