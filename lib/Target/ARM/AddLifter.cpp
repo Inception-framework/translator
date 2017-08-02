@@ -48,33 +48,49 @@ void AddLifter::registerLifter() {
                       (LifterHandler)&AddLifter::AdcHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADCrr,
                       (LifterHandler)&AddLifter::AdcHandler);
+  alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADC,
+                      (LifterHandler)&AddLifter::AdcHandler);
 }
 
 void AddLifter::AdcHandler(SDNode *N, IRBuilder<> *IRB) {
   auto cf = ReadReg(Reg("CF"), IRB);
 
-  AddsHandler(N, IRB);  // Si opérande à la même position
+  AddHandler(N, IRB);  // Si opérande à la même position
   Value *Res_add = alm->VisitMap[N];
 
 
   // then
   Value *Res_adc = IRB->CreateAdd(Res_add, cf);
 
-  // Write the flag updates.
-  // Compute AF.
-  FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+  bool S = IsSetFlags(N);
+  if (S) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
 
-  // Compute NF.
-  flags->WriteNF(IRB, Res_adc);
-  // Compute ZF.
-  flags->WriteZF(IRB, Res_adc);
-  // Ccompute VF.
-  flags->WriteVFAdc(IRB, Res_adc, Res_add, cf);
-  // Compute CF.
-  flags->WriteCFAdc(IRB, Res_adc, Res_add);
+    // Compute NF.
+    flags->WriteNF(IRB, Res_adc);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res_adc);
+    // Ccompute VF.
+    flags->WriteVFAdc(IRB, Res_adc, Res_add, cf);
+    // Compute CF.
+    flags->WriteCFAdc(IRB, Res_adc, Res_add);
+  }
 
   alm->VisitMap[N] = Res_adc;
 }
+
+// void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
+//  ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
+//
+//  Instruction *Res =
+//      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
+//
+//  Res->setDebugLoc(N->getDebugLoc());
+//
+//  alm->VisitMap[N] = Res;
+//}
 
 void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
@@ -85,39 +101,30 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   Res->setDebugLoc(N->getDebugLoc());
 
   alm->VisitMap[N] = Res;
-}
 
-void AddLifter::AddsHandler(SDNode *N, IRBuilder<> *IRB) {
-  ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
+  if (info->S) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
 
-  Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
-
-  Res->setDebugLoc(N->getDebugLoc());
-
-  alm->VisitMap[N] = Res;
-
-  // Write the flag updates.
-  // Compute AF.
-  FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
-
-  ////Compute NF
-  // flags->WriteNFAdd(IRB, Res);
-  // Compute NF.
-  flags->WriteNF(IRB, Res);
-  // Compute ZF.
-  flags->WriteZF(IRB, Res);
-  // Ccompute VF.
-  flags->WriteVFAdd(IRB, Res, info->Op0, info->Op1);
-  // Compute CF.
-  flags->WriteCFAdd(IRB, Res, info->Op0);
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Res);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res);
+    // Ccompute VF.
+    flags->WriteVFAdd(IRB, Res, info->Op0, info->Op1);
+    // Compute CF.
+    flags->WriteCFAdd(IRB, Res, info->Op0);
+  }
 }
 
 ARMADDInfo *AddLifter::RetrieveGraphInformation(SDNode *N, IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
-
-  ARMADDInfo *info = new ARMADDInfo(Op0, Op1);
+  bool S = IsSetFlags(N);
+  ARMADDInfo *info = new ARMADDInfo(Op0, Op1, S);
 
   return info;
 }

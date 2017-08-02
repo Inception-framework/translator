@@ -1,6 +1,11 @@
 #include "Target/ARM/ARMLifter.h"
 #include "Target/ARM/ARMLifterManager.h"
 
+#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMISD.h"
+#include "llvm/CodeGen/ISDOpcodes.h"
+#include "llvm/CodeGen/SelectionDAGNodes.h"
+
 #define DEBUG_TYPE "ARMLifter.cpp"
 
 using namespace llvm;
@@ -27,6 +32,32 @@ bool ARMLifter::IsSigned(SDNode* N) {
     }
 
   return false;
+}
+
+bool ARMLifter::IsSetFlags(SDNode* N) {
+  if (N->getNumOperands() >= 5 &&
+      IsCPSR(N->getOperand(4).getNode()->getOperand(1).getNode())) {
+    outs() << "IsSetFlags = true\n";
+    return true;
+  } else {
+    if (N->isMachineOpcode()) {
+      switch (N->getMachineOpcode()) {
+        case ARM::tADDrr:
+        case ARM::tADDi8:
+        case ARM::tADDi3:
+          // TODO more cases
+          // TODO should we also check if outside IT block and not AL condition
+          // for some of them?
+          outs() << "IsSetFlags = true\n";
+          return true;
+        default:
+          outs() << "IsSetFlags = false\n";
+          return false;
+      }
+    }
+    outs() << "IsSetFlags = false\n";
+    return false;
+  }
 }
 
 bool ARMLifter::IsCPSR(SDNode* N) {

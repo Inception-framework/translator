@@ -77,6 +77,8 @@ class ARMLifter {
 
   bool IsSigned(SDNode* N);
 
+  bool IsSetFlags(SDNode* N);
+
   bool IsCPSR(SDNode* N);
 };
 
