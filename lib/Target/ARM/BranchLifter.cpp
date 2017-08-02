@@ -18,6 +18,10 @@ void BranchLifter::registerLifter() {
                       (LifterHandler)&BranchLifter::BranchHandlerB);
   alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tBL,
                       (LifterHandler)&BranchLifter::BranchHandlerBL);
+  alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::t2B,
+                      (LifterHandler)&BranchLifter::BranchHandlerB);
+  alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::t2Bcc,
+                      (LifterHandler)&BranchLifter::BranchHandlerB);
 }
 
 void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
