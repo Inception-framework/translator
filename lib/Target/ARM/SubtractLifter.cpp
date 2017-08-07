@@ -18,6 +18,12 @@ void SubtractLifter::registerLifter() {
                       (LifterHandler)&SubtractLifter::SubHandler);
   alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::tSUBspi,
                       (LifterHandler)&SubtractLifter::SubHandler);
+  alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::t2SUBrr,
+                      (LifterHandler)&SubtractLifter::SubHandler);
+  alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::t2SUBri,
+                      (LifterHandler)&SubtractLifter::SubHandler);
+  alm->registerLifter(this, std::string("SubLifter"), (unsigned)ARM::t2SUBri12,
+                      (LifterHandler)&SubtractLifter::SubHandler);
 }
 
 void SubtractLifter::SubHandler(SDNode *N, IRBuilder<> *IRB) {
