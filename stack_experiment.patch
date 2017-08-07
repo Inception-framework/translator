@@ -1,0 +1,50 @@
+diff --git a/lib/Target/ARM/ARMLifter.cpp b/lib/Target/ARM/ARMLifter.cpp
+index ba2db51..b3a5056 100644
+--- a/lib/Target/ARM/ARMLifter.cpp
++++ b/lib/Target/ARM/ARMLifter.cpp
+@@ -280,13 +280,29 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
+         if (!main_fct)
+           llvm::errs() << "Unable to find main function needed to init SP !";
+ 
+-        ConstantInt* const_int32 = ConstantInt::get(
+-            alm->Mod->getContext(), APInt(32, StringRef("536875008"), 10));
++        // ConstantInt* const_int32 = ConstantInt::get(
++        //    alm->Mod->getContext(), APInt(32, StringRef("536875008"),10));
++        Value* stack = alm->Mod->getGlobalVariable("STACK");
++        Value* stack_gep4 = NULL;
++        // Value* stack_gep32 = NULL;
++        Value* stack_int32 = NULL;
+ 
+         Instruction* inst = main_fct->getEntryBlock().begin();
+ 
+         IRBuilder<>* builder = new IRBuilder<>(inst);
+-        builder->CreateStore(const_int32, gvar_ptr);
++        // builder->CreateStore(const_int32, gvar_ptr);
++        Value* IdxList[2];
++        IdxList[0] = getConstant("0");
++        IdxList[1] = getConstant("8192");
++        stack_gep4 = builder->CreateGEP(stack, IdxList);
++        // stack_gep32 = builder->CreateBitCast(
++        //    stack_gep4,
++        //    IntegerType::get(alm->Mod->getContext(), 32)->getPointerTo());
++        stack_int32 = builder->CreatePtrToInt(
++            stack_gep4, IntegerType::get(alm->Mod->getContext(), 32));
++        outs() << "dumping stack\n";
++        stack_int32->dump();
++        builder->CreateStore(stack_int32, gvar_ptr);
+       }
+ 
+       gvar_ptr->setAlignment(4);
+diff --git a/tools/inception-cl/IRMerger.cpp b/tools/inception-cl/IRMerger.cpp
+index 9fa0288..1140a10 100644
+--- a/tools/inception-cl/IRMerger.cpp
++++ b/tools/inception-cl/IRMerger.cpp
+@@ -43,7 +43,7 @@ void IRMerger::Run() {
+     Value* Reg = DEC->getModule()->getGlobalVariable("STACK");
+     if (Reg == NULL) {
+       Type* Ty = ArrayType::get(
+-          IntegerType::get(DEC->getModule()->getContext(), 4), 8200);
++          IntegerType::get(DEC->getModule()->getContext(), 4), 16400);
+ 
+       Constant* Initializer = Constant::getNullValue(Ty);
+ 
