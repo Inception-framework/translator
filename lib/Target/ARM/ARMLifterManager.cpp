@@ -69,7 +69,7 @@ LifterSolver* ARMLifterManager::resolve(unsigned opcode) {
 
 void ARMLifterManager::registerAll() {
   for (auto b = lifters.begin(), e = lifters.end(); b != e; b++) {
-    llvm::outs() << "Register Lifter : " << b->first << "\n";
+    llvm::outs() << "Registering Lifter : " << b->first << "\n";
     b->second->registerLifter();
   }
 }

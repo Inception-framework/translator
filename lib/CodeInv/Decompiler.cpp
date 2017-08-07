@@ -167,8 +167,8 @@ Function *Decompiler::decompileFunction(unsigned Address) {
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
   outs() << "BEGIN: First BB iteration\n";
   while (BI != BE) {
-    outs() << "-----BI------\n";
-    BI->dump();
+    // outs() << "-----BI------\n";
+    // BI->dump();
     // Add branch from "entry"
     if (BI == MF->begin()) {
       entry->getInstList().push_back(
@@ -184,7 +184,7 @@ Function *Decompiler::decompileFunction(unsigned Address) {
   BI = MF->begin();
   while (BI != BE) {
     outs() << "\n[decompileFunction] call decompileBasicBlock \n";
-    BI->dump();
+    // BI->dump();
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
     }
@@ -409,9 +409,9 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
 
     uint16_t TargetOpc = Node->getMachineOpcode();
 
-    // llvm::errs() << "----------------------------\n";
-    // llvm::errs() << "Next Node : \n";
-    // Node->dump();
+    llvm::errs() << "----------------------------\n";
+    llvm::errs() << "Next Node : \n";
+    Node->dump();
 
     // XXX: Emit IR code for each supported node
     LifterSolver *solver = alm->resolve(TargetOpc);
@@ -429,7 +429,7 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
       assert(solver && "Unable to solve opcode ...");
       break;
     }
-    // llvm::errs() << "\n----------------------------\n";
+    llvm::errs() << "\n----------------------------\n";
   }
   DAG->setRoot(Dummy.getValue());
 

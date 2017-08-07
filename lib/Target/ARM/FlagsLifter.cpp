@@ -56,7 +56,7 @@ void FlagsLifter::WriteZF(IRBuilder<> *IRB, llvm::Value *w) {
 
   icmp = Bool2Int(icmp, IRB);
 
-  WriteReg(icmp, Reg("ZF"), NULL, IRB);
+  WriteReg(icmp, Reg("ZF"), IRB);
 }
 
 void FlagsLifter::WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *val,
@@ -66,7 +66,7 @@ void FlagsLifter::WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *val,
 
   v = Bool2Int(v, IRB);
 
-  WriteReg(v, Reg("CF"), NULL, IRB);
+  WriteReg(v, Reg("CF"), IRB);
 }
 
 void FlagsLifter::WriteCFAdc(IRBuilder<> *IRB, llvm::Value *res,
@@ -79,7 +79,7 @@ void FlagsLifter::WriteCFAdc(IRBuilder<> *IRB, llvm::Value *res,
 
   auto xor1 = IRB->CreateOr(cmpRes, cf);
 
-  WriteReg(xor1, Reg("CF"), NULL, IRB);
+  WriteReg(xor1, Reg("CF"), IRB);
 }
 
 void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
@@ -89,7 +89,7 @@ void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
 
   cmpRes = Bool2Int(cmpRes, IRB);
 
-  WriteReg(cmpRes, Reg("CF"), NULL, IRB);
+  WriteReg(cmpRes, Reg("CF"), IRB);
 }
 
 void FlagsLifter::WriteVFSub(IRBuilder<> *IRB, llvm::Value *res,
@@ -108,7 +108,7 @@ void FlagsLifter::WriteVFSub(IRBuilder<> *IRB, llvm::Value *res,
   auto trunced = Bool2Int(shifted, IRB);
 
   // write to OF
-  WriteReg(trunced, Reg("VF"), NULL, IRB);
+  WriteReg(trunced, Reg("VF"), IRB);
 }
 
 void FlagsLifter::WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res,
@@ -134,7 +134,7 @@ void FlagsLifter::WriteVFAdd(IRBuilder<> *IRB, llvm::Value *res,
   auto trunced = Bool2Int(anded1, IRB);
 
   // write to OF
-  WriteReg(trunced, Reg("VF"), NULL, IRB);
+  WriteReg(trunced, Reg("VF"), IRB);
 }
 
 void FlagsLifter::WriteVFAdc(IRBuilder<> *IRB, llvm::Value *res,
@@ -164,7 +164,7 @@ void FlagsLifter::WriteVFAdc(IRBuilder<> *IRB, llvm::Value *res,
   // truncate anded1
   auto trunced = Bool2Int(anded1, IRB);
 
-  WriteReg(trunced, Reg("VF"), NULL, IRB);
+  WriteReg(trunced, Reg("VF"), IRB);
 }
 
 void FlagsLifter::WriteNF(IRBuilder<> *IRB, llvm::Value *written) {
@@ -179,5 +179,5 @@ void FlagsLifter::WriteNF(IRBuilder<> *IRB, llvm::Value *written) {
 
   auto trunc = Bool2Int(signBit, IRB);
 
-  WriteReg(trunc, Reg("NF"), NULL, IRB);
+  WriteReg(trunc, Reg("NF"), IRB);
 }

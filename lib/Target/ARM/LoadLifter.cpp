@@ -14,48 +14,304 @@ void LoadLifter::registerLifter() {
   alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::opcode, \
                       (LifterHandler)&LoadLifter::handler##Handler);
 
-  REGISTER_LOAD_OPCODE(tPOP, tPOP)
+#define REGISTER_LOAD_OPCODE2(opcode, handler, composition)              \
+  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)opcode, \
+                      (LifterHandler)&LoadLifter::do##handler);          \
+  info.insert(std::pair<unsigned, LoadInfo2*>((unsigned)opcode, composition));
 
-  REGISTER_LOAD_OPCODE(t2LDMIA_UPD, t2LDMIA_UPD)
-  REGISTER_LOAD_OPCODE(t2LDMIA, t2LDMIA)
+  REGISTER_LOAD_OPCODE2(ARM::tPOP, Pop, new LoadInfo2(3, -1, 0))
+  // REGISTER_LOAD_OPCODE(tPOP, tPOP)
 
-  REGISTER_LOAD_OPCODE(t2LDMDB_UPD, t2LDMDB_UPD)
-  REGISTER_LOAD_OPCODE(t2LDMDB, t2LDMDB)
+  // REGISTER_LOAD_OPCODE(, t2LDMIA_UPD)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDMIA_UPD, Multi, new LoadInfo2(4, 1, 0))
+  // REGISTER_LOAD_OPCODE(t2LDMIA_UPD, t2LDMIA_UPD)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDMIA, Multi, new LoadInfo2(4, 1, 0))
+  // REGISTER_LOAD_OPCODE(t2LDMIA, t2LDMIA)
 
-  REGISTER_LOAD_OPCODE(t2LDRDi8, t2LDRDi8)
-  REGISTER_LOAD_OPCODE(t2LDRD_PRE, t2LDRD_PRE)
-  REGISTER_LOAD_OPCODE(t2LDRD_POST, t2LDRD_POST)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDMDB_UPD, MultiDB,
+                        new LoadInfo2(4, 1, -1, 32, 0))
+  // REGISTER_LOAD_OPCODE(t2LDMDB_UPD, t2LDMDB_UPD)
 
-  REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
-  REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
-  REGISTER_LOAD_OPCODE(t2LDRi8, t2LDRi8)
-  REGISTER_LOAD_OPCODE(t2LDRi12, t2LDRi12)
-  REGISTER_LOAD_OPCODE(t2LDRs, t2LDRs)
-  REGISTER_LOAD_OPCODE(t2LDR_PRE, t2LDR_PRE)
-  REGISTER_LOAD_OPCODE(t2LDR_POST, t2LDR_POST)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDMDB, MultiDB, new LoadInfo2(4, 1, -1, 32, 0))
+  // REGISTER_LOAD_OPCODE(t2LDMDB, t2LDMDB)
 
-  REGISTER_LOAD_OPCODE(tLDRBi, tLDRBi)
-  REGISTER_LOAD_OPCODE(tLDRBr, tLDRBi)
-  REGISTER_LOAD_OPCODE(t2LDRBi8, t2LDRBi8)
-  REGISTER_LOAD_OPCODE(t2LDRBi12, t2LDRBi12)
-  REGISTER_LOAD_OPCODE(t2LDRB_PRE, t2LDRB_PRE)
-  REGISTER_LOAD_OPCODE(t2LDRB_POST, t2LDRB_POST)
-  REGISTER_LOAD_OPCODE(t2LDRBs, t2LDRBs)
+  REGISTER_LOAD_OPCODE2(ARM::tLDRi, Common, new LoadInfo2(-1, 1, 2))
+  // REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
+  REGISTER_LOAD_OPCODE2(ARM::tLDRr, Common, new LoadInfo2(-1, 1, 2))
+  // REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRi8, Common, new LoadInfo2(-1, 1, 2))
+  // REGISTER_LOAD_OPCODE(t2LDRi8, t2LDRi8)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRi12, Common, new LoadInfo2(-1, 1, 2))
+  // REGISTER_LOAD_OPCODE(t2LDRi12, t2LDRi12)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRs, Signed,
+                        new LoadInfo2(1, 1, 2, true))
+  // REGISTER_LOAD_OPCODE(t2LDRs, t2LDRs)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDR_PRE, Pre, new LoadInfo2(-1, 1, 2))
+  // REGISTER_LOAD_OPCODE(t2LDR_PRE, t2LDR_PRE)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDR_POST, Post, new LoadInfo2(-1, 1, 2))
+  // REGISTER_LOAD_OPCODE(t2LDR_POST, t2LDR_POST)
 
-  REGISTER_LOAD_OPCODE(tLDRHi, tLDRHi)
-  REGISTER_LOAD_OPCODE(tLDRHr, tLDRHi)
-  REGISTER_LOAD_OPCODE(t2LDRHi12, t2LDRHi12)
-  REGISTER_LOAD_OPCODE(t2LDRHi8, t2LDRHi8)
-  REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
-  REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
-  REGISTER_LOAD_OPCODE(t2LDRHs, t2LDRHs)
+  REGISTER_LOAD_OPCODE2(ARM::tLDRBi, Common, new LoadInfo2(-1, 1, 2, 8))
+  // REGISTER_LOAD_OPCODE(tLDRBi, tLDRBi)
+  REGISTER_LOAD_OPCODE2(ARM::tLDRBr, Common, new LoadInfo2(-1, 1, 2, 8))
+  // REGISTER_LOAD_OPCODE(tLDRBr, tLDRBi)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRBi8, Common, new LoadInfo2(-1, 1, 2, 8))
+  // REGISTER_LOAD_OPCODE(t2LDRBi8, t2LDRBi8)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRBi12, Common, new LoadInfo2(-1, 1, 2, 8))
+  // REGISTER_LOAD_OPCODE(t2LDRBi12, t2LDRBi12)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRB_PRE, Pre, new LoadInfo2(-1, 1, 2, 8))
+  // REGISTER_LOAD_OPCODE(t2LDRB_PRE, t2LDRB_PRE)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRB_POST, Post, new LoadInfo2(-1, 1, 2, 8))
+  // REGISTER_LOAD_OPCODE(t2LDRB_POST, t2LDRB_POST)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRBs, Common,
+                        new LoadInfo2(-1, 1, 2, 8, true))
+  // REGISTER_LOAD_OPCODE(t2LDRBs, t2LDRBs)
+
+  REGISTER_LOAD_OPCODE2(ARM::tLDRHi, Common, new LoadInfo2(-1, 1, 2, 16))
+  // REGISTER_LOAD_OPCODE(tLDRHi, tLDRHi)
+  REGISTER_LOAD_OPCODE2(ARM::tLDRHr, Common, new LoadInfo2(-1, 1, 2, 16))
+  // REGISTER_LOAD_OPCODE(tLDRHr, tLDRHi)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRHi12, Common, new LoadInfo2(-1, 1, 2, 16))
+  // REGISTER_LOAD_OPCODE(t2LDRHi12, t2LDRHi12)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRHi8, Common, new LoadInfo2(-1, 1, 2, 16))
+  // REGISTER_LOAD_OPCODE(t2LDRHi8, t2LDRHi8)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRH_PRE, Pre, new LoadInfo2(-1, 1, 2, 16))
+  // REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRH_POST, Post, new LoadInfo2(-1, 1, 2, 16))
+  // REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRHs, Common,
+                        new LoadInfo2(-1, 1, 2, 16, true))
+  // REGISTER_LOAD_OPCODE(t2LDRHs, t2LDRHs)
+
+  // REGISTER_LOAD_OPCODE(t2LDRDi8, t2LDRDi8)
+  // REGISTER_LOAD_OPCODE(t2LDRD_PRE, t2LDRD_PRE)
+  // REGISTER_LOAD_OPCODE(t2LDRD_POST, t2LDRD_POST)
 }
 
-// void LoadLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-//
-//   Value* Addr =
-//
-// }
+void LoadLifter::doPop(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  info->iRn_max = N->getNumOperands() - 1;
+  info->iRd = N->getNumOperands() - 1;
+  index = info->iRd;
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  Value* Rn = NULL;
+  while ((index = info->getNext()) != -1) {
+    Rd = UpdateRd(Rd, c4, IRB, false);
+
+    Value* value = ReadReg(Rd, IRB, info->width);
+
+    Rn = visit(N->getOperand(index).getNode(), IRB);
+
+    Rn = WriteReg(Rn, value, IRB, info->width);
+  }
+
+  saveNodeValue(N, Rd);
+}
+
+void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  info->iRn_max = N->getNumOperands();
+  index = info->iRd;
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  Value* Rn = NULL;
+  while ((index = info->getNext()) != -1) {
+    SDNode* pred = N->getOperand(index).getNode();
+
+    Value* Dest = visitRegister(pred->getOperand(1).getNode(), IRB);
+
+    Value* value = ReadReg(Rd, IRB, info->width);
+
+    Rn = WriteReg(value, Dest, IRB, info->width);
+
+    if (info->hasManyUses()) Rd = UpdateRd(Rd, c4, IRB, true);
+  }
+
+  saveNodeValue(N, Rd);
+}
+
+void LoadLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  info->iRn_max = N->getNumOperands();
+  index = info->iRd;
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  uint32_t j = info->iRn_max - 1 - info->iRn;
+  uint32_t inv_rn[j];
+  while ((index = info->getNext()) != -1) inv_rn[j--] = index;
+
+  Value* Rn = NULL;
+  for (auto i = 0; i < (info->iRn_max - info->iRn); i++) {
+    index = inv_rn[i];
+
+    // llvm::errs() << " At index " << i << " = " << index << "\n";
+
+    Rd = UpdateRd(Rd, c4, IRB, false);
+
+    SDNode* pred = N->getOperand(index).getNode();
+
+    Value* Dest = visitRegister(pred->getOperand(1).getNode(), IRB);
+
+    Value* value = ReadReg(Rd, IRB, info->width);
+
+    Rn = WriteReg(value, Dest, IRB, info->width);
+  }
+
+  saveNodeValue(N, Rd);
+}
+
+void LoadLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  index = info->iRd;
+  std::string AddrRegName = getReg(N->getOperand(index).getNode());
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+  Value* Rd_temp = Rd;
+
+  index = info->iOffset;
+  Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  Value* Rn = ReadReg(Rd, IRB, info->width);
+
+  // Use 1 : Rn
+  {
+    SDNode* succ = LookUpSDNode(N, AddrRegName);
+    if (succ != NULL) {
+      Rd = UpdateRd(Rd, Offset, IRB, true);
+
+      saveNodeValue(N, Rd);
+      visit(succ, IRB);
+      saveNodeValue(N, Rn);
+    } else
+      saveNodeValue(N, Rd);
+  }
+}
+
+void LoadLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  index = info->iRd;
+  std::string AddrRegName = getReg(N->getOperand(index).getNode());
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  index = info->iOffset;
+  Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  Rd = UpdateRd(Rd, Offset, IRB, true);
+
+  Value* Rn = ReadReg(Rd, IRB, info->width);
+
+  // Use 1 : Rn
+  {
+    SDNode* succ = LookUpSDNode(N, AddrRegName);
+    if (succ != NULL) {
+      saveNodeValue(N, Rd);
+      visit(succ, IRB);
+      saveNodeValue(N, Rn);
+    } else
+      saveNodeValue(N, Rd);
+  }
+}
+
+void LoadLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  index = info->iRd;
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  index = info->iOffset;
+  Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  if (info->shifted) {
+    Value* Op = visit(N->getOperand(3).getNode(), IRB);
+    Offset = IRB->CreateShl(Offset, Op);
+  }
+
+  Rd = UpdateRd(Rd, Offset, IRB, true);
+
+  Value* Rn = ReadReg(Rd, IRB, info->width);
+
+  saveNodeValue(N, Rn);
+}
+
+void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  index = info->iRd;
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  index = info->iOffset;
+  Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  if (info->shifted) {
+    Value* Op = visit(N->getOperand(3).getNode(), IRB);
+    Offset = IRB->CreateShl(Offset, Op);
+  }
+
+  Rd = UpdateRd(Rd, Offset, IRB, true);
+
+  Value* Rn = NULL;
+
+  Rn = ReadReg(Rd, IRB, info->width);
+
+  saveNodeValue(N, Rn);
+}
 
 void LoadLifter::t2LDRD_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t max = N->getNumOperands();
@@ -138,7 +394,7 @@ void LoadLifter::t2LDRB_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+  Type* Ty = IntegerType::get(getGlobalContext(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -153,7 +409,7 @@ void LoadLifter::t2LDRHi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
+  Type* Ty = IntegerType::get(getGlobalContext(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -180,7 +436,7 @@ void LoadLifter::t2LDRHsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1, 3);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
+  Type* Ty = IntegerType::get(getGlobalContext(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -195,7 +451,7 @@ void LoadLifter::t2LDRBsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1, 3);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+  Type* Ty = IntegerType::get(getGlobalContext(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -223,7 +479,7 @@ void LoadLifter::t2LDRH_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
+  Type* Ty = IntegerType::get(getGlobalContext(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -238,7 +494,7 @@ void LoadLifter::t2LDRH_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
+  Type* Ty = IntegerType::get(getGlobalContext(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -254,7 +510,7 @@ void LoadLifter::t2LDRB_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+  Type* Ty = IntegerType::get(getGlobalContext(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -270,7 +526,7 @@ void LoadLifter::tLDRHiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 16);
+  Type* Ty = IntegerType::get(getGlobalContext(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -286,7 +542,7 @@ void LoadLifter::tLDRBiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+  Type* Ty = IntegerType::get(getGlobalContext(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -326,7 +582,7 @@ void LoadLifter::t2LDRBi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+  Type* Ty = IntegerType::get(getGlobalContext(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -341,7 +597,7 @@ void LoadLifter::t2LDRBi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(alm->Mod->getContext(), 8);
+  Type* Ty = IntegerType::get(getGlobalContext(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -564,7 +820,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   if (info->Trunc) {
     Res = IRB->CreateTrunc(Res, info->Ty);
 
-    Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
+    Type* Ty = IntegerType::get(getGlobalContext(), 32);
 
     Res = IRB->CreateZExt(Res, Ty);
   }
@@ -651,7 +907,7 @@ llvm::Value* LoadLifter::CreateStore(LoadInfo* info, IRBuilder<>* IRB,
 llvm::Value* LoadLifter::IncPointer(LoadInfo* info, IRBuilder<>* IRB,
                                     Value* Addr) {
   ConstantInt* const_4 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("4"), 10));
+      ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
 
   if (info->Increment)
     Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, const_4));

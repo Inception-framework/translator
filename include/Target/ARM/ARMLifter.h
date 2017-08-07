@@ -59,9 +59,9 @@ class ARMLifter {
 
   llvm::Value* visitConstant(const llvm::SDNode* N);
 
-  Value* WriteReg(Value* Rn, Value* Rd, Type* Ty, IRBuilder<>* IRB);
+  Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width=32);
 
-  Value* ReadReg(Value* Rd, IRBuilder<>* IRB);
+  Value* ReadReg(Value* Rd, IRBuilder<>* IRB, int Width=32);
 
   Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB);
 
@@ -78,6 +78,8 @@ class ARMLifter {
   bool IsSigned(SDNode* N);
 
   bool IsCPSR(SDNode* N);
+
+  SDNode* LookUpSDNode(SDNode* N, std::string name);
 };
 
 #endif

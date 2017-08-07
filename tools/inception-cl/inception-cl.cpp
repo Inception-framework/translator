@@ -315,11 +315,10 @@ static std::error_code loadBinary(StringRef FileName) {
 
         if (ci != NULL)
           if (isa<InlineAsm>(ci->getCalledValue())) {
-            std::cout << "  Function: " << old_function.getName().str()
-                      << std::endl;
-            std::cout << "  Instruction: " << old_inst.getOpcodeName()
-                      << std::endl;
-
+            // std::cout << "  Function: " << old_function.getName().str()
+                      // << std::endl;
+            // std::cout << "  Instruction: " << old_inst.getOpcodeName()
+                      // << std::endl;
             asm_functions.insert(old_function.getName().str());
           }
       }  // END FOR INSTRUCTIOn

@@ -5,6 +5,24 @@
 
 using namespace llvm;
 
+SDNode* ARMLifter::LookUpSDNode(SDNode* N, std::string name) {
+  unsigned i = 0;
+  for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+    if (i++ < N->getNumOperands() && I->getOpcode() == ISD::CopyToReg) {
+      SDNode* succ = *I;
+
+      std::string DestRegName = getReg(succ);
+
+      if (DestRegName.find(name) == std::string::npos)
+        continue;
+      else
+        return succ;
+    }
+  }
+
+  return NULL;
+}
+
 bool ARMLifter::IsSigned(SDNode* N) {
   llvm::errs() << "\n\n\nLooking for signed node \n";
 
@@ -51,7 +69,7 @@ bool ARMLifter::IsCPSR(SDNode* N) {
 }
 
 Value* ARMLifter::Bool2Int(Value* v, IRBuilder<>* IRB) {
-  auto& C = alm->Mod->getContext();
+  auto& C = getGlobalContext();
 
   auto bool_ty = llvm::Type::getInt1Ty(C);
   auto int32_ty = llvm::Type::getInt32Ty(C);
@@ -68,7 +86,7 @@ Value* ARMLifter::Reg(StringRef name) {
   Value* Reg = alm->Mod->getGlobalVariable(name);
 
   if (Reg == NULL) {
-    Type* Ty = IntegerType::get(alm->Mod->getContext(), 32);
+    Type* Ty = IntegerType::get(getGlobalContext(), 32);
 
     Constant* Initializer = Constant::getNullValue(Ty);
 
@@ -83,13 +101,13 @@ Value* ARMLifter::Reg(StringRef name) {
 
 Value* ARMLifter::getConstant(StringRef value) {
   ConstantInt* constante =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, value, 10));
+      ConstantInt::get(getGlobalContext(), APInt(32, value, 10));
 
   return constante;
 }
 
 Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
-  Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
 
   if (!Rd->getType()->isPointerTy()) {
     Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
@@ -105,23 +123,59 @@ Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   return Rd;
 }
 
-Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB) {
-  Instruction* store = IRB->CreateLoad(Rn);
+Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
+  Type* Ty = NULL;
 
-  return store;
+  switch (Width) {
+    case 8:
+      Ty = IntegerType::get(getGlobalContext(), 8);
+      break;
+    case 16:
+      Ty = IntegerType::get(getGlobalContext(), 16);
+      break;
+    default:
+      Ty = Ty = IntegerType::get(getGlobalContext(), 32);
+      break;
+  }
+
+  if (!Rn->getType()->isPointerTy()) {
+    Rn = IRB->CreateIntToPtr(Rn, Rn->getType()->getPointerTo());
+  }
+
+  Value* load = IRB->CreateLoad(Rn);
+
+  if (Width != 32) {
+    load = IRB->CreateTrunc(load, Ty);
+
+    load = IRB->CreateZExt(load, IntegerType::get(getGlobalContext(), 32));
+  }
+
+  return load;
 }
 
-Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, Type* Ty, IRBuilder<>* IRB) {
-  Type* Ty_word = IntegerType::get(alm->Mod->getContext(), 16);
+Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width) {
+  Type* Ty = NULL;
+
+  switch (Width) {
+    case 8:
+      Ty = IntegerType::get(getGlobalContext(), 8);
+      break;
+    case 16:
+      Ty = IntegerType::get(getGlobalContext(), 16);
+      break;
+    default:
+      Ty = Ty = IntegerType::get(getGlobalContext(), 32);
+      break;
+  }
 
   if (!Rd->getType()->isPointerTy()) {
     Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
   }
 
-  if (Ty != NULL && Ty != Ty_word) {
+  if (Width != 32) {
     Rn = IRB->CreateTrunc(Rn, Ty);
 
-    Rn = IRB->CreateZExt(Rn, Ty_word);
+    Rn = IRB->CreateZExt(Rn, IntegerType::get(getGlobalContext(), 32));
   }
 
   Instruction* store = IRB->CreateStore(Rn, Rd);
@@ -184,7 +238,7 @@ std::string ARMLifter::getReg(const SDNode* N) {
   const RegisterSDNode* R =
       dyn_cast<RegisterSDNode>(N->getOperand(1).getNode());
   if (R == NULL) {
-    errs() << "visitRegister with no register!?\n";
+    // errs() << "visitRegister with no register!?\n";
     return NULL;
   }
 
@@ -201,7 +255,7 @@ std::string ARMLifter::getReg(const SDNode* N) {
 Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
   const RegisterSDNode* R = dyn_cast<RegisterSDNode>(N);
   if (R == NULL) {
-    errs() << "visitRegister with no register!?\n";
+    // errs() << "visitRegister with no register!?\n";
     return NULL;
   }
 
@@ -217,7 +271,7 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
 
     if (RegName.find("noreg") != std::string::npos) return NULL;
 
-    Type* Ty = R->getValueType(0).getTypeForEVT(alm->Mod->getContext());
+    Type* Ty = R->getValueType(0).getTypeForEVT(getGlobalContext());
 
     Reg = alm->Mod->getGlobalVariable(RegName);
     if (Reg == NULL) {
@@ -244,7 +298,7 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
           llvm::errs() << "Unable to find main function needed to init SP !";
 
         ConstantInt* const_int32 = ConstantInt::get(
-            alm->Mod->getContext(), APInt(32, StringRef("536875008"), 10));
+            getGlobalContext(), APInt(32, StringRef("536875008"), 10));
 
         Instruction* inst = main_fct->getEntryBlock().begin();
 
@@ -274,7 +328,8 @@ Value* ARMLifter::visitCopyFromReg(const SDNode* N, IRBuilder<>* IRB) {
 
   Value* RegVal = visitRegister(N->getOperand(1).getNode(), IRB);
   if (RegVal == NULL) {
-    errs() << "visitCopyFromReg: Invalid Register!\n";
+    // errs() << "visitCopyFromReg: Invalid Register!\n";
+    // N->dump();
     return NULL;
   }
 
@@ -309,7 +364,7 @@ Value* ARMLifter::visitCopyToReg(const SDNode* N, IRBuilder<>* IRB) {
 Value* ARMLifter::visitConstant(const SDNode* N) {
   if (const ConstantSDNode* CSDN = dyn_cast<ConstantSDNode>(N)) {
     Value* Res = Constant::getIntegerValue(
-        N->getValueType(0).getTypeForEVT(alm->Mod->getContext()),
+        N->getValueType(0).getTypeForEVT(getGlobalContext()),
         CSDN->getAPIntValue());
     alm->VisitMap[N] = Res;
     return Res;

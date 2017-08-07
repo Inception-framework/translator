@@ -9,7 +9,7 @@ class ARMLifterManager;
 
 class StoreInfo {
  public:
-  Type* Ty;
+  int width;
 
   int32_t iOffset;
 
@@ -33,13 +33,16 @@ class StoreInfo {
 
     static int32_t next = iRn;
 
-    if (next >= iRn_max) return -1;
+    if (next >= iRn_max) {
+      next = iRn;
+      return -1;
+    }
     return next++;
   };
 
-  StoreInfo(int32_t _n, int32_t _d, int32_t _o, Type* _Ty = NULL,
+  StoreInfo(int32_t _n, int32_t _d, int32_t _o, int _Width = 32,
             int32_t _n_max = -1)
-      : Ty(_Ty), iOffset(_o), iRn(_n), iRd(_d), iRn_max(_n_max) {}
+      : width(_Width), iOffset(_o), iRn(_n), iRd(_d), iRn_max(_n_max) {}
 };
 
 class StoreLifter : public ARMLifter {

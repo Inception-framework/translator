@@ -7,6 +7,76 @@
 
 class ARMLifterManager;
 
+class LoadInfo2 {
+ public:
+  int32_t iOffset;
+
+  int32_t iRn;
+  int32_t iRn_max;
+
+  int32_t iRd;
+
+  int32_t width;
+
+  bool shifted;
+
+  void dump() {
+    printf("LoadInfo2:\n");
+    printf("iRn            -> %d\n", iRn);
+    printf("iRd            -> %d\n", iRd);
+    printf("iOffset        -> %d\n", iOffset);
+    printf("width          -> %d\n", width);
+    printf("iRn_max        -> %d\n", iRn_max);
+  }
+
+  bool hasManyUses() {
+    if (iRn_max == -1) return false;
+    if (iRn_max == iRn) return false;
+
+    return true;
+  }
+
+  int32_t getNext() {
+    if (iRn_max == -1) {
+      iRn_max = iRn;
+      return iRn_max;
+    }
+
+    static int32_t next = iRn;
+
+    if (next >= iRn_max) {
+      next = iRn;
+      return -1;
+    }
+    return next++;
+  };
+
+  LoadInfo2(int32_t _n, int32_t _d, int32_t _o, int32_t width = 32,
+            int32_t _n_max = -1, bool _shifted = false)
+      : iOffset(_o),
+        iRn(_n),
+        iRd(_d),
+        iRn_max(_n_max),
+        width(width),
+        shifted(_shifted) {}
+
+  LoadInfo2(int32_t _n, int32_t _d, int32_t _o, int32_t width, bool _shifted)
+      : iOffset(_o),
+        iRn(_n),
+        iRd(_d),
+        iRn_max(-1),
+        width(width),
+        shifted(_shifted) {}
+
+  LoadInfo2(int32_t _n, int32_t _d, int32_t _o, bool _shifted)
+      : iOffset(_o),
+        iRn(_n),
+        iRd(_d),
+        iRn_max(-1),
+        width(32),
+        shifted(_shifted) {}
+};
+
 typedef struct LoadNodeLayout {
   int32_t Dst_start;
   int32_t Dst_end;
@@ -89,7 +159,28 @@ class LoadLifter : public ARMLifter {
 
   llvm::Value* IncPointer(LoadInfo* info, IRBuilder<>* IRB, Value* Addr_int);
 
+  std::map<unsigned, LoadInfo2*> info;
+
+  LoadInfo2* getInfo(unsigned opcode) {
+    auto search = info.find(opcode);
+
+    if (search != info.end())
+      return search->second;
+    else
+      return NULL;
+  }
+
+#define HANDLER_LOAD2(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
+
+  HANDLER_LOAD2(Post)
+  HANDLER_LOAD2(Pre)
+  HANDLER_LOAD2(Signed)
+  HANDLER_LOAD2(Multi)
+  HANDLER_LOAD2(Pop)
+  HANDLER_LOAD2(Common)
+  HANDLER_LOAD2(MultiDB)
 // Declare each handler
+
 #define HANDLER_LOAD(name) \
   void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB);
 

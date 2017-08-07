@@ -255,7 +255,7 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
 
   Proto->setCallingConv(Func->getCallingConv());
   Value *Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
-  if (!Func->getReturnType()->isVoidTy()) WriteReg(Call, Reg("R0"), NULL, IRB);
+  if (!Func->getReturnType()->isVoidTy()) WriteReg(Call, Reg("R0"), IRB);
 
   Value *dummyLR = getConstant("0");
   alm->VisitMap[N] = dummyLR;
@@ -263,4 +263,3 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
 
   // TODO: Technically visitCall sets the LR to IP+8. We should return that.
 }
-
