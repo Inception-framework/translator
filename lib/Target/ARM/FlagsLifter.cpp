@@ -73,9 +73,11 @@ void FlagsLifter::WriteCFShiftL(IRBuilder<> *IRB, llvm::Value *shift_min_1,
 
   auto trunc = Bool2Int(msb, IRB);
 
-  trunc = IRB->CreateAnd(trunc, isShift);  // clear if shift by 0
-
-  WriteReg(trunc, Reg("CF"), IRB);
+  // keep old cf if no shift
+  auto update = IRB->CreateAnd(trunc, isShift);
+  auto old = IRB->CreateAnd(ReadReg(Reg("CF"), IRB), IRB->CreateNot(isShift));
+  auto cf = IRB->CreateOr(update, old);
+  WriteReg(cf, Reg("CF"), IRB);
 }
 
 void FlagsLifter::WriteCFAdc(IRBuilder<> *IRB, llvm::Value *res,
