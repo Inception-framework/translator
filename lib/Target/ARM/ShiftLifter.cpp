@@ -50,14 +50,11 @@ void ShiftLifter::ShiftHandlerLSL(SDNode *N, IRBuilder<> *IRB) {
 void ShiftLifter::ShiftHandlerLSR(SDNode *N, IRBuilder<> *IRB) {
   ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
 
-  ConstantInt *const_31 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("31"), 10));
+  Value *const_31 = getConstant("31");
 
-  ConstantInt *const_1 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("1"), 10));
+  Value *const_1 = getConstant("1");
 
-  ConstantInt *const_0 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("0"), 10));
+  Value *const_0 = getConstant("0");
 
   Value *shift_amount_min1;
   if (info->Op1 == const_0) {
@@ -84,14 +81,11 @@ void ShiftLifter::ShiftHandlerLSR(SDNode *N, IRBuilder<> *IRB) {
 void ShiftLifter::ShiftHandlerASR(SDNode *N, IRBuilder<> *IRB) {
   ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
 
-  ConstantInt *const_31 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("31"), 10));
+  Value *const_31 = getConstant("31");
 
-  ConstantInt *const_1 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("1"), 10));
+  Value *const_1 = getConstant("1");
 
-  ConstantInt *const_0 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("0"), 10));
+  Value *const_0 = getConstant("0");
 
   Value *shift_amount_min1;
   // StringRef BaseName = getBaseValueName(shift_amount_min1->getName());
@@ -119,8 +113,7 @@ void ShiftLifter::ShiftHandlerASR(SDNode *N, IRBuilder<> *IRB) {
 void ShiftLifter::ShiftHandlerROR(SDNode *N, IRBuilder<> *IRB) {
   ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
 
-  ConstantInt *const_32 =
-      ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("32"), 10));
+  Value *const_32 = getConstant("32");
 
   Value *lshift_amount = IRB->CreateSub(const_32, info->Op1);
   Value *high = IRB->CreateShl(info->Op0, lshift_amount);
