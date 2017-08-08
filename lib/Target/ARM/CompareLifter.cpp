@@ -40,12 +40,11 @@ void CompareLifter::registerLifter() {
 
 // CMP
 void CompareLifter::CompareHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+  ARMCMPInfo *info = RetrieveGraphInformation(N, IRB);
 
   // subtraction
-  Value *onescompl = IRB->CreateNot(Op1);
-  Value *Res_add = IRB->CreateAdd(Op0, onescompl);
+  Value *onescompl = IRB->CreateNot(info->Op1);
+  Value *Res_add = IRB->CreateAdd(info->Op0, onescompl);
   Value *Res = IRB->CreateAdd(Res_add, getConstant("1"));
 
   // Res->setDebugLoc(N->getDebugLoc());
@@ -58,10 +57,10 @@ void CompareLifter::CompareHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Compute ZF.
   flags->WriteZF(IRB, Res);
   // Ccompute VF.
-  flags->WriteVFAdd(IRB, Res_add, Op0, onescompl);
+  flags->WriteVFAdd(IRB, Res_add, info->Op0, onescompl);
   flags->WriteVFAdc(IRB, Res, Res_add, getConstant("1"));
   // Compute CF.
-  flags->WriteCFAdd(IRB, Res_add, Op0);
+  flags->WriteCFAdd(IRB, Res_add, info->Op0);
   flags->WriteCFAdc(IRB, Res, Res_add);
 
   // Dummy CPSR, not used, Flags are used instead if necessary
@@ -72,10 +71,10 @@ void CompareLifter::CompareHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
 // CMN
 void CompareLifter::CompareNHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
-  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+  ARMCMPInfo *info = RetrieveGraphInformation(N, IRB);
 
-  Instruction *Res = dyn_cast<Instruction>(IRB->CreateAdd(Op0, Op1));
+  Instruction *Res =
+      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -87,12 +86,22 @@ void CompareLifter::CompareNHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // Compute ZF.
   flags->WriteZF(IRB, Res);
   // Ccompute VF.
-  flags->WriteVFAdd(IRB, Res, Op0, Op1);
+  flags->WriteVFAdd(IRB, Res, info->Op0, info->Op1);
   // Compute CF.
-  flags->WriteCFAdd(IRB, Res, Op0);
+  flags->WriteCFAdd(IRB, Res, info->Op0);
 
   // Dummy CPSR, not used, Flags are used instead if necessary
   Value *dummyCPSR = getConstant("0");
 
   alm->VisitMap[N] = dummyCPSR;
+}
+
+ARMCMPInfo *CompareLifter::RetrieveGraphInformation(SDNode *N,
+                                                    IRBuilder<> *IRB) {
+  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
+  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+
+  ARMCMPInfo *info = new ARMCMPInfo(Op0, Op1);
+
+  return info;
 }
