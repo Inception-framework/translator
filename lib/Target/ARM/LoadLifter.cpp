@@ -43,8 +43,7 @@ void LoadLifter::registerLifter() {
   // REGISTER_LOAD_OPCODE(t2LDRi8, t2LDRi8)
   REGISTER_LOAD_OPCODE2(ARM::t2LDRi12, Common, new LoadInfo2(-1, 1, 2))
   // REGISTER_LOAD_OPCODE(t2LDRi12, t2LDRi12)
-  REGISTER_LOAD_OPCODE2(ARM::t2LDRs, Signed,
-                        new LoadInfo2(1, 1, 2, true))
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRs, Signed, new LoadInfo2(1, 1, 2, true))
   // REGISTER_LOAD_OPCODE(t2LDRs, t2LDRs)
   REGISTER_LOAD_OPCODE2(ARM::t2LDR_PRE, Pre, new LoadInfo2(-1, 1, 2))
   // REGISTER_LOAD_OPCODE(t2LDR_PRE, t2LDR_PRE)
@@ -63,8 +62,7 @@ void LoadLifter::registerLifter() {
   // REGISTER_LOAD_OPCODE(t2LDRB_PRE, t2LDRB_PRE)
   REGISTER_LOAD_OPCODE2(ARM::t2LDRB_POST, Post, new LoadInfo2(-1, 1, 2, 8))
   // REGISTER_LOAD_OPCODE(t2LDRB_POST, t2LDRB_POST)
-  REGISTER_LOAD_OPCODE2(ARM::t2LDRBs, Common,
-                        new LoadInfo2(-1, 1, 2, 8, true))
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRBs, Common, new LoadInfo2(-1, 1, 2, 8, true))
   // REGISTER_LOAD_OPCODE(t2LDRBs, t2LDRBs)
 
   REGISTER_LOAD_OPCODE2(ARM::tLDRHi, Common, new LoadInfo2(-1, 1, 2, 16))
@@ -79,13 +77,125 @@ void LoadLifter::registerLifter() {
   // REGISTER_LOAD_OPCODE(t2LDRH_PRE, t2LDRH_PRE)
   REGISTER_LOAD_OPCODE2(ARM::t2LDRH_POST, Post, new LoadInfo2(-1, 1, 2, 16))
   // REGISTER_LOAD_OPCODE(t2LDRH_POST, t2LDRH_POST)
-  REGISTER_LOAD_OPCODE2(ARM::t2LDRHs, Common,
-                        new LoadInfo2(-1, 1, 2, 16, true))
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRHs, Common, new LoadInfo2(-1, 1, 2, 16, true))
   // REGISTER_LOAD_OPCODE(t2LDRHs, t2LDRHs)
 
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRDi8, D, new LoadInfo2(-1, 1, 2))
   // REGISTER_LOAD_OPCODE(t2LDRDi8, t2LDRDi8)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRD_PRE, DPre, new LoadInfo2(-1, 0, 1))
   // REGISTER_LOAD_OPCODE(t2LDRD_PRE, t2LDRD_PRE)
+  REGISTER_LOAD_OPCODE2(ARM::t2LDRD_POST, DPost, new LoadInfo2(-1, 0, 1))
   // REGISTER_LOAD_OPCODE(t2LDRD_POST, t2LDRD_POST)
+}
+
+void LoadLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+
+  ConstantInt* c4;
+
+  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+
+  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  index = info->iRd;
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  index = info->iOffset;
+  Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  Rd = UpdateRd(Rd, Offset, IRB, true);
+
+  unsigned i = 0;
+  for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E; ++I) {
+    if (i >= 1 && I->getOpcode() == ISD::CopyToReg) {
+      SDNode* succ = *I;
+
+      Value* Rn = ReadReg(Rd, IRB, info->width);
+      saveNodeValue(N, Rn);
+
+      visit(succ, IRB);
+
+      if (i < 2)
+        Rd = UpdateRd(Rd, getConstant("4"), IRB, true);
+      else
+        break;
+    }
+    i++;
+  }
+}
+
+void LoadLifter::doDPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  Value* Rn = NULL;
+  uint32_t index;
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  index = info->iRd;
+  std::string AddrRegName = getReg(N->getOperand(index).getNode());
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+
+  index = info->iOffset;
+  Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  Rd = UpdateRd(Rd, Offset, IRB, true);
+
+  SDNode* node = LookUpSDNode(N, AddrRegName);
+  if (node != NULL) {
+    saveNodeValue(N, Rd);
+    visit(node, IRB);
+  }
+
+  node = getFirstOutput(N);
+  if (node != NULL) {
+    Rn = ReadReg(Rd, IRB, info->width);
+    saveNodeValue(N, Rn);
+    visit(node, IRB);
+    Rd = UpdateRd(Rd, getConstant("4"), IRB, true);
+  }
+
+  Rn = ReadReg(Rd, IRB, info->width);
+  saveNodeValue(N, Rn);
+}
+
+void LoadLifter::doDPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  Value* Rn = NULL;
+  uint32_t index;
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  index = info->iRd;
+  std::string AddrRegName = getReg(N->getOperand(index).getNode());
+  Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+  Value* Rd_init = Rd;
+
+  index = info->iOffset;
+  Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  //Return the first output Node chained with Noreg
+  SDNode* node = getFirstOutput(N);
+  if (node != NULL) {
+    Rn = ReadReg(Rd, IRB, info->width);
+    saveNodeValue(N, Rn);
+    visit(node, IRB);
+    Rd = UpdateRd(Rd, getConstant("4"), IRB, true);
+  }
+
+  //Return the first output Node which is chained with the previous node
+  node = getOutput(N, getReg(node));
+  if (node != NULL) {
+    Rn = ReadReg(Rd, IRB, info->width);
+    saveNodeValue(N, Rn);
+    visit(node, IRB);
+  }
+
+  node = LookUpSDNode(N, AddrRegName);
+  if (node != NULL) {
+    Rd = UpdateRd(Rd_init, Offset, IRB, true);
+    saveNodeValue(N, Rd);
+    visit(node, IRB);
+  }
 }
 
 void LoadLifter::doPop(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -298,6 +408,12 @@ void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   index = info->iOffset;
   Value* Offset = visit(N->getOperand(index).getNode(), IRB);
+
+  unsigned OpCode = N->getMachineOpcode();
+  switch (OpCode) {
+    case ARM::tLDRi:
+      Offset = IRB->CreateShl(Offset, getConstant("2"));
+  }
 
   if (info->shifted) {
     Value* Op = visit(N->getOperand(3).getNode(), IRB);

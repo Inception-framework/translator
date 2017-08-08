@@ -170,8 +170,44 @@ class LoadLifter : public ARMLifter {
       return NULL;
   }
 
+  SDNode* getFirstOutput(llvm::SDNode* N) {
+    for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E;
+         I++) {
+      SDNode* current = *I;
+
+      if (I->getOpcode() != ISD::CopyToReg) continue;
+
+      SDNode* previous = current->getOperand(0).getNode();
+      std::string previousName = getReg(previous);
+
+      // If no reg, we have our root element
+      if (previousName.find("noreg") != std::string::npos) return current;
+    }
+    return NULL;
+  }
+
+  SDNode* getOutput(llvm::SDNode* N, std::string name) {
+    for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E;
+         I++) {
+      SDNode* current = *I;
+
+      if (I->getOpcode() != ISD::CopyToReg) continue;
+
+      SDNode* previous = current->getOperand(0).getNode();
+      std::string previousName = getReg(previous);
+
+      // If no reg, we have our root element
+      if (previousName.find(name) != std::string::npos) return current;
+    }
+    return NULL;
+  }
+
+
 #define HANDLER_LOAD2(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
 
+  HANDLER_LOAD2(DPost)
+  HANDLER_LOAD2(DPre)
+  HANDLER_LOAD2(D)
   HANDLER_LOAD2(Post)
   HANDLER_LOAD2(Pre)
   HANDLER_LOAD2(Signed)
