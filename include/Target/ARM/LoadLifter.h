@@ -197,11 +197,10 @@ class LoadLifter : public ARMLifter {
       std::string previousName = getReg(previous);
 
       // If no reg, we have our root element
-      if (previousName.find(name) != std::string::npos) return current;
+      if (previousName.compare(name) == 0) return current;
     }
     return NULL;
   }
-
 
 #define HANDLER_LOAD2(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
 
