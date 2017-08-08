@@ -53,8 +53,20 @@ bool ARMLifter::IsSigned(SDNode* N) {
 }
 
 bool ARMLifter::IsSetFlags(SDNode* N) {
-  if (N->getNumOperands() >= 5 &&
-      IsCPSR(N->getOperand(4).getNode()->getOperand(1).getNode())) {
+  if (N->getNumOperands() >= 4 && N->isMachineOpcode() &&
+      N->getMachineOpcode() != ARM::t2RRX &&
+      IsCPSR(N->getOperand(N->getNumOperands() - 1)
+                 .getNode()
+                 ->getOperand(1)
+                 .getNode())) {
+    outs() << "IsSetFlags = true\n";
+    return true;
+  } else if (N->getNumOperands() >= 4 && N->isMachineOpcode() &&
+             N->getMachineOpcode() == ARM::t2RRX &&
+             IsCPSR(N->getOperand(N->getNumOperands() - 2)
+                        .getNode()
+                        ->getOperand(1)
+                        .getNode())) {
     outs() << "IsSetFlags = true\n";
     return true;
   } else {
@@ -63,6 +75,14 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
         case ARM::tADDrr:
         case ARM::tADDi8:
         case ARM::tADDi3:
+        case ARM::tLSLri:
+        case ARM::tLSLrr:
+        case ARM::tLSRri:
+        case ARM::tLSRrr:
+        case ARM::tASRri:
+        case ARM::tASRrr:
+        case ARM::tROR:
+        case ARM::tMOVSr:
           // TODO more cases
           // TODO should we also check if outside IT block and not AL condition
           // for some of them?

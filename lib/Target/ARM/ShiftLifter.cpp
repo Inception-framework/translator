@@ -6,37 +6,77 @@
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
+#include "Target/ARM/FlagsLifter.h"
+
 using namespace llvm;
 using namespace fracture;
 
 void ShiftLifter::registerLifter() {
   // LSL rd,rm,<rs|sh>
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::tLSLri,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerLSL);
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::tLSLrr,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerLSL);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2LSLri,
                       (LifterHandler)&ShiftLifter::ShiftHandlerLSL);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2LSLrr,
                       (LifterHandler)&ShiftLifter::ShiftHandlerLSL);
   // LSR rd,rm,<rs|sh>
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::tLSRri,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerLSR);
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::tLSRrr,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerLSR);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2LSRri,
                       (LifterHandler)&ShiftLifter::ShiftHandlerLSR);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2LSRrr,
                       (LifterHandler)&ShiftLifter::ShiftHandlerLSR);
   // ASR rd,rm,<rs|sh>
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::tASRri,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerASR);
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::tASRrr,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerASR);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2ASRri,
                       (LifterHandler)&ShiftLifter::ShiftHandlerASR);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2ASRrr,
                       (LifterHandler)&ShiftLifter::ShiftHandlerASR);
   // ROR rd,rm,<rs|sh>
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::tROR,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerROR);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2RORri,
                       (LifterHandler)&ShiftLifter::ShiftHandlerROR);
   alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2RORrr,
                       (LifterHandler)&ShiftLifter::ShiftHandlerROR);
+  // RRX rd,rm
+  alm->registerLifter(this, std::string("ShiftLifter"), (unsigned)ARM::t2RRX,
+                      (LifterHandler)&ShiftLifter::ShiftHandlerRRX);
 }
 
 void ShiftLifter::ShiftHandlerLSL(SDNode *N, IRBuilder<> *IRB) {
   ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
 
-  Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateShl(info->Op0, info->Op1));
+  Value *shift = IRB->CreateICmpNE(info->Op1, getConstant("0"));
+  shift = Bool2Int(shift, IRB);
+
+  Value *shift_amount_min1 = IRB->CreateSub(info->Op1, shift);
+
+  Value *partial_res = IRB->CreateShl(info->Op0, shift_amount_min1);
+
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateShl(partial_res, shift));
+
+  if (info->S) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Res);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res);
+    // Compute CF.
+    flags->WriteCFShiftL(IRB, partial_res, shift);
+  }
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -68,6 +108,21 @@ void ShiftLifter::ShiftHandlerLSR(SDNode *N, IRBuilder<> *IRB) {
 
   Instruction *Res =
       dyn_cast<Instruction>(IRB->CreateLShr(partial_res, const_1));
+
+  if (info->S) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Res);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res);
+    // Compute CF.
+    flags->WriteCFShiftR(IRB, partial_res);
+  }
 
   Res->setDebugLoc(N->getDebugLoc());
 
@@ -104,6 +159,21 @@ void ShiftLifter::ShiftHandlerASR(SDNode *N, IRBuilder<> *IRB) {
   Instruction *Res =
       dyn_cast<Instruction>(IRB->CreateAShr(partial_res, const_1));
 
+  if (info->S) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Res);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res);
+    // Compute CF.
+    flags->WriteCFShiftR(IRB, partial_res);
+  }
+
   Res->setDebugLoc(N->getDebugLoc());
 
   alm->VisitMap[N] = Res;
@@ -122,6 +192,50 @@ void ShiftLifter::ShiftHandlerROR(SDNode *N, IRBuilder<> *IRB) {
   Instruction *Res =
       dyn_cast<Instruction>(IRB->CreateOr(high, low));
 
+  if (info->S) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Res);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res);
+    // Compute CF. Reuse ShiftL code but with final result
+    flags->WriteCFShiftL(IRB, Res, getConstant("1"));
+  }
+
+  Res->setDebugLoc(N->getDebugLoc());
+
+  alm->VisitMap[N] = Res;
+}
+
+void ShiftLifter::ShiftHandlerRRX(SDNode *N, IRBuilder<> *IRB) {
+  ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
+
+  Value *cf_in = ReadReg(Reg("CF"), IRB);
+  Value *msb = IRB->CreateShl(cf_in, getConstant("31"));
+  Value *rshift1 = IRB->CreateLShr(info->Op0, getConstant("1"));
+
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateOr(msb, rshift1));
+
+  if (info->S) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter *flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Res);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res);
+    // Compute CF. Reuse ShiftR code but with initial value
+    flags->WriteCFShiftR(IRB, info->Op0);
+  }
+
   Res->setDebugLoc(N->getDebugLoc());
 
   alm->VisitMap[N] = Res;
@@ -131,8 +245,9 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
                                                     IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+  bool S = IsSetFlags(N);
 
-  ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1);
+  ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1, S);
 
   return info;
 }
