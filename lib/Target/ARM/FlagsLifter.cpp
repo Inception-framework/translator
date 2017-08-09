@@ -192,3 +192,4 @@ void FlagsLifter::WriteNF(IRBuilder<> *IRB, llvm::Value *written) {
 
   WriteReg(trunc, Reg("NF"), IRB);
 }
+

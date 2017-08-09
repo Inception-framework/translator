@@ -52,50 +52,83 @@ bool ARMLifter::IsSigned(SDNode* N) {
   return false;
 }
 
+// TODO: This code is likely to contain some bugs
 bool ARMLifter::IsSetFlags(SDNode* N) {
-  if (N->getNumOperands() >= 4 && N->isMachineOpcode() &&
-      N->getMachineOpcode() != ARM::t2RRX &&
-      IsCPSR(N->getOperand(N->getNumOperands() - 1)
-                 .getNode()
-                 ->getOperand(1)
-                 .getNode())) {
-    outs() << "IsSetFlags = true\n";
-    return true;
-  } else if (N->getNumOperands() >= 4 && N->isMachineOpcode() &&
-             N->getMachineOpcode() == ARM::t2RRX &&
-             IsCPSR(N->getOperand(N->getNumOperands() - 2)
-                        .getNode()
-                        ->getOperand(1)
-                        .getNode())) {
-    outs() << "IsSetFlags = true\n";
-    return true;
-  } else {
-    if (N->isMachineOpcode()) {
-      switch (N->getMachineOpcode()) {
-        case ARM::tADDrr:
-        case ARM::tADDi8:
-        case ARM::tADDi3:
-        case ARM::tLSLri:
-        case ARM::tLSLrr:
-        case ARM::tLSRri:
-        case ARM::tLSRrr:
-        case ARM::tASRri:
-        case ARM::tASRrr:
-        case ARM::tROR:
-        case ARM::tMOVSr:
-          // TODO more cases
-          // TODO should we also check if outside IT block and not AL condition
-          // for some of them?
+  if (N->isMachineOpcode()) {
+    switch (N->getMachineOpcode()) {
+      //
+      // check the S bit
+      //
+      case ARM::tADDrSPi:
+      case ARM::tADDspi:
+      case ARM::tADDframe:
+      case ARM::tADDrSP:
+      case ARM::tADDspr:
+      case ARM::t2ADDSri:
+      case ARM::t2ADDSrr:
+      case ARM::t2ADDSrs:
+      case ARM::t2ADDri:
+      case ARM::t2ADDrr:
+      case ARM::t2ADDrs:
+      case ARM::t2ADCri:
+      case ARM::t2ADCrr:
+      case ARM::tADC:
+
+      case ARM::t2LSLri:
+      case ARM::t2LSLrr:
+      case ARM::t2LSRri:
+      case ARM::t2LSRrr:
+      case ARM::t2ASRri:
+      case ARM::t2ASRrr:
+      case ARM::t2RORri:
+      case ARM::t2RORrr:
+        if (IsCPSR(N->getOperand(4).getNode()->getOperand(1).getNode())) {
           outs() << "IsSetFlags = true\n";
           return true;
-        default:
+        } else {
           outs() << "IsSetFlags = false\n";
           return false;
-      }
+        }
+      case ARM::t2RRX:
+      case ARM::t2MOVr:  // TODO other mov, this is the one necessary for lsl 0
+        if (IsCPSR(N->getOperand(3).getNode()->getOperand(1).getNode())) {
+          outs() << "IsSetFlags = true\n";
+          return true;
+        } else {
+          outs() << "IsSetFlags = false\n";
+          return false;
+        }
+      //
+      // always true outside block
+      //
+      case ARM::tADDrr:
+      case ARM::tADDi8:
+      case ARM::tADDi3:
+      case ARM::tLSLri:
+      case ARM::tLSLrr:
+      case ARM::tLSRri:
+      case ARM::tLSRrr:
+      case ARM::tASRri:
+      case ARM::tASRrr:
+      case ARM::tROR:
+      case ARM::tMOVSr:
+        // TODO more cases
+        // TODO should we also check if outside IT block and not AL condition
+        // for some of them?
+        outs() << "IsSetFlags = true\n";
+        return true;
+      //
+      // alsways false
+      //
+      case ARM::t2ADDri12:
+      case ARM::tADDhirr:
+      default:
+        outs() << "IsSetFlags = false\n";
+        return false;
+    }
     }
     outs() << "IsSetFlags = false\n";
     return false;
-  }
 }
 
 bool ARMLifter::IsCPSR(SDNode* N) {
