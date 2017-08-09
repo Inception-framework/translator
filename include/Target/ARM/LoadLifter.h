@@ -186,7 +186,7 @@ class LoadLifter : public ARMLifter {
     return NULL;
   }
 
-  SDNode* getOutput(llvm::SDNode* N, std::string name) {
+  SDNode* getNextOutput(llvm::SDNode* N, llvm::SDNode* Prev) {
     for (SDNode::use_iterator I = N->use_begin(), E = N->use_end(); I != E;
          I++) {
       SDNode* current = *I;
@@ -194,14 +194,12 @@ class LoadLifter : public ARMLifter {
       if (I->getOpcode() != ISD::CopyToReg) continue;
 
       SDNode* previous = current->getOperand(0).getNode();
-      std::string previousName = getReg(previous);
 
       // If no reg, we have our root element
-      if (previousName.find(name) != std::string::npos) return current;
+      if (previous == Prev) return current;
     }
     return NULL;
   }
-
 
 #define HANDLER_LOAD2(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
 
