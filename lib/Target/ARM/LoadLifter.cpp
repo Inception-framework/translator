@@ -36,6 +36,7 @@ void LoadLifter::registerLifter() {
   // REGISTER_LOAD_OPCODE(t2LDMDB, t2LDMDB)
 
   REGISTER_LOAD_OPCODE2(ARM::tLDRi, Common, new LoadInfo2(-1, 1, 2))
+  REGISTER_LOAD_OPCODE2(ARM::tLDRspi, Common, new LoadInfo2(-1, 1, 2))
   // REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
   REGISTER_LOAD_OPCODE2(ARM::tLDRr, Common, new LoadInfo2(-1, 1, 2))
   // REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
