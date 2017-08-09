@@ -23,6 +23,8 @@ IRMerger::IRMerger(Decompiler* P_DEC, std::string new_function_name)
 IRMerger::~IRMerger() {
   marked_old_instructions.clear();
 
+  marked_old_binstructions.clear();
+
   marked_old_basicblocks.clear();
 }
 
@@ -30,6 +32,8 @@ void IRMerger::SetNewFunction(std::string new_function_name) {
   function_name = new StringRef(new_function_name);
 
   marked_old_instructions.clear();
+
+  marked_old_binstructions.clear();
 
   marked_old_basicblocks.clear();
 }
