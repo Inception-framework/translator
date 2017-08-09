@@ -53,6 +53,7 @@ bool ARMLifter::IsSigned(SDNode* N) {
 }
 
 // TODO: This code is likely to contain some bugs
+// TODO: In particular: behavior inside an IT block and Add rd,rn
 bool ARMLifter::IsSetFlags(SDNode* N) {
   if (N->isMachineOpcode()) {
     switch (N->getMachineOpcode()) {
@@ -62,7 +63,6 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::tADDrSPi:
       case ARM::tADDspi:
       case ARM::tADDframe:
-      case ARM::tADDrSP:
       case ARM::tADDspr:
       case ARM::t2ADDSri:
       case ARM::t2ADDSrr:
@@ -122,6 +122,7 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       //
       case ARM::t2ADDri12:
       case ARM::tADDhirr:
+      case ARM::tADDrSP:
       default:
         outs() << "IsSetFlags = false\n";
         return false;
