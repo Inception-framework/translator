@@ -413,6 +413,7 @@ void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   unsigned OpCode = N->getMachineOpcode();
   switch (OpCode) {
     case ARM::tLDRi:
+    case ARM::tLDRspi:
       Offset = IRB->CreateShl(Offset, getConstant("2"));
       break;
     case ARM::tLDRHi:
