@@ -173,7 +173,7 @@ void LoadLifter::doDPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   index = info->iOffset;
   Value* Offset = visit(N->getOperand(index).getNode(), IRB);
 
-  //Return the first output Node chained with Noreg
+  // Return the first output Node chained with Noreg
   SDNode* node = getFirstOutput(N);
   if (node != NULL) {
     Rn = ReadReg(Rd, IRB, info->width);
@@ -182,8 +182,8 @@ void LoadLifter::doDPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
     Rd = UpdateRd(Rd, getConstant("4"), IRB, true);
   }
 
-  //Return the first output Node which is chained with the previous node
-  node = getOutput(N, getReg(node));
+  // Return the first output Node which is chained with the previous node
+  node = getNextOutput(N, node);
   if (node != NULL) {
     Rn = ReadReg(Rd, IRB, info->width);
     saveNodeValue(N, Rn);
@@ -413,6 +413,10 @@ void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   switch (OpCode) {
     case ARM::tLDRi:
       Offset = IRB->CreateShl(Offset, getConstant("2"));
+      break;
+    case ARM::tLDRHi:
+      Offset = IRB->CreateShl(Offset, getConstant("1"));
+      break;
   }
 
   if (info->shifted) {
