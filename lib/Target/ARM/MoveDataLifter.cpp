@@ -6,6 +6,8 @@
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
+#include "Target/ARM/FlagsLifter.h"
+
 using namespace llvm;
 using namespace fracture;
 
@@ -51,6 +53,21 @@ void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
 
   Value* Op0 = visit(N->getOperand(0).getNode(), IRB);
 
+  if (IsSetFlags(N)) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter* flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Op0);
+    // Compute ZF.
+    flags->WriteZF(IRB, Op0);
+    ////TODO Compute CF. in case of shift only??
+    // flags->WriteCFShiftR(IRB, partial_res);
+  }
+
   alm->VisitMap[N] = Op0;
 }
 
@@ -63,6 +80,21 @@ void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
 
   Value* Res = IRB->CreateNot(Op0);
   Res->dump();
+
+  if (IsSetFlags(N)) {
+    // Write the flag updates.
+    // Compute AF.
+    FlagsLifter* flags = dyn_cast<FlagsLifter>(alm->resolve("FLAGS"));
+
+    ////Compute NF
+    // flags->WriteNFAdd(IRB, Res);
+    // Compute NF.
+    flags->WriteNF(IRB, Res);
+    // Compute ZF.
+    flags->WriteZF(IRB, Res);
+    ////TODO Compute CF. in case of shift only??
+    // flags->WriteCFShiftR(IRB, partial_res);
+  }
 
   alm->VisitMap[N] = Res;
 }

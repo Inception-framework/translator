@@ -9,8 +9,11 @@
 typedef struct ARMSHIFTInfo {
   llvm::Value* Op0;
   llvm::Value* Op1;
-  ARMSHIFTInfo(llvm::Value* _Op0, llvm::Value* _Op1)
-      : Op0(_Op0), Op1(_Op1) {}
+  bool S;
+  ARMSHIFTInfo(llvm::Value* _Op0, llvm::Value* _Op1, bool _S)
+      : Op0(_Op0), Op1(_Op1) {
+    S = _S;
+  }
 } ARMSHIFTInfo;
 
 class ARMLifterManager;
@@ -37,6 +40,7 @@ class ShiftLifter : public ARMLifter{
   void ShiftHandlerLSR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void ShiftHandlerASR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void ShiftHandlerROR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void ShiftHandlerRRX(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 
   ARMSHIFTInfo* RetrieveGraphInformation(llvm::SDNode* N,
                                          llvm::IRBuilder<>* IRB);

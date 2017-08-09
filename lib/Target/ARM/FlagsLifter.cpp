@@ -59,14 +59,25 @@ void FlagsLifter::WriteZF(IRBuilder<> *IRB, llvm::Value *w) {
   WriteReg(icmp, Reg("ZF"), IRB);
 }
 
-void FlagsLifter::WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *val,
-                                llvm::Value *shiftAmt) {
-  auto n = IRB->CreateSub(shiftAmt, getConstant("1"));
-  auto v = IRB->CreateLShr(val, n);
+void FlagsLifter::WriteCFShiftR(IRBuilder<> *IRB, llvm::Value *shift_min_1) {
+  auto lsb = IRB->CreateAnd(shift_min_1, getConstant("1"));
 
-  v = Bool2Int(v, IRB);
+  lsb = Bool2Int(lsb, IRB);
 
-  WriteReg(v, Reg("CF"), IRB);
+  WriteReg(lsb, Reg("CF"), IRB);
+}
+
+void FlagsLifter::WriteCFShiftL(IRBuilder<> *IRB, llvm::Value *shift_min_1,
+                                llvm::Value *isShift) {
+  auto msb = IRB->CreateLShr(shift_min_1, getConstant("31"));
+
+  auto trunc = Bool2Int(msb, IRB);
+
+  // keep old cf if no shift
+  auto update = IRB->CreateAnd(trunc, isShift);
+  auto old = IRB->CreateAnd(ReadReg(Reg("CF"), IRB), IRB->CreateNot(isShift));
+  auto cf = IRB->CreateOr(update, old);
+  WriteReg(cf, Reg("CF"), IRB);
 }
 
 void FlagsLifter::WriteCFAdc(IRBuilder<> *IRB, llvm::Value *res,
