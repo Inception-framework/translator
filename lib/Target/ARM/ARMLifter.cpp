@@ -60,7 +60,6 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       //
       // check the S bit
       //
-      case ARM::tADDrSPi:
       case ARM::tADDspi:
       case ARM::tADDframe:
       case ARM::tADDspr:
@@ -123,6 +122,7 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::t2ADDri12:
       case ARM::tADDhirr:
       case ARM::tADDrSP:
+      case ARM::tADDrSPi:
       default:
         outs() << "IsSetFlags = false\n";
         return false;
