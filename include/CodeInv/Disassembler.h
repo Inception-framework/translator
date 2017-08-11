@@ -186,9 +186,20 @@ public:
 
   std::map<StringRef, uint64_t> getRelocOrigins() { return RelocOrigins; };
   uint64_t getDebugOffset(const DebugLoc &Loc) const;
-  DebugLoc* setDebugLoc(uint64_t Address);
+  DebugLoc *setDebugLoc(uint64_t Address);
   void deleteFunction(MachineFunction* MF);
-private:
+
+  void setDisassFileNameAndAddr(std::string s, uint64_t a) {
+    disass_file_name = s;
+    disass_address = a;
+  }
+  std::string getDisassFileName(void) { return disass_file_name; }
+  uint64_t getDisassAddr(void) { return disass_address; }
+
+ private:
+  std::string disass_file_name;
+  uint64_t disass_address;
+
   object::SectionRef CurSection;
   object::ObjectFile *Executable;
   FractureMemoryObject* CurSectionMemory;

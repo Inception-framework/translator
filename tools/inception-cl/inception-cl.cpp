@@ -334,9 +334,15 @@ static std::error_code loadBinary(StringRef FileName) {
   for (auto &str : asm_functions) {
     std::cout << "[Inception]\t Should replace : " << str << '\n';
 
+    std::string asm_output(FileName.str());
+    asm_output += ".";
+    asm_output += str;
+    asm_output += "_disassembled";
+
     std::vector<std::string> CommandLine;
     CommandLine.push_back("disassemble");
     CommandLine.push_back(str);
+    CommandLine.push_back(asm_output);
 
     runDisassembleCommand(CommandLine);
 
@@ -610,17 +616,18 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
   uint64_t NumInstrs, Address, NumInstrsPrinted;
   StringRef FunctionName;
 
-  if (CommandLine.size() < 2 || CommandLine.size() > 3) {
-    errs() << "runDisassemblerCommand: invalid command"
-           << "format: disassemble <address or function name> "
-           << "[num of instructions] \n";
+  if (CommandLine.size() < 3 || CommandLine.size() > 4) {
+    errs()
+        << "runDisassemblerCommand: invalid command"
+        << "format: disassemble <address or function name> <output file name>"
+        << "[num of instructions] \n";
     return;
   }
 
   NumInstrs = 0;
   // Parse Num instructions (if it is given)
-  if (CommandLine.size() == 3) {
-    if (StringRef(CommandLine[2]).getAsInteger(0, NumInstrs)) {
+  if (CommandLine.size() == 4) {
+    if (StringRef(CommandLine[3]).getAsInteger(0, NumInstrs)) {
       NumInstrs = 0;
     }
   }
@@ -644,12 +651,18 @@ static void runDisassembleCommand(std::vector<std::string> &CommandLine) {
   //    return;
   //  }
 
-  formatted_raw_ostream Out(outs(), false);
-  Out << "Address: " << Address << "\nNumInstrs: " << NumInstrs << "\n";
+  // Out << "Address: " << Address << "\nNumInstrs: " << NumInstrs << "\n";
+  std::error_code ErrorInfo;
+  raw_fd_ostream FOut(CommandLine[2], ErrorInfo, sys::fs::OpenFlags::F_RW);
+  formatted_raw_ostream Out(FOut, false);
+  DAS->setDisassFileNameAndAddr(CommandLine[2], Address);
   NumInstrsPrinted = DAS->printInstructions(Out, Address, NumInstrs, false);
   if (NumInstrs != 0 && NumInstrsPrinted != NumInstrs) {
     outs() << "runDisassemblerCommand Warning: " << NumInstrsPrinted << " of "
            << NumInstrs << " printed.\n";
+  }
+  if (ErrorInfo) {
+    outs() << "Errors on write: \n" << ErrorInfo.message() << "\n";
   }
 }
 

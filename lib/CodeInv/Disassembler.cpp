@@ -289,21 +289,32 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   return ((unsigned)InstSize);
 }
 
-DebugLoc* Disassembler::setDebugLoc(uint64_t Address) {
+DebugLoc *Disassembler::setDebugLoc(uint64_t Address) {
+  std::string file = getDisassFileName();
+  uint64_t func_addr = getDisassAddr();
+  unsigned found = file.find_last_of("/");
+  std::string path = file.substr(0, found);
+  std::string name = file.substr(found + 1);
+  SmallVector<Metadata *, 2> file_loc;
+  file_loc.push_back(MDString::get(*MC->getContext(), StringRef(name)));
+  file_loc.push_back(MDString::get(*MC->getContext(), StringRef(path)));
+
   // Note: Location stores offset of instruction, which is really a perverse
   //       misuse of this field.
   Type *Int64 = Type::getInt64Ty(*MC->getContext());
   // The following sets the "scope" variable which actually holds the address.
-  uint64_t AddrMask = dwarf::DW_TAG_lexical_block;
+  uint64_t AddrMask = dwarf::DW_TAG_subprogram;
   Twine DIType = "0x" + Twine::utohexstr(AddrMask);
-  std::vector<Metadata*> *Elts = new std::vector<Metadata*>();
+  std::vector<Metadata *> *Elts = new std::vector<Metadata *>();
   Elts->push_back(MDString::get(*MC->getContext(), StringRef(DIType.str())));
+  Elts->push_back(MDTuple::get(*MC->getContext(), file_loc));
   Elts->push_back(ValueAsMetadata::get(ConstantInt::get(Int64, Address)));
   DIScope *Scope = new DIScope(MDNode::get(*MC->getContext(), *Elts));
+
   // The following is here to fill in the value and not to be used to get
   // offsets
   unsigned ColVal = (Address & 0xFF000000) >> 24;
-  unsigned LineVal = Address & 0xFFFFFF;
+  unsigned LineVal = ((Address - func_addr) / 4 + 1 + 1) & 0xFFFFFF;
   DebugLoc *Location = new DebugLoc(DebugLoc::get(LineVal, ColVal,
       Scope->get(), NULL));
 
@@ -756,13 +767,13 @@ const object::SectionRef Disassembler::getSectionByAddress(unsigned Address)
 
 uint64_t Disassembler::getDebugOffset(const DebugLoc &Loc) const {
   MDNode *Scope = Loc.getScope(*MC->getContext());
-  if (Scope == NULL || Scope->getNumOperands() != 2) {
-    errs() << "Error: Scope not set properly on Debug Offset.\n";
+  if (Scope == NULL || Scope->getNumOperands() != 3) {
+    errs() << "Error Scope not set properly on Debug Offset.\n";
     return 0;
   }
 
   if (ConstantInt *OffsetVal = dyn_cast<ConstantInt>(
-      dyn_cast<ValueAsMetadata>(Scope->getOperand(1))->getValue())) {
+          dyn_cast<ValueAsMetadata>(Scope->getOperand(2))->getValue())) {
     return OffsetVal->getZExtValue();
   }
 
