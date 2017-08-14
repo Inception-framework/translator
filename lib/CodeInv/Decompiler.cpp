@@ -435,6 +435,33 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   }
   DAG->setRoot(Dummy.getValue());
 
+  // set debug loc for each instruction in the BasicBlock
+  // TODO this algo is inefficient, do it better
+  Instruction *begin = NULL;
+  for (auto int_i = BB->begin(); int_i != BB->end(); int_i++) {
+    Instruction &inst = *int_i;
+    if (begin == NULL) {
+      outs() << "first instruction in sequence\n";
+      begin = int_i;
+    }
+    for (auto elem : alm->VisitMap) {
+      if (elem.second == int_i) {
+        outs() << "last instruction in sequence\n";
+        bool set = false;
+        for (auto next = BB->begin(); next != BB->end(); next++) {
+          Instruction *next_instr = next;
+          if (next_instr == begin) set = true;
+          if (set) {
+            next_instr->dump();
+            next_instr->setDebugLoc(elem.first->getDebugLoc());
+          }
+          if (next_instr == elem.second) set = false;
+        }
+        begin = NULL;
+      }
+    }
+  }
+
   free(DAG);
   return BB;
 }
