@@ -230,5 +230,5 @@ void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   Rn = WriteReg(Rn, Rd, IRB, info->width);
 
-  saveNodeValue(N, Rd);
+  saveNodeValue(N, Rn);
 }

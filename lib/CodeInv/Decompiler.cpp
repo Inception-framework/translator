@@ -159,7 +159,6 @@ Function *Decompiler::decompileFunction(unsigned Address) {
   }
 
   // if (!F->empty()) {
-  // return F;
   // }
 
   // Create a basic block to hold entry point (alloca) information
@@ -167,7 +166,7 @@ Function *Decompiler::decompileFunction(unsigned Address) {
 
   // For each basic block
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
-  outs() << "BEGIN: First BB iteration\n";
+  // outs() << "BEGIN: First BB iteration\n";
   while (BI != BE) {
     // outs() << "-----BI------\n";
     // BI->dump();
@@ -180,12 +179,12 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     }
     ++BI;
   }
-  outs() << "END: First BB iteration\n";
+  // outs() << "END: First BB iteration\n";
 
-  outs() << "BEGIN: Decompile basic blocks\n";
+  // outs() << "BEGIN: Decompile basic blocks\n";
   BI = MF->begin();
   while (BI != BE) {
-    outs() << "\n[decompileFunction] call decompileBasicBlock \n";
+    // outs() << "\n[decompileFunction] call decompileBasicBlock \n";
     // BI->dump();
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
@@ -193,8 +192,8 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     ++BI;
     // outs() << "\n--> done\n\n";
   }
-  outs() << "END: Decompile basic blocks\n";
-  outs() << "BEGIN: handling new basic blocks\n";
+  // outs() << "END: Decompile basic blocks\n";
+  // outs() << "BEGIN: handling new basic blocks\n";
 
   // During Decompilation, did any "in-between" basic blocks get created?
   // Nothing ever splits the entry block, so we skip it.
@@ -391,7 +390,7 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
 
   // Create a new basic block (if necessary)
   BasicBlock *BB = getOrCreateBasicBlock(MBB->getName(), F);
-  llvm::errs() << "Generating BB : " << MBB->getName() << "\n";
+  // llvm::errs() << "Generating BB : " << MBB->getName() << "\n";
 
   // Start at root and go to entry token
   for (auto b = DAG->allnodes_begin(), e = DAG->allnodes_end(); b != e; b++) {
@@ -411,9 +410,9 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
 
     uint16_t TargetOpc = Node->getMachineOpcode();
 
-    llvm::errs() << "----------------------------\n";
-    llvm::errs() << "Next Node : \n";
-    Node->dump();
+    // llvm::errs() << "----------------------------\n";
+    // llvm::errs() << "Next Node : \n";
+    // Node->dump();
 
     // XXX: Emit IR code for each supported node
     LifterSolver *solver = alm->resolve(TargetOpc);
@@ -431,7 +430,7 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
       assert(solver && "Unable to solve opcode ...");
       break;
     }
-    llvm::errs() << "\n----------------------------\n";
+    // llvm::errs() << "\n----------------------------\n";
   }
   DAG->setRoot(Dummy.getValue());
 
@@ -441,21 +440,24 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   for (auto int_i = BB->begin(); int_i != BB->end(); int_i++) {
     Instruction &inst = *int_i;
     if (begin == NULL) {
-      outs() << "first instruction in sequence\n";
+      // outs() << "first instruction in sequence\n";
       begin = int_i;
     }
     for (auto elem : alm->VisitMap) {
       if (elem.second == int_i) {
-        outs() << "last instruction in sequence\n";
+        // outs() << "last instruction in sequence\n";
         bool set = false;
         for (auto next = BB->begin(); next != BB->end(); next++) {
           Instruction *next_instr = next;
           if (next_instr == begin) set = true;
           if (set) {
-            next_instr->dump();
+            // next_instr->dump();
             next_instr->setDebugLoc(elem.first->getDebugLoc());
+            // elem.first->getDebugLoc().dump();
           }
-          if (next_instr == elem.second) set = false;
+          if (next_instr == elem.second) {
+            set = false;
+          }
         }
         begin = NULL;
       }
