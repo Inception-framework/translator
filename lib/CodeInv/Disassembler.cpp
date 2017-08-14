@@ -314,7 +314,7 @@ DebugLoc *Disassembler::setDebugLoc(uint64_t Address) {
   // The following is here to fill in the value and not to be used to get
   // offsets
   unsigned ColVal = (Address & 0xFF000000) >> 24;
-  unsigned LineVal = ((Address - func_addr) / 4 + 1 + 1) & 0xFFFFFF;
+  unsigned LineVal = ((Address - func_addr) + 1 + 1) & 0xFFFFFF;
   DebugLoc *Location = new DebugLoc(DebugLoc::get(LineVal, ColVal,
       Scope->get(), NULL));
 
@@ -485,6 +485,9 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
     Out << format("%02" PRIX8 " ", Bytes[i]);
   }
   delete Bytes;
+
+  // Print empty lines to align the next one
+  for (unsigned i = 0, e = Size - 1; i != e; ++i) Out << "\n";
 }
 
 
