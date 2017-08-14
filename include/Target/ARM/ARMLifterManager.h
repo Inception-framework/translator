@@ -65,6 +65,14 @@ class ARMLifterManager {
 
   fracture::Decompiler* Dec;
 
+  LLVMContext* getContext() {
+    return Dec->getContext();
+  }
+
+  LLVMContext& getContextRef() {
+    return *(Dec->getContext());
+  }
+
  private:
   std::map<unsigned, LifterSolver*> solver;
 

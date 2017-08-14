@@ -94,9 +94,9 @@ void LoadLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -203,9 +203,9 @@ void LoadLifter::doPop(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -232,9 +232,9 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -262,9 +262,9 @@ void LoadLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -301,9 +301,9 @@ void LoadLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -336,9 +336,9 @@ void LoadLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -370,9 +370,9 @@ void LoadLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -398,9 +398,9 @@ void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(alm->Mod->getContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 
@@ -516,7 +516,7 @@ void LoadLifter::t2LDRB_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 8);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -531,7 +531,7 @@ void LoadLifter::t2LDRHi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 16);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -558,7 +558,7 @@ void LoadLifter::t2LDRHsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1, 3);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 16);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -573,7 +573,7 @@ void LoadLifter::t2LDRBsHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1, 3);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 8);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -601,7 +601,7 @@ void LoadLifter::t2LDRH_POSTHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 16);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -616,7 +616,7 @@ void LoadLifter::t2LDRH_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 16);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -632,7 +632,7 @@ void LoadLifter::t2LDRB_PREHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 8);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -648,7 +648,7 @@ void LoadLifter::tLDRHiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 16);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 16);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -664,7 +664,7 @@ void LoadLifter::tLDRBiHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 8);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before, Trunc,
   // Type
@@ -704,7 +704,7 @@ void LoadLifter::t2LDRBi12Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 8);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -719,7 +719,7 @@ void LoadLifter::t2LDRBi8Handler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dst_start Dst_end Offset Addr
   LoadNodeLayout* layout = new LoadNodeLayout(-1, -1, 2, 1);
 
-  Type* Ty = IntegerType::get(getGlobalContext(), 8);
+  Type* Ty = IntegerType::get(alm->getContextRef(), 8);
 
   // SDNode, MultiDest, OutputAddr, OutputDst, Layout, Increment, Before
   LoadInfo* info =
@@ -942,7 +942,7 @@ void LoadLifter::LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB) {
   if (info->Trunc) {
     Res = IRB->CreateTrunc(Res, info->Ty);
 
-    Type* Ty = IntegerType::get(getGlobalContext(), 32);
+    Type* Ty = IntegerType::get(alm->getContextRef(), 32);
 
     Res = IRB->CreateZExt(Res, Ty);
   }
@@ -1029,7 +1029,7 @@ llvm::Value* LoadLifter::CreateStore(LoadInfo* info, IRBuilder<>* IRB,
 llvm::Value* LoadLifter::IncPointer(LoadInfo* info, IRBuilder<>* IRB,
                                     Value* Addr) {
   ConstantInt* const_4 =
-      ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+      ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   if (info->Increment)
     Addr = dyn_cast<Instruction>(IRB->CreateAdd(Addr, const_4));

@@ -236,7 +236,7 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
   }
 
   FunctionType *FT = FunctionType::get(
-      // Type::getPrimitiveType(Mod->getContext(), Type::VoidTyID), false);
+      // Type::getPrimitiveType(alm->getContext(), Type::VoidTyID), false);
       Func->getReturnType(), ArgTypes, false);
 
   Twine TgtAddr(Tgt);
@@ -250,7 +250,7 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
   outs() << " =========================== \n\n";
 
   AttributeSet AS;
-  AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+  AS = AS.addAttribute(alm->getContextRef(), AttributeSet::FunctionIndex,
                        "Address", TgtAddr.str());
 
   Function *Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));

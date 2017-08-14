@@ -82,6 +82,8 @@ public:
   void setViewMCDAGs(bool Setting) { ViewMCDAGs = Setting; }
   void setViewIRDAGs(bool Setting) { ViewIRDAGs = Setting; }
   Module* getModule() { return Mod; }
+  LLVMContext* getContext() { return Context; }
+
 private:
   Disassembler *Dis;
   Module *Mod;

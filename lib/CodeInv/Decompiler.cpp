@@ -41,13 +41,15 @@ Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
     ModID += "-IR";
     Mod = new Module(StringRef(ModID), *(Dis->getMCDirector()->getContext()));
     llvm::outs() << "Module : " << Mod->getName() << "\n";
+    Context = Dis->getMCDirector()->getContext();
+  } else {
+    Context = &(Mod->getContext());
   }
-  Context = Dis->getMCDirector()->getContext();
 }
 
 Decompiler::~Decompiler() {
   delete DAG;
-  delete Context;
+  // delete Context;
   delete Mod;
   delete Dis;
 }
@@ -150,7 +152,7 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     return F;
   else {
     AttributeSet AS;
-    AS = AS.addAttribute(Mod->getContext(), AttributeSet::FunctionIndex,
+    AS = AS.addAttribute(*Context, AttributeSet::FunctionIndex,
                          "Decompiled", "True");
 
     F->setAttributes(AS);
@@ -603,7 +605,7 @@ BasicBlock *Decompiler::getOrCreateBasicBlock(StringRef BBName, Function *F) {
   while (BI->getName() != BBName && BI != BE) ++BI;
   if (BI == BE) {
     BBTgt =
-        BasicBlock::Create(*(Dis->getMCDirector()->getContext()), BBName, F);
+        BasicBlock::Create(*Context, BBName, F);
   } else {
     BBTgt = &(*BI);
   }

@@ -56,9 +56,9 @@ void StoreLifter::doPush(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -83,9 +83,9 @@ void StoreLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -110,9 +110,9 @@ void StoreLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -142,9 +142,9 @@ void StoreLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -174,9 +174,9 @@ void StoreLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -205,9 +205,9 @@ void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
-  c4 = ConstantInt::get(getGlobalContext(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 

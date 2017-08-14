@@ -160,10 +160,8 @@ bool ARMLifter::IsCPSR(SDNode* N) {
 }
 
 Value* ARMLifter::Bool2Int(Value* v, IRBuilder<>* IRB) {
-  auto& C = getGlobalContext();
-
-  auto bool_ty = llvm::Type::getInt1Ty(C);
-  auto int32_ty = llvm::Type::getInt32Ty(C);
+  auto bool_ty = llvm::Type::getInt1Ty(alm->getContextRef());
+  auto int32_ty = llvm::Type::getInt32Ty(alm->getContextRef());
 
   if (v->getType() != bool_ty) {
     v = IRB->CreateTrunc(v, bool_ty);
@@ -177,7 +175,7 @@ Value* ARMLifter::Reg(StringRef name) {
   Value* Reg = alm->Mod->getGlobalVariable(name);
 
   if (Reg == NULL) {
-    Type* Ty = IntegerType::get(getGlobalContext(), 32);
+    Type* Ty = IntegerType::get(alm->getContextRef(), 32);
 
     Constant* Initializer = Constant::getNullValue(Ty);
 
@@ -192,13 +190,13 @@ Value* ARMLifter::Reg(StringRef name) {
 
 Value* ARMLifter::getConstant(StringRef value) {
   ConstantInt* constante =
-      ConstantInt::get(getGlobalContext(), APInt(32, value, 10));
+      ConstantInt::get(alm->getContextRef(), APInt(32, value, 10));
 
   return constante;
 }
 
 Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
-  Type* Ty_word = IntegerType::get(getGlobalContext(), 32);
+  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
   if (!Rd->getType()->isPointerTy()) {
     Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
@@ -219,13 +217,13 @@ Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
 
   switch (Width) {
     case 8:
-      Ty = IntegerType::get(getGlobalContext(), 8);
+      Ty = IntegerType::get(alm->getContextRef(), 8);
       break;
     case 16:
-      Ty = IntegerType::get(getGlobalContext(), 16);
+      Ty = IntegerType::get(alm->getContextRef(), 16);
       break;
     default:
-      Ty = Ty = IntegerType::get(getGlobalContext(), 32);
+      Ty = Ty = IntegerType::get(alm->getContextRef(), 32);
       break;
   }
 
@@ -238,7 +236,7 @@ Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
   if (Width != 32) {
     load = IRB->CreateTrunc(load, Ty);
 
-    load = IRB->CreateZExt(load, IntegerType::get(getGlobalContext(), 32));
+    load = IRB->CreateZExt(load, IntegerType::get(alm->getContextRef(), 32));
   }
 
   return load;
@@ -249,13 +247,13 @@ Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width) {
 
   switch (Width) {
     case 8:
-      Ty = IntegerType::get(getGlobalContext(), 8);
+      Ty = IntegerType::get(alm->getContextRef(), 8);
       break;
     case 16:
-      Ty = IntegerType::get(getGlobalContext(), 16);
+      Ty = IntegerType::get(alm->getContextRef(), 16);
       break;
     default:
-      Ty = Ty = IntegerType::get(getGlobalContext(), 32);
+      Ty = Ty = IntegerType::get(alm->getContextRef(), 32);
       break;
   }
 
@@ -266,7 +264,7 @@ Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width) {
   if (Width != 32) {
     Rn = IRB->CreateTrunc(Rn, Ty);
 
-    Rn = IRB->CreateZExt(Rn, IntegerType::get(getGlobalContext(), 32));
+    Rn = IRB->CreateZExt(Rn, IntegerType::get(alm->getContextRef(), 32));
   }
 
   Instruction* store = IRB->CreateStore(Rn, Rd);
@@ -362,7 +360,7 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
 
     if (RegName.find("noreg") != std::string::npos) return NULL;
 
-    Type* Ty = R->getValueType(0).getTypeForEVT(getGlobalContext());
+    Type* Ty = R->getValueType(0).getTypeForEVT(alm->getContextRef());
 
     Reg = alm->Mod->getGlobalVariable(RegName);
     if (Reg == NULL) {
@@ -389,7 +387,7 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
           llvm::errs() << "Unable to find main function needed to init SP !";
 
         ConstantInt* const_int32 = ConstantInt::get(
-            getGlobalContext(), APInt(32, StringRef("536875008"), 10));
+            alm->getContextRef(), APInt(32, StringRef("536875008"), 10));
 
         Instruction* inst = main_fct->getEntryBlock().begin();
 
@@ -455,7 +453,7 @@ Value* ARMLifter::visitCopyToReg(const SDNode* N, IRBuilder<>* IRB) {
 Value* ARMLifter::visitConstant(const SDNode* N) {
   if (const ConstantSDNode* CSDN = dyn_cast<ConstantSDNode>(N)) {
     Value* Res = Constant::getIntegerValue(
-        N->getValueType(0).getTypeForEVT(getGlobalContext()),
+        N->getValueType(0).getTypeForEVT(alm->getContextRef()),
         CSDN->getAPIntValue());
     alm->VisitMap[N] = Res;
     return Res;
