@@ -217,6 +217,12 @@ void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   index = info->iOffset;
   Value* Offset = visit(N->getOperand(index).getNode(), IRB);
 
+  unsigned opcode = N->getMachineOpcode();
+  switch(opcode) {
+    case ARM::tSTRi:
+      Offset = IRB->CreateMul(Offset, getConstant("4"));
+  }
+
   Rd = UpdateRd(Rd, Offset, IRB, true);
 
   Value* Rn = NULL;
