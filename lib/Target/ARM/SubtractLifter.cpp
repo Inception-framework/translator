@@ -30,6 +30,12 @@ void SubtractLifter::SubHandler(SDNode *N, IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
 
+  unsigned opcode = N->getMachineOpcode();
+  switch(opcode) {
+    case ARM::tSUBspi:
+      Op1 = IRB->CreateMul(Op1, getConstant("4"));
+  }
+
   Instruction *Res =
       dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1));
 
