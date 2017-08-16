@@ -98,7 +98,7 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Value* PC = Reg("PC");
   uint32_t debugLoc =
       alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
-  debugLoc += 4;  // Current instruction size
+  debugLoc += 4;
 
   index = info->iOffset;
   SDNode* Node = N->getOperand(index).getNode();
@@ -128,17 +128,14 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
                       "current section ...";
       return;
     } else {
-      printf("Read at 0x%08x the value 0x%02x\n", address+i, byte);
+      // printf("Read at 0x%08x the value 0x%02x\n", address+i, byte);
       value |= byte<<(i*8);
     }
   }
 
-  printf("Read at 0x%08x the value 0x%08x\n", address, value);
+  // printf("Read at 0x%08x the value 0x%08x\n", address, value);
 
   Value* Rd = ConstantInt::get(alm->getContextRef(), APInt(32, value));
-  // WriteReg(Rd, PC, IRB, info->width);
-  //
-  // Value* Rn = ReadReg(PC, IRB, info->width);
 
   saveNodeValue(N, Rd);
 }
