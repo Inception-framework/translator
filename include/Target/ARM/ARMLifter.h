@@ -81,6 +81,8 @@ class ARMLifter {
 
   bool IsCPSR(SDNode* N);
 
+  bool IsPC(SDNode* N);
+
   SDNode* LookUpSDNode(SDNode* N, std::string name);
 };
 

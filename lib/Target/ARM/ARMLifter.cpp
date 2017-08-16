@@ -159,6 +159,33 @@ bool ARMLifter::IsCPSR(SDNode* N) {
   return false;
 }
 
+bool ARMLifter::IsPC(SDNode* N) {
+  N->dump();
+
+  if (N->getOpcode() == ISD::Register) {
+    const RegisterSDNode* R = dyn_cast<RegisterSDNode>(N);
+    if (R == NULL) {
+      return false;
+    }
+
+    std::string RegName;
+    raw_string_ostream RP(RegName);
+
+    RP << PrintReg(R->getReg(), alm->RegisterInfo);
+
+    RegName = RP.str().substr(1, RP.str().size());
+
+    llvm::errs() << " Found -" << RegName << "- \n";
+
+    if (RegName.compare("PC") == 0) {
+      llvm::errs() << " Match \n";
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
 Value* ARMLifter::Bool2Int(Value* v, IRBuilder<>* IRB) {
   auto bool_ty = llvm::Type::getInt1Ty(alm->getContextRef());
   auto int32_ty = llvm::Type::getInt32Ty(alm->getContextRef());
@@ -422,9 +449,19 @@ Value* ARMLifter::visitCopyFromReg(const SDNode* N, IRBuilder<>* IRB) {
     return NULL;
   }
 
-  Instruction* Res = IRB->CreateLoad(RegVal);
+  Value* Res = NULL;
+  if (IsPC(N->getOperand(1).getNode())) {
+    uint64_t address = 0;
+    address = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+    address += 4;
+    Value* PCval = ConstantInt::get(
+        llvm::Type::getInt32Ty(alm->getContextRef()), address, false);
+    Res = PCval;
+  } else {
+    Res = IRB->CreateLoad(RegVal);
+  }
   alm->VisitMap[N] = Res;
-  Res->setDebugLoc(N->getDebugLoc());
+  // Res->setDebugLoc(N->getDebugLoc());
   return Res;
 }
 
