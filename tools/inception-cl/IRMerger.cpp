@@ -315,18 +315,20 @@ void IRMerger::MapArgsToRegs() {
     // }
 
     if (x->getType()->isPointerTy()) {
-      continue;
+      // continue;
 
-      x = IRB->CreateLoad(x);
+      // x = IRB->CreateLoad(x);
       // outs() << "\nGet Ptr value ";
       // x->dump();
 
-      if (Reg->getType() != x->getType()) {
-        x = IRB->CreateBitCast(x, Reg->getType());
-        // outs() << "\nBitcast ";
-        // x->dump();
-      }
+      // if (Reg->getType() != x->getType()) {
+      //  x = IRB->CreateBitCast(x, Reg->getType());
+      // outs() << "\nBitcast ";
+      // x->dump();
+      //}
       // x = IRB->CreatePtrToInt(x, x->getType()->getPointerTo());
+      x = IRB->CreatePtrToInt(
+          x, IntegerType::get(DEC->getModule()->getContext(), 32));
     }
 
     // outs() << "\nRegType ";
