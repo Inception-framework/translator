@@ -108,7 +108,7 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
     return;
   }
 
-  int64_t offset = OffsetNode->getSExtValue();
+  int64_t offset = OffsetNode->getZExtValue();
 
   const Disassembler* dis = alm->Dec->getDisassembler();
   FractureMemoryObject* fmo = dis->getCurSectionMemory();
@@ -122,6 +122,7 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint8_t byte;
   uint32_t value = 0;
   uint64_t address = (debugLoc + offset);
+  address &= ~(1<<1);
   for (int i = 0; i < 4; i++) {
     if (fmo->readByte(&byte, address + i) == -1) {
       llvm::errs() << "[LoadLifter] DoPC encountered a memory adress out of "
@@ -132,7 +133,6 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
       value |= byte<<(i*8);
     }
   }
-
   // printf("Read at 0x%08x the value 0x%08x\n", address, value);
 
   Value* Rd = ConstantInt::get(alm->getContextRef(), APInt(32, value));
