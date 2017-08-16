@@ -37,6 +37,7 @@ void LoadLifter::registerLifter() {
 
   REGISTER_LOAD_OPCODE2(ARM::tLDRi, Common, new LoadInfo2(-1, 1, 2))
   REGISTER_LOAD_OPCODE2(ARM::tLDRspi, Common, new LoadInfo2(-1, 1, 2))
+  REGISTER_LOAD_OPCODE2(ARM::tLDRpci, PC, new LoadInfo2(-1, -1, 1))
   // REGISTER_LOAD_OPCODE(tLDRi, tLDRi)
   REGISTER_LOAD_OPCODE2(ARM::tLDRr, Common, new LoadInfo2(-1, 1, 2))
   // REGISTER_LOAD_OPCODE(tLDRr, tLDRr)
@@ -89,14 +90,63 @@ void LoadLifter::registerLifter() {
   // REGISTER_LOAD_OPCODE(t2LDRD_POST, t2LDRD_POST)
 }
 
+void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
+  uint32_t index;
+
+  LoadInfo2* info = getInfo(N->getMachineOpcode());
+
+  Value* PC = Reg("PC");
+  uint32_t debugLoc =
+      alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+  debugLoc += 4;  // Current instruction size
+
+  index = info->iOffset;
+  SDNode* Node = N->getOperand(index).getNode();
+  ConstantSDNode* OffsetNode = dyn_cast<ConstantSDNode>(Node);
+  if (OffsetNode == NULL) {
+    llvm::errs() << "[LoadLifter] DoPC Handler expected ConstantSDNode ...";
+    return;
+  }
+
+  int64_t offset = OffsetNode->getSExtValue();
+
+  const Disassembler* dis = alm->Dec->getDisassembler();
+  FractureMemoryObject* fmo = dis->getCurSectionMemory();
+
+  if (!fmo->isValidAddress(debugLoc + offset)) {
+    llvm::errs() << "[LoadLifter] DoPC encountered a memory adress out of "
+                    "current section ...";
+    return;
+  }
+
+  uint8_t byte;
+  uint32_t value = 0;
+  uint64_t address = (debugLoc + offset);
+  for (int i = 0; i < 4; i++) {
+    if (fmo->readByte(&byte, address + i) == -1) {
+      llvm::errs() << "[LoadLifter] DoPC encountered a memory adress out of "
+                      "current section ...";
+      return;
+    } else {
+      printf("Read at 0x%08x the value 0x%02x\n", address+i, byte);
+      value |= byte<<(i*8);
+    }
+  }
+
+  printf("Read at 0x%08x the value 0x%08x\n", address, value);
+
+  Value* Rd = ConstantInt::get(alm->getContextRef(), APInt(32, value));
+  // WriteReg(Rd, PC, IRB, info->width);
+  //
+  // Value* Rn = ReadReg(PC, IRB, info->width);
+
+  saveNodeValue(N, Rd);
+}
+
 void LoadLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
 
   ConstantInt* c4;
-
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
 
   LoadInfo2* info = getInfo(N->getMachineOpcode());
 

@@ -213,6 +213,7 @@ class LoadLifter : public ARMLifter {
   HANDLER_LOAD2(Pop)
   HANDLER_LOAD2(Common)
   HANDLER_LOAD2(MultiDB)
+  HANDLER_LOAD2(PC)
 // Declare each handler
 
 #define HANDLER_LOAD(name) \
