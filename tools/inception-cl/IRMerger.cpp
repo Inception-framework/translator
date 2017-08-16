@@ -87,7 +87,6 @@ void IRMerger::Run() {
 
   FunctionsHelperWriter::Write(END, DUMP_REGISTERS, DEC->getModule());
   FunctionsHelperWriter::Write(BEGIN, INIT_STACK, DEC->getModule());
-  // DEC->getModule()->dump();
 }
 
 Function* IRMerger::Decompile() {
@@ -189,8 +188,7 @@ void IRMerger::RemoveUseless() {
             // \n\n"; return;
           }
 
-          if (FType->isPointerTy())
-            IRB->CreateRet(Reg);
+          if (FType->isPointerTy()) IRB->CreateRet(Reg);
 
           if (FType->isIntegerTy()) {
             std::string ret_name = "R0_RET" + std::to_string(ret_counter);
@@ -207,20 +205,29 @@ void IRMerger::RemoveUseless() {
     }
   }
 
-  for (auto& inst : marked_old_instructions) {
+  for (std::vector<Instruction*>::reverse_iterator i =
+           marked_old_instructions.rbegin();
+       i != marked_old_instructions.rend(); ++i) {
+    Instruction* inst = *i;
     RemoveInstruction(inst);
   }
 
-  for (auto& inst : marked_old_binstructions) {
+  for (std::vector<Instruction*>::reverse_iterator i =
+           marked_old_binstructions.rbegin();
+       i != marked_old_binstructions.rend(); ++i) {
+    Instruction* inst = *i;
     RemoveInstruction(inst);
-  }
+  }  // namespace fracture
 
-  for (auto& bb : marked_old_basicblocks) {
+  for (std::vector<BasicBlock*>::reverse_iterator i =
+           marked_old_basicblocks.rbegin();
+       i != marked_old_basicblocks.rend(); ++i) {
+    BasicBlock* bb = *i;
     bb->dropAllReferences();
     // bb->removeFromParent();
     bb->eraseFromParent();
   }
-}
+}  // namespace fracture
 
 void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
   SmallVector<std::pair<unsigned, MDNode*>, 100> Metadata;
