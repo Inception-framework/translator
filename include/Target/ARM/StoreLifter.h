@@ -72,6 +72,8 @@ class StoreLifter : public ARMLifter {
   HANDLER_STORE(Multi)
   HANDLER_STORE(Push)
   HANDLER_STORE(Common)
+  HANDLER_STORE(D)
+  HANDLER_STORE(MultiDB)
 };
 
 #endif
