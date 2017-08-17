@@ -314,6 +314,7 @@ void IRMerger::MapArgsToRegs() {
     //     outs() << "Unknown type ....\n\n";
     // }
 
+    // cast pointers to int32 (registers)
     if (x->getType()->isPointerTy()) {
       // continue;
 
@@ -329,6 +330,13 @@ void IRMerger::MapArgsToRegs() {
       // x = IRB->CreatePtrToInt(x, x->getType()->getPointerTo());
       x = IRB->CreatePtrToInt(
           x, IntegerType::get(DEC->getModule()->getContext(), 32));
+    }
+
+    // cast types smaller than int32 to int32 (registers)
+    if (x->getType()->isIntegerTy() &&
+        x->getType()->getIntegerBitWidth() < 32) {
+      x = IRB->CreateZExt(x,
+                          IntegerType::get(DEC->getModule()->getContext(), 32));
     }
 
     // outs() << "\nRegType ";
