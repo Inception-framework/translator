@@ -188,18 +188,21 @@ void IRMerger::RemoveUseless() {
             // \n\n"; return;
           }
 
-          if (FType->isPointerTy()) IRB->CreateRet(Reg);
+          std::string ret_name = "R0_RET" + std::to_string(ret_counter);
+          StringRef ReturnName(ret_name);
 
-          if (FType->isIntegerTy()) {
-            std::string ret_name = "R0_RET" + std::to_string(ret_counter);
-            StringRef ReturnName(ret_name);
+          Value* Res = IRB->CreateLoad(Reg, ReturnName);
 
-            Instruction* Res = IRB->CreateLoad(Reg, ReturnName);
-
-            IRB->CreateRet(Res);
-
-            ret_counter++;
+          // caast ptr to int to ptr to correct type if necessary
+          if (FType->isPointerTy()) {
+            Res = IRB->CreateIntToPtr(Res, FType);
+          } else if (FType->isIntegerTy() && FType->getIntegerBitWidth() < 32) {
+            Res = IRB->CreateTrunc(Res, FType);
           }
+
+          IRB->CreateRet(Res);
+
+          ret_counter++;
         }
       }
     }
