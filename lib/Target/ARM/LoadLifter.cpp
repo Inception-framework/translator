@@ -269,7 +269,7 @@ void LoadLifter::doPop(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
     Rn = WriteReg(Rn, value, IRB, info->width);
 
-    Rd = UpdateRd(Rd, c4, IRB, false);
+    Rd = UpdateRd(Rd, c4, IRB, true);
   }
 
   saveNodeValue(N, Rd);

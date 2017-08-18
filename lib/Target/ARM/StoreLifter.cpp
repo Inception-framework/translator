@@ -141,7 +141,7 @@ void StoreLifter::doPush(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
     Rn = WriteReg(Rn, Rd, IRB, info->width);
 
-    Rd = UpdateRd(Rd, c4, IRB, true);
+    Rd = UpdateRd(Rd, c4, IRB, false);
   }
 
   saveNodeValue(N, Rd);
