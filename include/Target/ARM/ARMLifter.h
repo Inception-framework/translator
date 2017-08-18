@@ -59,7 +59,8 @@ class ARMLifter {
 
   llvm::Value* visitConstant(const llvm::SDNode* N);
 
-  Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width=32);
+  Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width = 32,
+                  bool extend = true);
 
   Value* ReadReg(Value* Rd, IRBuilder<>* IRB, int Width=32);
 

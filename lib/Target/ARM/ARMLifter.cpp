@@ -269,7 +269,8 @@ Value* ARMLifter::ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
   return load;
 }
 
-Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width) {
+Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width,
+                           bool extend) {
   Type* Ty = NULL;
 
   switch (Width) {
@@ -285,13 +286,19 @@ Value* ARMLifter::WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width) {
   }
 
   if (!Rd->getType()->isPointerTy()) {
-    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
+    if (Width != 32 && !extend) {
+      Rd = IRB->CreateIntToPtr(Rd, Ty->getPointerTo());
+    } else {
+      Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
+    }
   }
 
   if (Width != 32) {
     Rn = IRB->CreateTrunc(Rn, Ty);
 
-    Rn = IRB->CreateZExt(Rn, IntegerType::get(alm->getContextRef(), 32));
+    if (extend) {
+      Rn = IRB->CreateZExt(Rn, IntegerType::get(alm->getContextRef(), 32));
+    }
   }
 
   Instruction* store = IRB->CreateStore(Rn, Rd);

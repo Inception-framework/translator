@@ -86,7 +86,7 @@ void StoreLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
     Rn = visit(N->getOperand(index).getNode(), IRB);
 
-    Rn = WriteReg(Rn, Rd, IRB, info->width);
+    Rn = WriteReg(Rn, Rd, IRB, info->width, false);
   }
 
   if (N->getMachineOpcode() == ARM::t2STMDB_UPD)
@@ -112,7 +112,7 @@ void StoreLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     Rn = visit(N->getOperand(index).getNode(), IRB);
 
-    Rn = WriteReg(Rn, Rd, IRB, info->width);
+    Rn = WriteReg(Rn, Rd, IRB, info->width, false);
 
     if (info->hasManyUses()) Rd = UpdateRd(Rd, getConstant("4"), IRB, true);
   }
@@ -139,7 +139,7 @@ void StoreLifter::doPush(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     Rn = visit(N->getOperand(index).getNode(), IRB);
 
-    Rn = WriteReg(Rn, Rd, IRB, info->width);
+    Rn = WriteReg(Rn, Rd, IRB, info->width, false);
 
     Rd = UpdateRd(Rd, c4, IRB, false);
   }
@@ -165,7 +165,7 @@ void StoreLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     Rn = visit(N->getOperand(index).getNode(), IRB);
 
-    Rn = WriteReg(Rn, Rd, IRB, info->width);
+    Rn = WriteReg(Rn, Rd, IRB, info->width, false);
 
     if (info->hasManyUses()) Rd = UpdateRd(Rd, c4, IRB, true);
   }
@@ -195,7 +195,7 @@ void StoreLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     Rn = visit(N->getOperand(index).getNode(), IRB);
 
-    Rn = WriteReg(Rn, Rd_temp, IRB, info->width);
+    Rn = WriteReg(Rn, Rd_temp, IRB, info->width, false);
 
     if (info->hasManyUses()) Rd_temp = UpdateRd(Rd_temp, c4, IRB, false);
   }
@@ -229,7 +229,7 @@ void StoreLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     Rn = visit(N->getOperand(index).getNode(), IRB);
 
-    Rn = WriteReg(Rn, Rd_temp, IRB, info->width);
+    Rn = WriteReg(Rn, Rd_temp, IRB, info->width, false);
 
     if (info->hasManyUses()) Rd_temp = UpdateRd(Rd_temp, c4, IRB, true);
   }
@@ -264,7 +264,7 @@ void StoreLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     Rn = visit(N->getOperand(index).getNode(), IRB);
 
-    Rn = WriteReg(Rn, Rd_temp, IRB, info->width);
+    Rn = WriteReg(Rn, Rd_temp, IRB, info->width, false);
 
     if (info->hasManyUses()) Rd_temp = UpdateRd(Rd_temp, c4, IRB, true);
   }
@@ -299,7 +299,7 @@ void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Value* Rn = NULL;
   Rn = visit(N->getOperand(info->iRn).getNode(), IRB);
 
-  Rn = WriteReg(Rn, Rd, IRB, info->width);
+  Rn = WriteReg(Rn, Rd, IRB, info->width, false);
 
   saveNodeValue(N, Rn);
 }
