@@ -48,8 +48,8 @@ void StoreLifter::registerLifter() {
   REGISTER_STORE_OPCODE(ARM::t2STRHs, Signed, new StoreInfo(1, 2, 3, 16))
 
   REGISTER_STORE_OPCODE(ARM::t2STRDi8, D, new StoreInfo(1, 3, 4, 32, 3))
-  REGISTER_STORE_OPCODE(ARM::t2STRD_PRE, Pre, new StoreInfo(0, 2, 3, 32, 2))
-  REGISTER_STORE_OPCODE(ARM::t2STRD_POST, Post, new StoreInfo(0, 2, 3, 32, 2))
+  REGISTER_STORE_OPCODE(ARM::t2STRD_PRE, D, new StoreInfo(0, 2, 3, 32, 2))
+  REGISTER_STORE_OPCODE(ARM::t2STRD_POST, D, new StoreInfo(0, 2, 3, 32, 2))
 }
 
 void StoreLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
@@ -102,11 +102,13 @@ void StoreLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   index = info->iRd;
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+  Value* Rd_init = Rd;
 
   index = info->iOffset;
   Value* Offset = visit(N->getOperand(index).getNode(), IRB);
 
-  Rd = UpdateRd(Rd, Offset, IRB, true);
+  if(N->getMachineOpcode() != ARM::t2STRD_POST)
+    Rd_init = Rd = UpdateRd(Rd, Offset, IRB, true);
 
   Value* Rn = NULL;
   while ((index = info->getNext()) != -1) {
@@ -117,8 +119,15 @@ void StoreLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
     if (info->hasManyUses()) Rd = UpdateRd(Rd, getConstant("4"), IRB, true);
   }
 
-  saveNodeValue(N, Rn);
+  if(N->getMachineOpcode() == ARM::t2STRD_POST) {
+    Rd_init = UpdateRd(Rd_init, Offset, IRB, true);
+  }
+  if(N->getMachineOpcode() == ARM::t2STRDi8) {
+    saveNodeValue(N, Rn);
+  } else
+    saveNodeValue(N, Rd_init);
 }
+
 
 void StoreLifter::doPush(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint32_t index;
