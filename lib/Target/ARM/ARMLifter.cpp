@@ -90,6 +90,9 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
         }
       case ARM::t2RRX:
       case ARM::t2MOVr:  // TODO other mov, this is the one necessary for lsl 0
+      case ARM::t2MOVi:
+      case ARM::t2MVNr:
+      case ARM::t2MVNi:
         if (IsCPSR(N->getOperand(3).getNode()->getOperand(1).getNode())) {
           outs() << "IsSetFlags = true\n";
           return true;
@@ -111,6 +114,8 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::tASRrr:
       case ARM::tROR:
       case ARM::tMOVSr:
+      case ARM::tMOVi8:
+      case ARM::tMVN:
         // TODO more cases
         // TODO should we also check if outside IT block and not AL condition
         // for some of them?
