@@ -128,6 +128,10 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::tADDhirr:
       case ARM::tADDrSP:
       case ARM::tADDrSPi:
+
+      case ARM::t2MOVi16:
+      case ARM::tMOVr:
+
       default:
         outs() << "IsSetFlags = false\n";
         return false;
