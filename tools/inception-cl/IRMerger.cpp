@@ -188,18 +188,21 @@ void IRMerger::RemoveUseless() {
             // \n\n"; return;
           }
 
-          if (FType->isPointerTy()) IRB->CreateRet(Reg);
+          std::string ret_name = "R0_RET" + std::to_string(ret_counter);
+          StringRef ReturnName(ret_name);
 
-          if (FType->isIntegerTy()) {
-            std::string ret_name = "R0_RET" + std::to_string(ret_counter);
-            StringRef ReturnName(ret_name);
+          Value* Res = IRB->CreateLoad(Reg, ReturnName);
 
-            Instruction* Res = IRB->CreateLoad(Reg, ReturnName);
-
-            IRB->CreateRet(Res);
-
-            ret_counter++;
+          // caast ptr to int to ptr to correct type if necessary
+          if (FType->isPointerTy()) {
+            Res = IRB->CreateIntToPtr(Res, FType);
+          } else if (FType->isIntegerTy() && FType->getIntegerBitWidth() < 32) {
+            Res = IRB->CreateTrunc(Res, FType);
           }
+
+          IRB->CreateRet(Res);
+
+          ret_counter++;
         }
       }
     }
@@ -314,19 +317,29 @@ void IRMerger::MapArgsToRegs() {
     //     outs() << "Unknown type ....\n\n";
     // }
 
+    // cast pointers to int32 (registers)
     if (x->getType()->isPointerTy()) {
-      continue;
+      // continue;
 
-      x = IRB->CreateLoad(x);
+      // x = IRB->CreateLoad(x);
       // outs() << "\nGet Ptr value ";
       // x->dump();
 
-      if (Reg->getType() != x->getType()) {
-        x = IRB->CreateBitCast(x, Reg->getType());
-        // outs() << "\nBitcast ";
-        // x->dump();
-      }
+      // if (Reg->getType() != x->getType()) {
+      //  x = IRB->CreateBitCast(x, Reg->getType());
+      // outs() << "\nBitcast ";
+      // x->dump();
+      //}
       // x = IRB->CreatePtrToInt(x, x->getType()->getPointerTo());
+      x = IRB->CreatePtrToInt(
+          x, IntegerType::get(DEC->getModule()->getContext(), 32));
+    }
+
+    // cast types smaller than int32 to int32 (registers)
+    if (x->getType()->isIntegerTy() &&
+        x->getType()->getIntegerBitWidth() < 32) {
+      x = IRB->CreateZExt(x,
+                          IntegerType::get(DEC->getModule()->getContext(), 32));
     }
 
     // outs() << "\nRegType ";
