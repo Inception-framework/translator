@@ -445,7 +445,7 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   int64_t Tgt = 0, DestInt = 0;
   StringRef FuncName;
   if (Inst->isCall()) {
-    Size != 5 ? Size = 8 : Size; // Instruction size is 8 for ARM
+    Size != 5 ? Size = 4 : Size;  // Instruction size is 4 for ARM
     for (MachineInstr::mop_iterator MII = Inst->operands_begin(); MII !=
          Inst->operands_end(); ++MII)
     if (MII->isImm())
