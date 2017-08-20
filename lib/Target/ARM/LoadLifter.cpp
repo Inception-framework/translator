@@ -265,9 +265,10 @@ void LoadLifter::doPop(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     Value* value = ReadReg(Rd, IRB, info->width);
 
-    Rn = visit(N->getOperand(index).getNode(), IRB);
+    Rn = visitRegister(N->getOperand(index).getNode()->getOperand(1).getNode(),
+                       IRB);
 
-    Rn = WriteReg(Rn, value, IRB, info->width);
+    Rn = WriteReg(value, Rn, IRB, info->width);
 
     Rd = UpdateRd(Rd, c4, IRB, true);
   }
