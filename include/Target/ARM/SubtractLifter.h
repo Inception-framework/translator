@@ -17,6 +17,7 @@ public:
   ~SubtractLifter(){};
 
   void SubHandler(SDNode *N, IRBuilder<> *IRB);
+  void SbcHandler(SDNode *N, IRBuilder<> *IRB);
 };
 
 #endif

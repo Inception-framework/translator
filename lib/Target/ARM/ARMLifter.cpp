@@ -81,6 +81,16 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::t2ASRrr:
       case ARM::t2RORri:
       case ARM::t2RORrr:
+
+      case ARM::t2SUBrr:
+      case ARM::t2SUBri:
+      case ARM::t2SBCrr:
+      case ARM::tSBC:
+      case ARM::t2SBCri:
+      case ARM::t2SUBSri:
+      case ARM::t2SUBSrr:
+      case ARM::t2SUBSrs:
+      case ARM::t2SUBrs:
         if (IsCPSR(N->getOperand(4).getNode()->getOperand(1).getNode())) {
           outs() << "IsSetFlags = true\n";
           return true;
@@ -106,6 +116,7 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::tADDrr:
       case ARM::tADDi8:
       case ARM::tADDi3:
+
       case ARM::tLSLri:
       case ARM::tLSLrr:
       case ARM::tLSRri:
@@ -113,9 +124,14 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::tASRri:
       case ARM::tASRrr:
       case ARM::tROR:
+
       case ARM::tMOVSr:
       case ARM::tMOVi8:
       case ARM::tMVN:
+
+      case ARM::tSUBrr:
+      case ARM::tSUBi8:
+      case ARM::tSUBi3:
         // TODO more cases
         // TODO should we also check if outside IT block and not AL condition
         // for some of them?
@@ -132,6 +148,8 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::t2MOVi16:
       case ARM::tMOVr:
 
+      case ARM::t2SUBri12:
+      case ARM::tSUBspi:
       default:
         outs() << "IsSetFlags = false\n";
         return false;
