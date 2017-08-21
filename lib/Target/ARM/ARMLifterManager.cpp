@@ -7,6 +7,7 @@
 #include "Target/ARM/CompareLifter.h"
 #include "Target/ARM/FlagsLifter.h"
 #include "Target/ARM/LoadLifter.h"
+#include "Target/ARM/LogicalLifter.h"
 #include "Target/ARM/MoveDataLifter.h"
 #include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/StoreLifter.h"
@@ -45,6 +46,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("STORE", new StoreLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("LOGICAL", new LogicalLifter(this)));
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("FLAGS", new FlagsLifter(this)));

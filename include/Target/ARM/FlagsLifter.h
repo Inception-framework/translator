@@ -37,6 +37,8 @@ class FlagsLifter : public ARMLifter {
 
   void WriteCFSub(IRBuilder<> *IRB, llvm::Value *argL, llvm::Value *argR);
 
+  void WriteCFTst(IRBuilder<> *IRB, uint32_t constant);
+
   void WriteVFSub(IRBuilder<> *IRB, llvm::Value *res, llvm::Value *lhs,
                   llvm::Value *rhs);
 

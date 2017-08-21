@@ -103,6 +103,23 @@ void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
   WriteReg(cmpRes, Reg("CF"), IRB);
 }
 
+void FlagsLifter::WriteCFTst(IRBuilder<> *IRB, uint32_t constant) {
+  uint32_t byte0 = constant & 0x000000ff;
+  uint32_t byte1 = (constant >> 8) & 0x000000ff;
+  uint32_t byte2 = (constant >> 16) & 0x000000ff;
+  uint32_t byte3 = (constant >> 24) & 0x000000ff;
+  if (!(byte3 == byte1 && byte0 == 0 && byte2 == 0) &&
+      !(byte0 == byte1 && byte0 == byte2 && byte0 == byte3) &&
+      !(byte3 == 0 && byte2 == 0 && byte1 == 0) &&
+      !(byte2 == byte0 && byte3 == 0 && byte1 == 0)) {
+    if (byte3 & 0x80) {
+      WriteReg(getConstant("1"), Reg("CF"), IRB);
+    } else {
+      WriteReg(getConstant("0"), Reg("CF"), IRB);
+    }
+  }
+}
+
 void FlagsLifter::WriteVFSub(IRBuilder<> *IRB, llvm::Value *res,
                              llvm::Value *lhs, llvm::Value *rhs) {
   // of = lshift((lhs ^ rhs ) & (lhs ^ res), 12 - width) & 2048

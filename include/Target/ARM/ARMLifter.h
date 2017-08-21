@@ -85,6 +85,9 @@ class ARMLifter {
   bool IsPC(SDNode* N);
 
   SDNode* LookUpSDNode(SDNode* N, std::string name);
+
+  void ThumbExpandImmediateCarry(Value* expanded, Value* carry, const SDNode* N,
+                                 IRBuilder<>* IRB);
 };
 
 #endif
