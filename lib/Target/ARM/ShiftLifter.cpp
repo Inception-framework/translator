@@ -52,9 +52,21 @@ void ShiftLifter::registerLifter() {
 }
 
 void ShiftLifter::ShiftHandlerShiftOp(SDNode *N, IRBuilder<> *IRB) {
-  Value *operand = visit(N->getOperand(1).getNode(), IRB);
-
-  const ConstantSDNode *ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
+  unsigned opcode = N->getMachineOpcode();
+  int index = -1;
+  switch (opcode) {
+    case ARM::t2TSTrs:
+      index = 2;
+      break;
+    case ARM::t2MVNs:
+      index = 1;
+      break;
+    default:
+      outs() << "not supported\n";
+      return;
+  }
+  const ConstantSDNode *ConstNode =
+      dyn_cast<ConstantSDNode>(N->getOperand(index));
   if (!ConstNode) {
     outs() << "TstHandler: Not a constant integer for immediate!\n";
     return;
@@ -281,29 +293,43 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
   Value *Op1 = NULL;
   bool S = false;
 
-  // instructions which have an operand that has to be shifted
+  uint32_t shift_t_n = -1, shift_n = -1;
+  const ConstantSDNode *ConstNode = NULL;
+
   unsigned opcode = N->getMachineOpcode();
   switch (opcode) {
+    // instructions which have an operand that has to be shifted
     case ARM::t2TSTrs:
       Op0 = visit(N->getOperand(1).getNode(), IRB);
-      const ConstantSDNode *ConstNode =
-          dyn_cast<ConstantSDNode>(N->getOperand(2));
+      ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
       if (!ConstNode) {
         outs() << "TstHandler: Not a constant integer for immediate!\n";
         exit(1);
       }
-      uint32_t shift_t_n = ConstNode->getZExtValue();
-      uint32_t shift_n = shift_t_n >> 3;
+      shift_t_n = ConstNode->getZExtValue();
+      shift_n = shift_t_n >> 3;
       Op1 = ConstantInt::get(alm->getContextRef(), APInt(32, shift_n, 10));
       S = true;
-      ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1, S);
-      return info;
+      break;
+    case ARM::t2MVNs:
+      Op0 = visit(N->getOperand(0).getNode(), IRB);
+      ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(1));
+      if (!ConstNode) {
+        outs() << "MvnHandler: Not a constant integer for immediate!\n";
+        exit(1);
+      }
+      shift_t_n = ConstNode->getZExtValue();
+      shift_n = shift_t_n >> 3;
+      Op1 = ConstantInt::get(alm->getContextRef(), APInt(32, shift_n, 10));
+      S = IsSetFlags(N);
+      break;
+    default:
+      // shift instructions
+      Op0 = visit(N->getOperand(0).getNode(), IRB);
+      Op1 = visit(N->getOperand(1).getNode(), IRB);
+      S = IsSetFlags(N);
+      break;
   }
-
-  // shift instructions
-  Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Op1 = visit(N->getOperand(1).getNode(), IRB);
-  S = IsSetFlags(N);
 
   ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1, S);
 

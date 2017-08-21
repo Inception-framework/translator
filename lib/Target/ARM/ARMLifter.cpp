@@ -91,6 +91,8 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::t2SUBSrr:
       case ARM::t2SUBSrs:
       case ARM::t2SUBrs:
+
+      case ARM::t2MVNs:
         if (IsCPSR(N->getOperand(4).getNode()->getOperand(1).getNode())) {
           outs() << "IsSetFlags = true\n";
           return true;

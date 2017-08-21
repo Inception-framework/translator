@@ -7,6 +7,7 @@
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 #include "Target/ARM/FlagsLifter.h"
+#include "Target/ARM/ShiftLifter.h"
 
 using namespace llvm;
 using namespace fracture;
@@ -52,6 +53,9 @@ void MoveDataLifter::registerLifter() {
                       (LifterHandler)&MoveDataLifter::MoveNotHandler);
   alm->registerLifter(this, std::string("MoveDataLifter"), (unsigned)ARM::tMVN,
                       (LifterHandler)&MoveDataLifter::MoveNotHandler);
+  alm->registerLifter(this, std::string("MoveDataLifter"),
+                      (unsigned)ARM::t2MVNs,
+                      (LifterHandler)&MoveDataLifter::MoveNotHandler);
 }
 
 void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
@@ -72,6 +76,12 @@ void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
     flags->WriteZF(IRB, Op0);
     ////TODO Compute CF. in case of shift only??
     // flags->WriteCFShiftR(IRB, partial_res);
+    const ConstantSDNode* ConstNode =
+        dyn_cast<ConstantSDNode>(N->getOperand(0));
+    if (ConstNode) {
+      uint32_t constant = ConstNode->getZExtValue();
+      flags->WriteCFconstant(IRB, constant);
+    }
   }
 
   alm->VisitMap[N] = Op0;
@@ -80,8 +90,15 @@ void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
 void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
 
   llvm::outs() << "MoveNotHandler\n";
-
-  Value* Op0 = visit(N->getOperand(0).getNode(), IRB);
+  Value* Op0 = NULL;
+  unsigned opcode = N->getMachineOpcode();
+  if (opcode == ARM::t2MVNs) {
+    ShiftLifter* shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("FLAGS"));
+    shiftLifter->ShiftHandlerShiftOp(N, IRB);
+    Op0 = alm->VisitMap[N];
+  } else {
+    Op0 = visit(N->getOperand(0).getNode(), IRB);
+  }
   Op0->dump();
 
   Value* Res = IRB->CreateNot(Op0);
@@ -99,7 +116,16 @@ void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
     // Compute ZF.
     flags->WriteZF(IRB, Res);
     ////TODO Compute CF. in case of shift only??
-    // flags->WriteCFShiftR(IRB, partial_res);
+    if (opcode != ARM::t2MVNs) {
+      const ConstantSDNode* ConstNode =
+          dyn_cast<ConstantSDNode>(N->getOperand(0));
+      if (ConstNode) {
+        uint32_t constant = ConstNode->getZExtValue();
+        flags->WriteCFconstant(IRB, constant);
+      } else {
+        flags->WriteCFShiftL(IRB, Op0, getConstant("0"));
+      }
+    }
   }
 
   alm->VisitMap[N] = Res;
