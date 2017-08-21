@@ -103,7 +103,7 @@ void FlagsLifter::WriteCFAdd(IRBuilder<> *IRB, llvm::Value *res,
   WriteReg(cmpRes, Reg("CF"), IRB);
 }
 
-void FlagsLifter::WriteCFTst(IRBuilder<> *IRB, uint32_t constant) {
+void FlagsLifter::WriteCFconstant(IRBuilder<> *IRB, uint32_t constant) {
   uint32_t byte0 = constant & 0x000000ff;
   uint32_t byte1 = (constant >> 8) & 0x000000ff;
   uint32_t byte2 = (constant >> 16) & 0x000000ff;

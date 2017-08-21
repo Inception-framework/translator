@@ -35,6 +35,13 @@ class ShiftLifter : public ARMLifter{
   //
   //  HANDLER(t2LSLri)
   //
+
+  // Methods for support type inquiry through isa, cast, and dyn_cast:
+  // TODO : Lifter should retain their name !
+  static bool classof(const ARMLifter* From) { return true; }
+
+  void ShiftHandlerShiftOp(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+
  protected:
   void ShiftHandlerLSL(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void ShiftHandlerLSR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);

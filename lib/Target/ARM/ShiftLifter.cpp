@@ -51,6 +51,40 @@ void ShiftLifter::registerLifter() {
                       (LifterHandler)&ShiftLifter::ShiftHandlerRRX);
 }
 
+void ShiftLifter::ShiftHandlerShiftOp(SDNode *N, IRBuilder<> *IRB) {
+  Value *operand = visit(N->getOperand(1).getNode(), IRB);
+
+  const ConstantSDNode *ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
+  if (!ConstNode) {
+    outs() << "TstHandler: Not a constant integer for immediate!\n";
+    return;
+  }
+  uint32_t shift_t_n = ConstNode->getZExtValue();
+  uint32_t shift_n = shift_t_n >> 3;
+  uint32_t shift_t = shift_t_n & 0x7;
+
+  switch (shift_t) {
+    case 0x1:
+      ShiftHandlerASR(N, IRB);
+      break;
+    case 0x2:
+      ShiftHandlerLSL(N, IRB);
+      break;
+    case 0x3:
+      ShiftHandlerLSR(N, IRB);
+      break;
+    case 0x4:
+      ShiftHandlerROR(N, IRB);
+      break;
+    case 0x5:
+      ShiftHandlerRRX(N, IRB);
+      break;
+    default:
+      outs() << "No valid shift type in shift operand\n";
+      return;
+  }
+}
+
 void ShiftLifter::ShiftHandlerLSL(SDNode *N, IRBuilder<> *IRB) {
   ARMSHIFTInfo *info = RetrieveGraphInformation(N, IRB);
 
@@ -243,9 +277,33 @@ void ShiftLifter::ShiftHandlerRRX(SDNode *N, IRBuilder<> *IRB) {
 
 ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
                                                     IRBuilder<> *IRB) {
-  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
-  bool S = IsSetFlags(N);
+  Value *Op0 = NULL;
+  Value *Op1 = NULL;
+  bool S = false;
+
+  // instructions which have an operand that has to be shifted
+  unsigned opcode = N->getMachineOpcode();
+  switch (opcode) {
+    case ARM::t2TSTrs:
+      Op0 = visit(N->getOperand(1).getNode(), IRB);
+      const ConstantSDNode *ConstNode =
+          dyn_cast<ConstantSDNode>(N->getOperand(2));
+      if (!ConstNode) {
+        outs() << "TstHandler: Not a constant integer for immediate!\n";
+        exit(1);
+      }
+      uint32_t shift_t_n = ConstNode->getZExtValue();
+      uint32_t shift_n = shift_t_n >> 3;
+      Op1 = ConstantInt::get(alm->getContextRef(), APInt(32, shift_n, 10));
+      S = true;
+      ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1, S);
+      return info;
+  }
+
+  // shift instructions
+  Op0 = visit(N->getOperand(0).getNode(), IRB);
+  Op1 = visit(N->getOperand(1).getNode(), IRB);
+  S = IsSetFlags(N);
 
   ARMSHIFTInfo *info = new ARMSHIFTInfo(Op0, Op1, S);
 
