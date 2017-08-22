@@ -60,6 +60,19 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       //
       // check the S bit
       //
+      case ARM::t2ANDrs:
+      case ARM::t2EORrs:
+      case ARM::t2ORRrs:
+      case ARM::t2ORNrs:
+      case ARM::t2BICrs:
+        if (IsCPSR(N->getOperand(5).getNode()->getOperand(1).getNode())) {
+          outs() << "IsSetFlags = true\n";
+          return true;
+        } else {
+          outs() << "IsSetFlags = false\n";
+          return false;
+        }
+
       case ARM::tADDspi:
       case ARM::tADDframe:
       case ARM::tADDspr:
@@ -93,6 +106,21 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::t2SUBrs:
 
       case ARM::t2MVNs:
+
+      case ARM::t2ANDri:
+      case ARM::t2ANDrr:
+
+      case ARM::t2EORri:
+      case ARM::t2EORrr:
+
+      case ARM::t2ORRri:
+      case ARM::t2ORRrr:
+
+      case ARM::t2ORNri:
+      case ARM::t2ORNrr:
+
+      case ARM::t2BICri:
+      case ARM::t2BICrr:
         if (IsCPSR(N->getOperand(4).getNode()->getOperand(1).getNode())) {
           outs() << "IsSetFlags = true\n";
           return true;
@@ -134,6 +162,11 @@ bool ARMLifter::IsSetFlags(SDNode* N) {
       case ARM::tSUBrr:
       case ARM::tSUBi8:
       case ARM::tSUBi3:
+
+      case ARM::tAND:
+      case ARM::tEOR:
+      case ARM::tORR:
+      case ARM::tBIC:
         // TODO more cases
         // TODO should we also check if outside IT block and not AL condition
         // for some of them?

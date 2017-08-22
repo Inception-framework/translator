@@ -57,6 +57,11 @@ void ShiftLifter::ShiftHandlerShiftOp(SDNode *N, IRBuilder<> *IRB) {
   switch (opcode) {
     case ARM::t2TSTrs:
     case ARM::t2TEQrs:
+    case ARM::t2ANDrs:
+    case ARM::t2EORrs:
+    case ARM::t2ORRrs:
+    case ARM::t2ORNrs:
+    case ARM::t2BICrs:
       index = 2;
       break;
     case ARM::t2MVNs:
@@ -300,6 +305,22 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
   unsigned opcode = N->getMachineOpcode();
   switch (opcode) {
     // instructions which have an operand that has to be shifted
+    case ARM::t2ANDrs:
+    case ARM::t2EORrs:
+    case ARM::t2ORRrs:
+    case ARM::t2ORNrs:
+    case ARM::t2BICrs:
+      Op0 = visit(N->getOperand(1).getNode(), IRB);
+      ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
+      if (!ConstNode) {
+        outs() << "TstHandler: Not a constant integer for immediate!\n";
+        exit(1);
+      }
+      shift_t_n = ConstNode->getZExtValue();
+      shift_n = shift_t_n >> 3;
+      Op1 = ConstantInt::get(alm->getContextRef(), APInt(32, shift_n, 10));
+      S = IsSetFlags(N);
+      break;
     case ARM::t2TSTrs:
     case ARM::t2TEQrs:
       Op0 = visit(N->getOperand(1).getNode(), IRB);

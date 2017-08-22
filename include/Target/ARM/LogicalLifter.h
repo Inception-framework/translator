@@ -20,12 +20,9 @@ class LogicalLifter : public ARMLifter {
   void TstHandlerRI(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void TstHandlerRR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void TstHandlerRS(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
-  void TeqHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
-  void AndHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
-  void EorHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
-  void OorHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
-  void OrnHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
-  void BicHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void BitwiseHandlerRI(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void BitwiseHandlerRR(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void BitwiseHandlerRS(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 };
 
 #endif
