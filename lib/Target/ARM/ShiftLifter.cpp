@@ -56,6 +56,7 @@ void ShiftLifter::ShiftHandlerShiftOp(SDNode *N, IRBuilder<> *IRB) {
   int index = -1;
   switch (opcode) {
     case ARM::t2TSTrs:
+    case ARM::t2TEQrs:
       index = 2;
       break;
     case ARM::t2MVNs:
@@ -300,6 +301,7 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
   switch (opcode) {
     // instructions which have an operand that has to be shifted
     case ARM::t2TSTrs:
+    case ARM::t2TEQrs:
       Op0 = visit(N->getOperand(1).getNode(), IRB);
       ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
       if (!ConstNode) {

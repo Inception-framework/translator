@@ -24,9 +24,19 @@ void LogicalLifter::registerLifter() {
   alm->registerLifter(this, std::string("LogicalLifter"),
                       (unsigned)ARM::t2TSTrs,
                       (LifterHandler)&LogicalLifter::TstHandlerRS);
+  // TEQ
+  alm->registerLifter(this, std::string("LogicalLifter"),
+                      (unsigned)ARM::t2TEQri,
+                      (LifterHandler)&LogicalLifter::TstHandlerRI);
+  alm->registerLifter(this, std::string("LogicalLifter"),
+                      (unsigned)ARM::t2TEQrr,
+                      (LifterHandler)&LogicalLifter::TstHandlerRR);
+  alm->registerLifter(this, std::string("LogicalLifter"),
+                      (unsigned)ARM::t2TEQrs,
+                      (LifterHandler)&LogicalLifter::TstHandlerRS);
 }
 
-// TST register immediate
+// TST / TEQ register immediate
 void LogicalLifter::TstHandlerRI(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // operands
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
@@ -40,8 +50,19 @@ void LogicalLifter::TstHandlerRI(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
 
   uint32_t constant = ConstNode->getZExtValue();
 
-  // and operation
-  Value *Res = IRB->CreateAnd(Op0, Op1);
+  // operation
+  Value *Res = NULL;
+  switch (N->getMachineOpcode()) {
+    case ARM::t2TSTri:
+      Res = IRB->CreateAnd(Op0, Op1);
+      break;
+    case ARM::t2TEQri:
+      Res = IRB->CreateXor(Op0, Op1);
+      break;
+    default:
+      outs() << "TstHandler unsupported opcode\n";
+      return;
+  }
 
   // Write the flag updates.
   // Compute AF.
@@ -59,14 +80,26 @@ void LogicalLifter::TstHandlerRI(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   alm->VisitMap[N] = dummyCPSR;
 }
 
-// TST register register
+// TST / TEQ register register
 void LogicalLifter::TstHandlerRR(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // operands
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
 
-  // and operation
-  Value *Res = IRB->CreateAnd(Op0, Op1);
+  // operation
+  Value *Res = NULL;
+  switch (N->getMachineOpcode()) {
+    case ARM::tTST:
+    case ARM::t2TSTrr:
+      Res = IRB->CreateAnd(Op0, Op1);
+      break;
+    case ARM::t2TEQrr:
+      Res = IRB->CreateXor(Op0, Op1);
+      break;
+    default:
+      outs() << "TstHandler unsupported opcode\n";
+      return;
+  }
 
   // Write the flag updates.
   // Compute AF.
@@ -94,8 +127,19 @@ void LogicalLifter::TstHandlerRS(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   shiftLifter->ShiftHandlerShiftOp(N, IRB);
   Value *shifted = alm->VisitMap[N];
 
-  // and operation
-  Value *Res = IRB->CreateAnd(Op0, shifted);
+  // operation
+  Value *Res = NULL;
+  switch (N->getMachineOpcode()) {
+    case ARM::t2TSTrs:
+      Res = IRB->CreateAnd(Op0, shifted);
+      break;
+    case ARM::t2TEQrs:
+      Res = IRB->CreateXor(Op0, shifted);
+      break;
+    default:
+      outs() << "TstHandler unsupported opcode\n";
+      return;
+  }
 
   // Write the flag updates.
   // Compute AF.
