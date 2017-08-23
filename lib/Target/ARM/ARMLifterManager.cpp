@@ -12,6 +12,7 @@
 #include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/StoreLifter.h"
 #include "Target/ARM/SubtractLifter.h"
+#include "Target/ARM/SVCallLifter.h"
 
 #include "llvm/Support/ErrorHandling.h"
 
@@ -52,6 +53,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("FLAGS", new FlagsLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("SVCALL", new SVCallLifter(this)));
 
   registerAll();
 }

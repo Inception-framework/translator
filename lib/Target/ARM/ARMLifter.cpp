@@ -284,6 +284,13 @@ Value* ARMLifter::getConstant(StringRef value) {
   return constante;
 }
 
+Value* ARMLifter::getConstant(uint32_t value) {
+  ConstantInt* constante =
+      ConstantInt::get(alm->getContextRef(), APInt(32, value));
+
+  return constante;
+}
+
 Value* ARMLifter::ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
 
