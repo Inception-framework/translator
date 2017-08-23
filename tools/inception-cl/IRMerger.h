@@ -95,6 +95,8 @@ class IRMerger {
 
   void RemoveUseless();
 
+  void SetReturnType();
+
   void RemoveInstruction(llvm::Instruction* instruction);
 
   Function *fct;

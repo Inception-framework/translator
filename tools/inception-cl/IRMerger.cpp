@@ -83,6 +83,7 @@ void IRMerger::Run() {
 
   if (!empty) {
     RemoveUseless();
+    SetReturnType();
   }
 
   FunctionsHelperWriter::Write(END, DUMP_REGISTERS, DEC->getModule());
@@ -119,6 +120,8 @@ void IRMerger::MarkOldInstructions() {
 
     for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
       Instruction& old_inst = *int_i;
+      outs() << "old instruction:\n";
+      int_i->dump();
 
       if (&old_inst != NULL) {
         const UnreachableInst* ui = dyn_cast<UnreachableInst>(&old_inst);
@@ -126,10 +129,17 @@ void IRMerger::MarkOldInstructions() {
 
         if (ui != NULL) {
           marked_old_binstructions.push_back(&old_inst);
+          outs() << "    old binstruction:\n";
+          int_i->dump();
         } else if (ret != NULL) {
           marked_old_binstructions.push_back(&old_inst);
-        } else
+          outs() << "    old binstruction ret != NULL:\n";
+          int_i->dump();
+        } else {
           marked_old_instructions.push_back(&old_inst);
+          outs() << "    old instruction:\n";
+          int_i->dump();
+        }
       }
     }  // END INST LOOP
 
@@ -143,10 +153,38 @@ void IRMerger::MarkOldInstructions() {
 }
 
 void IRMerger::RemoveUseless() {
-  BasicBlock* last_bb = NULL;
+  // REMOVE OLD INSTRUCTIONS
+  for (std::vector<Instruction*>::reverse_iterator i =
+           marked_old_binstructions.rbegin();
+       i != marked_old_binstructions.rend(); ++i) {
+    Instruction* inst = *i;
+    outs() << "old binst\n";
+    inst->dump();
+    RemoveInstruction(inst);
+  }  // namespace fracture
 
-  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++) last_bb = bb_i;
+  for (std::vector<Instruction*>::reverse_iterator i =
+           marked_old_instructions.rbegin();
+       i != marked_old_instructions.rend(); ++i) {
+    Instruction* inst = *i;
+    RemoveInstruction(inst);
+  }
 
+  for (std::vector<BasicBlock*>::reverse_iterator i =
+           marked_old_basicblocks.rbegin();
+       i != marked_old_basicblocks.rend(); ++i) {
+    BasicBlock* bb = *i;
+    bb->dropAllReferences();
+    // bb->removeFromParent();
+    bb->eraseFromParent();
+  }
+  marked_old_instructions.clear();
+  marked_old_binstructions.clear();
+  marked_old_basicblocks.clear();
+}
+
+void IRMerger::SetReturnType() {
+  // TRANSFORM NEW RETURN TO A RETURN WITH THE RIGHT TYPE
   unsigned int ret_counter = 0;
 
   for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++) {
@@ -159,12 +197,15 @@ void IRMerger::RemoveUseless() {
 
         if (ret != NULL) {
           marked_old_binstructions.push_back(&old_inst);
+          outs() << "old binstruction ret != NULL in RemoveUseless:\n";
+          int_i->dump();
 
           IRBuilder<>* IRB = new IRBuilder<>(&old_inst);
 
           Type* FType = fct->getReturnType();
 
           if (FType->isVoidTy()) {
+            outs() << "Void function\n";
             IRB->CreateRetVoid();
 
             continue;
@@ -209,27 +250,14 @@ void IRMerger::RemoveUseless() {
   }
 
   for (std::vector<Instruction*>::reverse_iterator i =
-           marked_old_instructions.rbegin();
-       i != marked_old_instructions.rend(); ++i) {
-    Instruction* inst = *i;
-    RemoveInstruction(inst);
-  }
-
-  for (std::vector<Instruction*>::reverse_iterator i =
            marked_old_binstructions.rbegin();
        i != marked_old_binstructions.rend(); ++i) {
     Instruction* inst = *i;
+    outs() << "old binst\n";
+    inst->dump();
     RemoveInstruction(inst);
   }  // namespace fracture
 
-  for (std::vector<BasicBlock*>::reverse_iterator i =
-           marked_old_basicblocks.rbegin();
-       i != marked_old_basicblocks.rend(); ++i) {
-    BasicBlock* bb = *i;
-    bb->dropAllReferences();
-    // bb->removeFromParent();
-    bb->eraseFromParent();
-  }
 }  // namespace fracture
 
 void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
