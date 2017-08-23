@@ -101,6 +101,7 @@ public:
   ///
   /// \param MBB - BasicBlock to search into.
   bool hasReturnInstruction(MachineBasicBlock* MBB);
+  bool hasPCReturnInstruction(MachineBasicBlock *MBB);
 
   /// \brief Prints size instructions on the given output stream at the given
   /// address. Uses current section for base offset.

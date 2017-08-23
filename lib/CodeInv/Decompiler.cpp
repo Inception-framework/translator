@@ -189,6 +189,15 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
     }
+    BasicBlock *bb = getOrCreateBasicBlock(BI->getName(), F);
+    Instruction *last = NULL;
+    for (auto int_i = bb->begin(); int_i != bb->end(); int_i++) last = int_i;
+    if (Dis->hasPCReturnInstruction(BI)) {
+      IRBuilder<> *IRB = new IRBuilder<>(bb);
+      Instruction *Ret = IRB->CreateRetVoid();
+      Ret->setDebugLoc(last->getDebugLoc());
+    }
+
     ++BI;
     // outs() << "\n--> done\n\n";
   }
@@ -498,9 +507,9 @@ SelectionDAG *Decompiler::createDAGFromMachineBasicBlock(
     for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
       MachineOperand *MOp = &I->getOperand(i);
       if (OpCode == ARM::tBX) {
-        if (MOp->isReg() && MOp->getReg() == ARM::LR)
+        if (MOp->isReg() && MOp->getReg() == ARM::LR) {
           OpCode = ARM::tBX_RET;
-        else
+        } else
           OpCode = ARM::tBX_CALL;
 
         std::cout << "ARM:tBX replaced by ARM::tBX_RET" << std::endl;

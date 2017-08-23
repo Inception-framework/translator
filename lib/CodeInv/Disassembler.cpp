@@ -116,22 +116,51 @@ bool Disassembler::hasReturnInstruction(MachineBasicBlock* MBB) {
 
     const MCRegisterInfo *RI = getMCDirector()->getMCRegisterInfo();
 
-    TargetRegisterInfo* TRI = (TargetRegisterInfo*) RI;
+    TargetRegisterInfo *TRI = (TargetRegisterInfo *)RI;
 
-    if ( instr->modifiesRegister(RI->getProgramCounter(), TRI) ) {
+    // if ( instr->modifiesRegister(RI->getProgramCounter(), TRI) ) {
+    //  return true;
+    //}
+
+    // printInstruction(Out, I, false);
+
+    if (instr->isReturn()) {
+      outs() << "Return found: isReturn\n";
+      instr->dump();
       return true;
-    }
-
-    //printInstruction(Out, I, false);
-
-    if( instr->isBranch() ) {
-
-      return instr->readsVirtualRegister(RI->getRARegister());
+    } else if (instr->isBranch()) {
+      if (instr->readsVirtualRegister(RI->getRARegister())) {
+        outs() << "Return found: lr\n";
+        instr->dump();
+        return true;
+      }
     }
 
   }
 
   std::cout << "hasReturnInstruction False" << std::endl;
+  return false;
+}
+
+bool Disassembler::hasPCReturnInstruction(MachineBasicBlock *MBB) {
+  formatted_raw_ostream Out(outs(), false);
+
+  for (MachineBasicBlock::iterator I = MBB->instr_begin(), E = MBB->instr_end();
+       I != E; ++I) {
+    MachineInstr *instr = &(*I);
+
+    const MCRegisterInfo *RI = getMCDirector()->getMCRegisterInfo();
+
+    TargetRegisterInfo *TRI = (TargetRegisterInfo *)RI;
+
+    if (instr->isReturn()) {
+      outs() << "Return found: isReturn\n";
+      instr->dump();
+      return true;
+    }
+  }
+
+  std::cout << "hasPCReturnInstruction False" << std::endl;
   return false;
 }
 
@@ -211,8 +240,8 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   // sent as a parameter or set locally in the function, but that would need to
   // happen after decompilation. In either case, this is definitely a BB
   // terminator or branch!
-  if (MCID->mayLoad()
-    && MCID->mayAffectControlFlow(*Inst, *MC->getMCRegisterInfo())) {
+  if (MCID->mayLoad() &&
+      MCID->mayAffectControlFlow(*Inst, *MC->getMCRegisterInfo())) {
     MCID->Flags |= (1 << MCID::Return);
     MCID->Flags |= (1 << MCID::Terminator);
   }
