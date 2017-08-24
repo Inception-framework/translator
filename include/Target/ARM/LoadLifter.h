@@ -8,6 +8,9 @@
 class ARMLifterManager;
 
 class LoadInfo2 {
+ private:
+  int32_t next;
+
  public:
   int32_t iOffset;
 
@@ -42,7 +45,6 @@ class LoadInfo2 {
       return iRn_max;
     }
 
-    static int32_t next = iRn;
 
     if (next >= iRn_max) {
       next = iRn;
@@ -55,6 +57,7 @@ class LoadInfo2 {
             int32_t _n_max = -1, bool _shifted = false)
       : iOffset(_o),
         iRn(_n),
+        next(_n),
         iRd(_d),
         iRn_max(_n_max),
         width(width),
@@ -63,6 +66,7 @@ class LoadInfo2 {
   LoadInfo2(int32_t _n, int32_t _d, int32_t _o, int32_t width, bool _shifted)
       : iOffset(_o),
         iRn(_n),
+        next(_n),
         iRd(_d),
         iRn_max(-1),
         width(width),
@@ -71,6 +75,7 @@ class LoadInfo2 {
   LoadInfo2(int32_t _n, int32_t _d, int32_t _o, bool _shifted)
       : iOffset(_o),
         iRn(_n),
+        next(_n),
         iRd(_d),
         iRn_max(-1),
         width(32),

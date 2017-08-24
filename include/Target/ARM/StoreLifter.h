@@ -4,10 +4,12 @@
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 #include "Target/ARM/ARMLifter.h"
-
 class ARMLifterManager;
 
 class StoreInfo {
+ private:
+  int32_t next;
+
  public:
   int width;
 
@@ -31,8 +33,6 @@ class StoreInfo {
       return iRn_max;
     }
 
-    static int32_t next = iRn;
-
     if (next >= iRn_max) {
       next = iRn;
       return -1;
@@ -42,7 +42,12 @@ class StoreInfo {
 
   StoreInfo(int32_t _n, int32_t _d, int32_t _o, int _Width = 32,
             int32_t _n_max = -1)
-      : width(_Width), iOffset(_o), iRn(_n), iRd(_d), iRn_max(_n_max) {}
+      : width(_Width),
+        iOffset(_o),
+        iRn(_n),
+        next(_n),
+        iRd(_d),
+        iRn_max(_n_max) {}
 };
 
 class StoreLifter : public ARMLifter {
