@@ -41,6 +41,7 @@ void IRMerger::Run(llvm::StringRef name) {
 
   WriteABIPrologue(fct);
 
+  fct->dump();
   Decompile(name);
 
   WriteABIEpilogue(fct);
@@ -117,23 +118,29 @@ void IRMerger::WriteABIPrologue(llvm::Function* fct) {
   uint8_t reg_counter = 0;
 
   for (auto arg = fct->arg_begin(); arg != fct->arg_end(); arg++) {
-    Value* x = arg;
+    Value* Res = NULL;
 
-    std::string reg_name = "R" + std::to_string(reg_counter);
+    Value* Reg = getReg(StringRef("R" + std::to_string(reg_counter)));
 
-    Value* reg = getReg(StringRef(reg_name));
-
-    if (x->getType()->isPointerTy()) {
-      x = IRB->CreatePtrToInt(x, IntegerType::get(mod->getContext(), 32));
+    if (arg->getType()->isPointerTy()) {
+      Res = IRB->CreatePtrToInt(arg, IntegerType::get(mod->getContext(), 32));
     }
 
-    if (x->getType()->isIntegerTy() &&
-        x->getType()->getIntegerBitWidth() < 32) {
-      x = IRB->CreateZExt(x, IntegerType::get(mod->getContext(), 32));
+    if (arg->getType()->isIntegerTy()) {
+      Res = IRB->CreateZExt(arg, IntegerType::get(mod->getContext(), 32));
     }
 
-    Instruction* Res = IRB->CreateStore(x, reg);
+    if (arg->getType()->isArrayTy()) {
+      for (int i = 0; i < arg->getType()->getArrayNumElements(); i++) {
+        if (i != 0) reg_counter++;
+        Reg = getReg(StringRef("R" + std::to_string(reg_counter)));
+        Value* element = IRB->CreateExtractValue(arg, i);
+        Res = IRB->CreateStore(element, Reg);
+      }
+      continue;
+    }
 
+    IRB->CreateStore(Res, Reg);
     reg_counter++;
   }
 }
