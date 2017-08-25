@@ -5,6 +5,7 @@
 #include "Target/ARM/AddLifter.h"
 #include "Target/ARM/BranchLifter.h"
 #include "Target/ARM/CompareLifter.h"
+#include "Target/ARM/ExtendLifter.h"
 #include "Target/ARM/FlagsLifter.h"
 #include "Target/ARM/LoadLifter.h"
 #include "Target/ARM/LogicalLifter.h"
@@ -56,6 +57,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("SVCALL", new SVCallLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("EXTEND", new ExtendLifter(this)));
 
   registerAll();
 }
