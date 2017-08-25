@@ -60,13 +60,13 @@
 
 #include <inttypes.h>
 #include <signal.h>
+#include <unistd.h>  //new
 #include <algorithm>
+#include <chrono>
+#include <cstdlib>  //new
 #include <map>
 #include <sstream>
 #include <string>
-#include <unistd.h>  //new
-#include <cstdlib>   //new
-#include <chrono>
 #include <thread>
 
 // iostream is frowned upon in LLVM, but
@@ -79,8 +79,8 @@
 #include "BinFun.h"
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
-#include "IRMerger.h"
 #include "DummyObjectFile.h"
+#include "IRMerger.h"
 // #include "CodeInv/IRHelper.h"
 #include "CodeInv/StrippedDisassembler.h"
 //#include "CodeInv/InvISelDAG.h"
@@ -315,21 +315,13 @@ static std::error_code loadBinary(StringRef FileName) {
 
         if (ci != NULL)
           if (isa<InlineAsm>(ci->getCalledValue())) {
-            // std::cout << "  Function: " << old_function.getName().str()
-                      // << std::endl;
-            // std::cout << "  Instruction: " << old_inst.getOpcodeName()
-                      // << std::endl;
             asm_functions.insert(old_function.getName().str());
           }
       }  // END FOR INSTRUCTIOn
     }    // END FOR BB
   }      // END FOR FCT
 
-  IRMerger *merger = NULL;
-
-  // IRMHelper *irHelper = new IRHelper(module);
-  // irHelper->GenerateCPSRHelper();
-  // irHelper->GenerateConditionHelper();
+  IRMerger *merger = new IRMerger(DEC);
 
   for (auto &str : asm_functions) {
     std::cout << "[Inception]\t Should replace : " << str << '\n';
@@ -346,12 +338,7 @@ static std::error_code loadBinary(StringRef FileName) {
 
     runDisassembleCommand(CommandLine);
 
-    if (merger == NULL)
-      merger = new IRMerger(DEC, str);
-    else
-      merger->SetNewFunction(str);
-
-    merger->Run();
+    merger->Run(llvm::StringRef(str));
   }
 
   errs() << "[Inception]\t Conversion done !\n";

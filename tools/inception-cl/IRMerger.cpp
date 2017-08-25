@@ -1,6 +1,8 @@
 #include "IRMerger.h"
 
+#include "FunctionCleaner.h"
 #include "FunctionsHelperWriter.h"
+#include "StackAllocator.h"
 
 extern bool nameLookupAddr(StringRef funcName, uint64_t& Address);
 
@@ -10,375 +12,135 @@ bool IRMerger::first_call = true;
 
 std::map<std::string, SDNode*> IRMerger::registersNodes = {};
 
-IRMerger::IRMerger(Decompiler* P_DEC, std::string new_function_name)
-    : DEC(P_DEC) {
-  RegMap.grow(DEC->getDisassembler()
-                  ->getMCDirector()
-                  ->getMCRegisterInfo()
-                  ->getNumRegs());
-
-  function_name = new StringRef(new_function_name);
+IRMerger::IRMerger(Decompiler* P_DEC) : DEC(P_DEC) {
+  // RegMap.grow(DEC->getDisassembler()
+  //                 ->getMCDirector()
+  //                 ->getMCRegisterInfo()
+  //                 ->getNumRegs());
 }
 
-IRMerger::~IRMerger() {
-  marked_old_instructions.clear();
+IRMerger::~IRMerger() {}
 
-  marked_old_binstructions.clear();
-
-  marked_old_basicblocks.clear();
-}
-
-void IRMerger::SetNewFunction(std::string new_function_name) {
-  function_name = new StringRef(new_function_name);
-
-  marked_old_instructions.clear();
-
-  marked_old_binstructions.clear();
-
-  marked_old_basicblocks.clear();
-}
-
-void IRMerger::Run() {
-  bool empty = false;
+void IRMerger::Run(llvm::StringRef name) {
+  Module* mod = DEC->getModule();
 
   if (IRMerger::first_call) {
     IRMerger::first_call = false;
-
-    Value* Reg = DEC->getModule()->getGlobalVariable("STACK");
-    if (Reg == NULL) {
-      Type* Ty = ArrayType::get(
-          IntegerType::get(DEC->getModule()->getContext(), 4), 16400);
-
-      Constant* Initializer = Constant::getNullValue(Ty);
-
-      GlobalVariable* gvar_ptr_SP =
-          new GlobalVariable(*DEC->getModule(),  // Module
-                             Ty,                 // Type
-                             false,              // isConstant
-                             GlobalValue::CommonLinkage, Initializer, "STACK");
-      gvar_ptr_SP->setAlignment(4);
-    }
+    // Init the stack
+    StackAllocator::Allocate(mod);
   }
 
-  fct = DEC->getModule()->getFunction(*function_name);
+  Function* fct = mod->getFunction(name);
 
-  if (fct->empty()) empty = true;
+  FunctionCleaner::Clean(fct);
 
-  if (!empty) {
-    entry_bb = &(fct->getEntryBlock());
-
-    MarkOldInstructions();
-  } else {
-    LLVMContext context;
-
-    entry_bb = BasicBlock::Create(context, "entry", fct);
-
+  if (fct->empty()) {
+    BasicBlock::Create(mod->getContext(), "entry", fct);
     fct->addFnAttr("Empty", "True");
   }
 
-  MapArgsToRegs();
+  WriteABIPrologue(fct);
 
-  Function* new_function = Decompile();
-  if (new_function == NULL) return;
+  fct->dump();
+  Decompile(name);
 
-  if (!empty) {
-    RemoveUseless();
-    SetReturnType();
-  }
+  WriteABIEpilogue(fct);
 
-  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, DEC->getModule());
-  FunctionsHelperWriter::Write(BEGIN, INIT_STACK, DEC->getModule());
+  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, mod);
+  FunctionsHelperWriter::Write(BEGIN, INIT_STACK, mod);
 }
 
-Function* IRMerger::Decompile() {
+void IRMerger::Decompile(llvm::StringRef name) {
   uint64_t Address;
 
-  // outs() << "[Inception] The funcion " << *function_name;
-  // outs() << " needs to be replaced...\n";
-
-  if (nameLookupAddr(*function_name, Address) == false) {
-    return NULL;
+  if (nameLookupAddr(name, Address) == false) {
+    return;
   }
-
-  // DEC->setViewMCDAGs(true);
-  // DEC->setViewIRDAGs(true);
 
   formatted_raw_ostream Out(outs(), false);
 
   DEC->decompile(Address);
-
-  // outs() << "-----------New IR Code --------------------\n";
-  // DEC->printInstructions(Out, Address);
-  // outs() << "-------------------------------------------\n";
-
-  return DEC->getModule()->getFunction(*function_name);
 }
 
-void IRMerger::MarkOldInstructions() {
-  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++) {
-    BasicBlock& old_bb = *bb_i;
-
-    for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
-      Instruction& old_inst = *int_i;
-      outs() << "old instruction:\n";
-      int_i->dump();
-
-      if (&old_inst != NULL) {
-        const UnreachableInst* ui = dyn_cast<UnreachableInst>(&old_inst);
-        const ReturnInst* ret = dyn_cast<ReturnInst>(&old_inst);
-
-        if (ui != NULL) {
-          marked_old_binstructions.push_back(&old_inst);
-          outs() << "    old binstruction:\n";
-          int_i->dump();
-        } else if (ret != NULL) {
-          marked_old_binstructions.push_back(&old_inst);
-          outs() << "    old binstruction ret != NULL:\n";
-          int_i->dump();
-        } else {
-          marked_old_instructions.push_back(&old_inst);
-          outs() << "    old instruction:\n";
-          int_i->dump();
-        }
-      }
-    }  // END INST LOOP
-
-    if (&old_bb != entry_bb) {
-      marked_old_basicblocks.push_back(&old_bb);
-      // old_bb.dropAllReferences();
-      // old_bb.removeFromParent();
-      // old_bb.insertInto (fct);
-    }
-  }  // END BB LOOP
-}
-
-void IRMerger::RemoveUseless() {
-  // REMOVE OLD INSTRUCTIONS
-  for (std::vector<Instruction*>::reverse_iterator i =
-           marked_old_binstructions.rbegin();
-       i != marked_old_binstructions.rend(); ++i) {
-    Instruction* inst = *i;
-    outs() << "old binst\n";
-    inst->dump();
-    RemoveInstruction(inst);
-  }  // namespace fracture
-
-  for (std::vector<Instruction*>::reverse_iterator i =
-           marked_old_instructions.rbegin();
-       i != marked_old_instructions.rend(); ++i) {
-    Instruction* inst = *i;
-    RemoveInstruction(inst);
-  }
-
-  for (std::vector<BasicBlock*>::reverse_iterator i =
-           marked_old_basicblocks.rbegin();
-       i != marked_old_basicblocks.rend(); ++i) {
-    BasicBlock* bb = *i;
-    bb->dropAllReferences();
-    // bb->removeFromParent();
-    bb->eraseFromParent();
-  }
-  marked_old_instructions.clear();
-  marked_old_binstructions.clear();
-  marked_old_basicblocks.clear();
-}
-
-void IRMerger::SetReturnType() {
+void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
   // TRANSFORM NEW RETURN TO A RETURN WITH THE RIGHT TYPE
   unsigned int ret_counter = 0;
+  ReturnInst* ret;
 
-  for (auto bb_i = fct->begin(); bb_i != fct->end(); bb_i++) {
-    BasicBlock& old_bb = *bb_i;
-    for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++) {
-      Instruction& old_inst = *int_i;
+  Type* FType = fct->getReturnType();
 
-      if (&old_inst != NULL) {
-        const ReturnInst* ret = dyn_cast<ReturnInst>(&old_inst);
+  // void return has been write by Lifter
+  if (FType->isVoidTy()) {
+    return;
+  }
 
-        if (ret != NULL) {
-          marked_old_binstructions.push_back(&old_inst);
-          outs() << "old binstruction ret != NULL in RemoveUseless:\n";
-          int_i->dump();
+  auto bb = fct->begin();
 
-          IRBuilder<>* IRB = new IRBuilder<>(&old_inst);
+  for (bb; bb != fct->end(); bb++) {
+    Instruction* inst = (*bb).begin();
 
-          Type* FType = fct->getReturnType();
+    while (inst != (*bb).end() || inst == nullptr) {
+      auto next = inst->getNextNode();
 
-          if (FType->isVoidTy()) {
-            outs() << "Void function\n";
-            IRB->CreateRetVoid();
+      if ((ret = dyn_cast<ReturnInst>(inst)) != NULL) {
+        IRBuilder<>* IRB = new IRBuilder<>(inst);
 
-            continue;
-          }
+        Value* Reg = getReg(StringRef("R0"));
 
-          Value* Reg = DEC->getModule()->getGlobalVariable("R0");
-          if (Reg == NULL) {
-            Type* Ty = IntegerType::get(DEC->getModule()->getContext(), 32);
+        StringRef name("R0_RET" + std::to_string(ret_counter));
 
-            Constant* Initializer = Constant::getNullValue(Ty);
+        Instruction* Res = new LoadInst(Reg, name, "", inst);
 
-            GlobalVariable* gvar_i32 = new GlobalVariable(
-                *DEC->getModule(),  // Module
-                Ty,                 // Type
-                false,              // isConstant
-                GlobalValue::CommonLinkage, Initializer, "R0");
-
-            Reg = gvar_i32;
-
-            // outs() << "MISSING REGISTER R0 TO CREATE RETURN INSTRUCTION
-            // \n\n"; return;
-          }
-
-          std::string ret_name = "R0_RET" + std::to_string(ret_counter);
-          StringRef ReturnName(ret_name);
-
-          Value* Res = IRB->CreateLoad(Reg, ReturnName);
-
-          // caast ptr to int to ptr to correct type if necessary
-          if (FType->isPointerTy()) {
-            Res = IRB->CreateIntToPtr(Res, FType);
-          } else if (FType->isIntegerTy() && FType->getIntegerBitWidth() < 32) {
-            Res = IRB->CreateTrunc(Res, FType);
-          }
-
-          IRB->CreateRet(Res);
-
-          ret_counter++;
+        // caast ptr to int to ptr to correct type if necessary
+        if (FType->isPointerTy()) {
+          Res = new IntToPtrInst(Res, FType, "", inst);
+        } else if (FType->isIntegerTy() && FType->getIntegerBitWidth() < 32) {
+          Res = new TruncInst(Res, FType, "", inst);
         }
+
+        Res = ReturnInst::Create(*(DEC->getContext()), Res);
+
+        llvm::ReplaceInstWithInst(inst, Res);
+        ret_counter++;
       }
+      inst = next;
     }
   }
-
-  for (std::vector<Instruction*>::reverse_iterator i =
-           marked_old_binstructions.rbegin();
-       i != marked_old_binstructions.rend(); ++i) {
-    Instruction* inst = *i;
-    outs() << "old binst\n";
-    inst->dump();
-    RemoveInstruction(inst);
-  }  // namespace fracture
-
 }  // namespace fracture
 
-void IRMerger::RemoveInstruction(llvm::Instruction* instruction) {
-  SmallVector<std::pair<unsigned, MDNode*>, 100> Metadata;
-
-  instruction->getAllMetadata(Metadata);
-
-  for (unsigned i = 0, n = Metadata.size(); i < n; ++i) {
-    unsigned Kind = Metadata[i].first;
-
-    instruction->setMetadata(Kind, nullptr);
-  }
-  Metadata.clear();
-
-  outs() << "Removing : " << *instruction << "\n";
-  instruction->dropAllReferences();
-  // instruction->removeFromParent();
-  instruction->eraseFromParent();
-}
-
-void IRMerger::MapArgsToRegs() {
-  // outs() << "=========MAP ARGS===========\n\n";
-
+void IRMerger::WriteABIPrologue(llvm::Function* fct) {
   BasicBlock& new_entry = fct->getEntryBlock();
 
   IRBuilder<>* IRB = new IRBuilder<>(&new_entry);
 
+  Module* mod = DEC->getModule();
+
   uint8_t reg_counter = 0;
+
   for (auto arg = fct->arg_begin(); arg != fct->arg_end(); arg++) {
-    Value* x = arg;
+    Value* Res = NULL;
 
-    std::string reg_name = "R" + std::to_string(reg_counter);
+    Value* Reg = getReg(StringRef("R" + std::to_string(reg_counter)));
 
-    Value* Reg = DEC->getModule()->getGlobalVariable(reg_name);
-    if (Reg == NULL) {
-      // ConstantInt* Ty = ConstantInt::get(DEC->getModule()->getContext(),
-      // APInt(32,0));
-      // PointerType::get(IntegerType::get( DEC->getModule()->getContext(),
-      // 32), 0); std::map<std::string, SDNode*>::iterator it; it =
-      // registersNodes.find(reg_name); if (it != registersNodes.end()) {
-      //
-      //   SDNode* node = it->second;
-      //
-      //   const RegisterSDNode *R = dyn_cast<RegisterSDNode>(node);
-      //
-      //   Ty = R->getValueType(0).getTypeForEVT(getGlobalContext());
-      // }
-      // else
-      Type* Ty = IntegerType::get(DEC->getModule()->getContext(), 32);
-
-      Constant* Initializer = Constant::getNullValue(Ty);
-
-      GlobalVariable* gvar_i32 =
-          new GlobalVariable(*DEC->getModule(),  // Module
-                             Ty,                 // Type
-                             false,              // isConstant
-                             GlobalValue::CommonLinkage, Initializer, reg_name);
-      // gvar_i32->setAlignment(4);
-
-      RegMap[reg_counter] = gvar_i32;
-
-      Reg = gvar_i32;
-
-      // outs() << "\n[Inception]\tAdding new register " << reg_name <<
-      // "\n";
-    }
-    // Reg->dump();
-
-    // if (!Addr->getType()->isPointerTy()) {
-
-    // StringRef AddrName(reg_name+"_FARG_P");
-
-    // Addr = IRB->CreateIntToPtr(Addr, Addr->getType()->getPointerTo(),
-    // AddrName); outs() << "\nCast "; Addr->dump();
-    // }
-
-    // if ( Reg->getType() != x->getType() ) {
-    //   outs() << "Solving type issue \n\n";
-    //
-    //   outs() << "\nRegType "; Reg->getType()->dump();
-    //   outs() << "\nArgType "; x->getType()->dump();
-    //   outs() << "\nElementType "; x->getElementType()->dump();
-    //
-    //   else
-    //     outs() << "Unknown type ....\n\n";
-    // }
-
-    // cast pointers to int32 (registers)
-    if (x->getType()->isPointerTy()) {
-      // continue;
-
-      // x = IRB->CreateLoad(x);
-      // outs() << "\nGet Ptr value ";
-      // x->dump();
-
-      // if (Reg->getType() != x->getType()) {
-      //  x = IRB->CreateBitCast(x, Reg->getType());
-      // outs() << "\nBitcast ";
-      // x->dump();
-      //}
-      // x = IRB->CreatePtrToInt(x, x->getType()->getPointerTo());
-      x = IRB->CreatePtrToInt(
-          x, IntegerType::get(DEC->getModule()->getContext(), 32));
+    if (arg->getType()->isPointerTy()) {
+      Res = IRB->CreatePtrToInt(arg, IntegerType::get(mod->getContext(), 32));
     }
 
-    // cast types smaller than int32 to int32 (registers)
-    if (x->getType()->isIntegerTy() &&
-        x->getType()->getIntegerBitWidth() < 32) {
-      x = IRB->CreateZExt(x,
-                          IntegerType::get(DEC->getModule()->getContext(), 32));
+    if (arg->getType()->isIntegerTy()) {
+      Res = IRB->CreateZExt(arg, IntegerType::get(mod->getContext(), 32));
     }
 
-    // outs() << "\nRegType ";
-    // Reg->getType()->dump();
-    // outs() << "\nArgType ";
-    // x->getType()->dump();
+    if (arg->getType()->isArrayTy()) {
+      for (int i = 0; i < arg->getType()->getArrayNumElements(); i++) {
+        if (i != 0) reg_counter++;
+        Reg = getReg(StringRef("R" + std::to_string(reg_counter)));
+        Value* element = IRB->CreateExtractValue(arg, i);
+        Res = IRB->CreateStore(element, Reg);
+      }
+      continue;
+    }
 
-    Instruction* Res = IRB->CreateStore(x, Reg);
-    Res->dump();
-    // outs() << "==========================\n\n";
-
+    IRB->CreateStore(Res, Reg);
     reg_counter++;
   }
 }

@@ -72,6 +72,8 @@ class ARMLifter {
 
   Value* getConstant(StringRef value);
 
+  Value* getConstant(uint32_t value);
+
   Value* Reg(StringRef name);
 
   Value* Bool2Int(Value* v, IRBuilder<>* IRB);

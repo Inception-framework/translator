@@ -368,4 +368,3 @@ void LogicalLifter::BitwiseHandlerRS(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
 
   alm->VisitMap[N] = Res;
 }
-
