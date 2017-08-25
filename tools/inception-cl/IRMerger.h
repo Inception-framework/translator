@@ -46,16 +46,17 @@
 #include <llvm/IR/Instructions.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
-#include "llvm/IR/Metadata.h"
 #include <llvm/Pass.h>
 #include <llvm/PassManager.h>
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/MathExtras.h>
 #include <algorithm>
+#include "llvm/IR/Metadata.h"
 
 #include <map>
 #include <stack>
 #include <string>
+#include <vector>
 
 using namespace llvm;
 
@@ -66,54 +67,48 @@ class Disassembler;
 
 class IRMerger {
  public:
-  IRMerger(Decompiler *DEC, std::string new_function_name);
+  IRMerger(Decompiler* DEC);
 
   ~IRMerger();
 
-  void Merge(std::string old_function_name);
+  void Run(llvm::StringRef name);
 
-  void SetNewFunction(std::string new_function_name);
-
-  void Run();
-
-  static std::map<std::string, SDNode *> registersNodes;
+  static std::map<std::string, SDNode*> registersNodes;
 
  protected:
   static bool first_call;
 
-  void CreateADDCarryHelper();
-
-  Function *Decompile();
+  void Decompile(llvm::StringRef name);
 
   StringRef getIndexedValueName(StringRef BaseName);
 
   StringRef getBaseValueName(StringRef BaseName);
 
-  void MarkOldInstructions();
+  void WriteABIPrologue(llvm::Function* fct);
 
-  void MapArgsToRegs();
+  void WriteABIEpilogue(llvm::Function* fct);
 
-  void RemoveUseless();
+  Decompiler* DEC;
 
-  void SetReturnType();
+  StringRef* function_name;
 
-  void RemoveInstruction(llvm::Instruction* instruction);
+  Value* getReg(StringRef name) {
+    Module* mod = DEC->getModule();
+    Value* Reg = mod->getGlobalVariable(name);
 
-  Function *fct;
+    if (Reg == NULL) {
+      Type* Ty = IntegerType::get(*(DEC->getContext()), 32);
 
-  BasicBlock *entry_bb;
+      Constant* Initializer = Constant::getNullValue(Ty);
 
-  Decompiler *DEC;
+      Reg = new GlobalVariable(*mod,   // Module
+                               Ty,     // Type
+                               false,  // isConstant
+                               GlobalValue::CommonLinkage, Initializer, name);
+    }
 
-  IndexedMap<Value *> RegMap;
-
-  StringRef *function_name;
-
-  std::vector<Instruction *> marked_old_instructions;
-
-  std::vector<Instruction *> marked_old_binstructions;
-
-  std::vector<BasicBlock *> marked_old_basicblocks;
+    return Reg;
+  }
 };
 
 }  // end namespace fracture
