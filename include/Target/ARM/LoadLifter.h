@@ -7,7 +7,7 @@
 
 class ARMLifterManager;
 
-class LoadInfo2 {
+class LoadInfo {
  private:
   int32_t next;
 
@@ -24,7 +24,7 @@ class LoadInfo2 {
   bool shifted;
 
   void dump() {
-    printf("LoadInfo2:\n");
+    printf("LoadInfo:\n");
     printf("iRn            -> %d\n", iRn);
     printf("iRd            -> %d\n", iRd);
     printf("iOffset        -> %d\n", iOffset);
@@ -53,7 +53,7 @@ class LoadInfo2 {
     return next++;
   };
 
-  LoadInfo2(int32_t _n, int32_t _d, int32_t _o, int32_t width = 32,
+  LoadInfo(int32_t _n, int32_t _d, int32_t _o, int32_t width = 32,
             int32_t _n_max = -1, bool _shifted = false)
       : iOffset(_o),
         iRn(_n),
@@ -63,7 +63,7 @@ class LoadInfo2 {
         width(width),
         shifted(_shifted) {}
 
-  LoadInfo2(int32_t _n, int32_t _d, int32_t _o, int32_t width, bool _shifted)
+  LoadInfo(int32_t _n, int32_t _d, int32_t _o, int32_t width, bool _shifted)
       : iOffset(_o),
         iRn(_n),
         next(_n),
@@ -72,7 +72,7 @@ class LoadInfo2 {
         width(width),
         shifted(_shifted) {}
 
-  LoadInfo2(int32_t _n, int32_t _d, int32_t _o, bool _shifted)
+  LoadInfo(int32_t _n, int32_t _d, int32_t _o, bool _shifted)
       : iOffset(_o),
         iRn(_n),
         next(_n),
@@ -82,67 +82,6 @@ class LoadInfo2 {
         shifted(_shifted) {}
 };
 
-typedef struct LoadNodeLayout {
-  int32_t Dst_start;
-  int32_t Dst_end;
-  int32_t Offset;
-  int32_t Addr;
-  int32_t Shift;
-  LoadNodeLayout(int32_t _Dst_start, int32_t _Dst_end, int32_t _Offset,
-                 int32_t _Addr, int32_t _Shift = -1)
-      : Dst_start(_Dst_start),
-        Dst_end(_Dst_end),
-        Offset(_Offset),
-        Addr(_Addr),
-        Shift(_Shift) {}
-} LoadNodeLayout;
-
-typedef struct LoadInfo {
-  llvm::SDNode* N;
-
-  // Loads more than 1 register ?
-  bool MultiDest;
-
-  // Output Address ?
-  bool OutputAddr;
-
-  // Output Destination Register ?
-  bool OutputDst;
-
-  // Node Laout : Can we guess it ?
-  LoadNodeLayout* Layout;
-
-  // Do we inc the stack pointer ?
-  bool Increment;
-
-  // Update stack pointer before ?
-  bool Before;
-
-  // Trunc the result ?
-  bool Trunc;
-
-  Type* Ty;
-
-  bool Shift;
-
-  bool Post;
-
-  LoadInfo(llvm::SDNode* _N, bool _MultiDest, bool _OutputAddr, bool _OutputDst,
-           LoadNodeLayout* _Layout, bool _Increment, bool _Before,
-           bool _Trunc = false, Type* _Ty = NULL, bool _Shift = false,
-           bool _Post = false)
-      : N(_N),
-        Layout(_Layout),
-        MultiDest(_MultiDest),
-        OutputAddr(_OutputAddr),
-        OutputDst(_OutputDst),
-        Increment(_Increment),
-        Before(_Before),
-        Trunc(_Trunc),
-        Shift(_Shift),
-        Post(_Post),
-        Ty(_Ty) {}
-} LoadInfo;
 
 class LoadLifter : public ARMLifter {
  public:
@@ -164,9 +103,9 @@ class LoadLifter : public ARMLifter {
 
   llvm::Value* IncPointer(LoadInfo* info, IRBuilder<>* IRB, Value* Addr_int);
 
-  std::map<unsigned, LoadInfo2*> info;
+  std::map<unsigned, LoadInfo*> info;
 
-  LoadInfo2* getInfo(unsigned opcode) {
+  LoadInfo* getInfo(unsigned opcode) {
     auto search = info.find(opcode);
 
     if (search != info.end())
@@ -220,44 +159,6 @@ class LoadLifter : public ARMLifter {
   HANDLER_LOAD2(MultiDB)
   HANDLER_LOAD2(PC)
 // Declare each handler
-
-#define HANDLER_LOAD(name) \
-  void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB);
-
-  HANDLER_LOAD(tPOP)
-
-  HANDLER_LOAD(t2LDMIA_UPD)
-  HANDLER_LOAD(t2LDMIA)
-
-  HANDLER_LOAD(tLDRr)
-  HANDLER_LOAD(tLDRi)
-  HANDLER_LOAD(t2LDRi12)
-  HANDLER_LOAD(t2LDRi8)
-  HANDLER_LOAD(t2LDR_POST)
-  HANDLER_LOAD(t2LDR_PRE)
-  HANDLER_LOAD(t2LDMDB)
-  HANDLER_LOAD(t2LDRs)
-
-  HANDLER_LOAD(tLDRBi)
-  HANDLER_LOAD(t2LDRBi8)
-  HANDLER_LOAD(t2LDRBi12)
-  HANDLER_LOAD(t2LDRB_PRE)
-  HANDLER_LOAD(t2LDRB_POST)
-  HANDLER_LOAD(t2LDMDB_UPD)
-  HANDLER_LOAD(t2LDRBs)
-
-  HANDLER_LOAD(t2LDRDi8)
-  HANDLER_LOAD(t2LDRD_PRE)
-  HANDLER_LOAD(t2LDRD_POST)
-
-  HANDLER_LOAD(tLDRHi)
-  HANDLER_LOAD(t2LDRHi12)
-  HANDLER_LOAD(t2LDRHi8)
-  HANDLER_LOAD(t2LDRH_PRE)
-  HANDLER_LOAD(t2LDRH_POST)
-  HANDLER_LOAD(t2LDRHs)
-
-  // HANDLER(t2LDDRBi8)
 };
 
 #endif
