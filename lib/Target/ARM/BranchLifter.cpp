@@ -363,15 +363,15 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
     reg_name[1]++;
   }
 
-  if (Func->getReturnType() != IntegerType::get(alm->getContextRef(), 32)) {
-    outs() << "Warning: unsupported return type for function call " << FName
-           << "\n";
-    if (N != NULL) {
-      Value *dummyLR = getConstant("0");
-      alm->VisitMap[N] = dummyLR;
-    }
-    return;
-  }
+  // if (Func->getReturnType() != IntegerType::get(alm->getContextRef(), 32)) {
+  //  outs() << "Warning: unsupported return type for function call " << FName
+  //         << "\n";
+  //  if (N != NULL) {
+  //    Value *dummyLR = getConstant("0");
+  //    alm->VisitMap[N] = dummyLR;
+  //  }
+  //  return;
+  //}
 
   FunctionType *FT = FunctionType::get(
       // Type::getPrimitiveType(alm->getContext(), Type::VoidTyID), false);
