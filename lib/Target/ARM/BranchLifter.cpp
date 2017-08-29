@@ -231,7 +231,14 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
   for (Function::arg_iterator I = Func->arg_begin(), E = Func->arg_end();
        I != E; ++I) {
     ArgTypes.push_back(I->getType());
-    Args.push_back(ReadReg(Reg(reg_name), IRB));
+    if (I->getType()->isPointerTy()) {
+      Value* Res = ReadReg(Reg(reg_name), IRB);
+      // Res = IRB->CreatePtrToInt(Res, IntegerType::get(alm->getContext(), 32));
+      Res = IRB->CreateIntToPtr(Res, I->getType());
+      Args.push_back(Res);
+    } else {
+      Args.push_back(ReadReg(Reg(reg_name), IRB));
+    }
     reg_name[1]++;
   }
 
