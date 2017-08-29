@@ -22,6 +22,8 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::tPOP, Pop, new LoadInfo(3, -1, 0))
 
   REGISTER_LOAD_OPCODE(ARM::t2LDMIA_UPD, Multi, new LoadInfo(4, 1, 0))
+  REGISTER_LOAD_OPCODE(ARM::tLDMIA_UPD, Multi, new LoadInfo(4, 1, 0))
+  REGISTER_LOAD_OPCODE(ARM::tLDMIA, Multi, new LoadInfo(4, 1, 0))
   REGISTER_LOAD_OPCODE(ARM::t2LDMIA, Multi, new LoadInfo(4, 1, 0))
 
   REGISTER_LOAD_OPCODE(ARM::t2LDMDB_UPD, MultiDB,
