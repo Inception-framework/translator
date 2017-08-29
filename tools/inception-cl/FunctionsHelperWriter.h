@@ -53,13 +53,14 @@ class FunctionsHelperWriter {
 
   static void FNHDumpRegisters(llvm::Module* mod, llvm::Instruction* before);
 
-  static llvm::Instruction* GetBegin(llvm::Module* mod);
+  static llvm::Instruction* GetBegin(llvm::Function* func);
 
-  static llvm::Instruction* GetLast(llvm::Module* mod);
+  static llvm::Instruction* GetLast(llvm::Function* func);
 
  public:
   static void Write(FHW_POSITION position, FUNCTION_HELPER type,
-                    llvm::Module* mod, llvm::Instruction* before = NULL);
+                    llvm::Module* mod, llvm::Function* func,
+                    llvm::Instruction* before = NULL);
 };
 
 #endif

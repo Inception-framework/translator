@@ -46,8 +46,9 @@ void IRMerger::Run(llvm::StringRef name) {
 
   WriteABIEpilogue(fct);
 
-  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, mod);
-  FunctionsHelperWriter::Write(BEGIN, INIT_STACK, mod);
+  Function* main = DEC->getModule()->getFunction("main");
+  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, mod, main);
+  FunctionsHelperWriter::Write(BEGIN, INIT_STACK, mod, main);
 }
 
 void IRMerger::Decompile(llvm::StringRef name) {

@@ -1,14 +1,14 @@
 #include "FunctionsHelperWriter.h"
 
 void FunctionsHelperWriter::Write(FHW_POSITION position, FUNCTION_HELPER type,
-                                  llvm::Module* mod,
+                                  llvm::Module* mod, llvm::Function* func,
                                   llvm::Instruction* before) {
   switch (position) {
     case BEGIN:
-      before = GetBegin(mod);
+      before = GetBegin(func);
       break;
     case END:
-      before = GetLast(mod);
+      before = GetLast(func);
       break;
     case NONE:
       if (before == NULL) return;
@@ -28,29 +28,24 @@ void FunctionsHelperWriter::Write(FHW_POSITION position, FUNCTION_HELPER type,
   }
 }
 
-llvm::Instruction* FunctionsHelperWriter::GetBegin(llvm::Module* mod) {
+llvm::Instruction* FunctionsHelperWriter::GetBegin(llvm::Function* func) {
   Instruction* ptr;
-
-  for (auto fct = mod->getFunctionList().begin();
-       fct != mod->getFunctionList().end(); fct++)
-    for (auto bb_i = fct->getBasicBlockList().begin();
-         bb_i != fct->getBasicBlockList().end(); bb_i++) {
-      BasicBlock& old_bb = *bb_i;
-      for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++)
-        return int_i;
-    }
+  for (auto bb_i = func->getBasicBlockList().begin();
+       bb_i != func->getBasicBlockList().end(); bb_i++) {
+    BasicBlock& old_bb = *bb_i;
+    for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++)
+      return int_i;
+  }
 }
 
-llvm::Instruction* FunctionsHelperWriter::GetLast(llvm::Module* mod) {
+llvm::Instruction* FunctionsHelperWriter::GetLast(llvm::Function* func) {
   Instruction* ptr;
 
-  for (auto fct = mod->getFunctionList().begin();
-       fct != mod->getFunctionList().end(); fct++)
-    for (auto bb_i = fct->getBasicBlockList().begin();
-         bb_i != fct->getBasicBlockList().end(); bb_i++) {
-      BasicBlock& old_bb = *bb_i;
-      for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++)
-        ptr = int_i;
+  for (auto bb_i = func->getBasicBlockList().begin();
+       bb_i != func->getBasicBlockList().end(); bb_i++) {
+    BasicBlock& old_bb = *bb_i;
+    for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++)
+      ptr = int_i;
     }
   return ptr;
 }

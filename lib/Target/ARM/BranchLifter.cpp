@@ -6,6 +6,8 @@
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
+#include <vector>
+
 using namespace llvm;
 using namespace fracture;
 
@@ -22,6 +24,8 @@ void BranchLifter::registerLifter() {
                       (LifterHandler)&BranchLifter::BranchHandlerB);
   alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::t2Bcc,
                       (LifterHandler)&BranchLifter::BranchHandlerB);
+  alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tBLXr,
+                      (LifterHandler)&BranchLifter::BranchHandlerBLXr);
 }
 
 void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
@@ -213,7 +217,107 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
   int64_t DestInt = DestNode->getSExtValue();
   int64_t PC = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
   int64_t Tgt = PC + 4 + DestInt;
+  CallHandler(N, IRB, Tgt);
+}
 
+// simple indirect call promotion
+void BranchLifter::BranchHandlerBLXr(SDNode *N, IRBuilder<> *IRB) {
+  // pointer register
+  Value *Rm = visit(N->getOperand(3).getNode(), IRB);
+  Rm = IRB->CreateAnd(Rm, getConstant("4294967294"));  // remove last bit
+
+  // if necessary create the indirect call promotion function
+  Function *icp = alm->Mod->getFunction("icp");
+  if (icp == NULL) {
+    Constant *c = alm->Mod->getOrInsertFunction(
+        "icp", Type::getVoidTy(alm->getContextRef()),
+        IntegerType::get(alm->getContextRef(), 32), NULL);
+    icp = cast<Function>(c);
+    icp->setCallingConv(CallingConv::C);
+    Function::arg_iterator args = icp->arg_begin();
+    Value *ptr_reg = args;
+    ptr_reg->setName("ptr_reg");
+
+    // for each function (address/name) in the symbol table
+    object::ObjectFile *Executable =
+        alm->Dec->getDisassembler()->getExecutable();
+    uint64_t SymAddr;
+    std::error_code ec;
+    StringRef NameRef;
+
+    IRBuilder<> *bbIRB = NULL;
+
+    BasicBlock *entry_block =
+        BasicBlock::Create(alm->getContextRef(), "entry", icp);
+
+    unsigned num_cases = 0;
+    std::vector<ConstantInt *> addresses;
+    std::vector<BasicBlock *> blocks;
+    for (object::symbol_iterator I = Executable->symbols().begin(),
+                                 E = Executable->symbols().end();
+         I != E; ++I) {
+      object::SymbolRef::Type SymbolTy;
+      if ((ec = I->getType(SymbolTy))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+      if (SymbolTy != object::SymbolRef::ST_Function) {
+        continue;
+      }
+      if ((ec = I->getAddress(SymAddr))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+      if ((ec = I->getName(NameRef))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+
+      if (NameRef.empty()) {
+        std::string *FName = new std::string();
+        raw_string_ostream FOut(*FName);
+        FOut << "func_" << format("%1" PRIx64, (unsigned)SymAddr);
+        NameRef = StringRef(FOut.str());
+      }
+      // if the register points to the function, call it
+      outs() << "FUNCTION " << NameRef << " " << (unsigned)SymAddr << "\n";
+      BasicBlock *bb = BasicBlock::Create(alm->getContextRef(),
+                                          "call_" + NameRef.str(), icp);
+      bbIRB = new IRBuilder<>(bb);
+      CallHandler(NULL, bbIRB, (unsigned)SymAddr);
+      bbIRB->CreateRetVoid();
+      delete bbIRB;
+      num_cases++;
+      // Value *cmp = prevIRB->CreateICmpEQ(
+      //    ptr_reg, ConstantInt::get(alm->getContextRef(),
+      //                              APInt(32, (unsigned)SymAddr, 10)));
+      SymAddr &= 0xfffffffe;  // remove last bit
+      ConstantInt *addr = ConstantInt::get(alm->getContextRef(),
+                                           APInt(32, (unsigned)SymAddr, 10));
+      addresses.push_back(addr);
+      blocks.push_back(bb);
+    }
+
+    BasicBlock *end_block =
+        BasicBlock::Create(alm->getContextRef(), "end", icp);
+    bbIRB = new IRBuilder<>(end_block);
+    bbIRB->CreateRetVoid();
+    delete bbIRB;
+
+    IRBuilder<> *entryIRB = new IRBuilder<>(entry_block);
+    SwitchInst *sw = entryIRB->CreateSwitch(ptr_reg, end_block, num_cases);
+
+    for (int i = 0; i < num_cases; i++) {
+      sw->addCase(addresses[i], blocks[i]);
+    }
+  }
+
+  IRB->CreateCall(icp, Rm);
+  Value *dummyLR = getConstant("0");
+  alm->VisitMap[N] = dummyLR;
+}
+
+void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
   // TODO: Look up address in symbol table.
   std::string FName = alm->Dec->getDisassembler()->getFunctionName(Tgt);
 
@@ -225,6 +329,8 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
     exit(0);
   }
 
+  // TODO: type cast!
+  // outs() << FName << " args:\n";
   std::vector<Value *> Args;
   std::vector<Type *> ArgTypes;
   char reg_name[3] = "R0";
@@ -232,14 +338,39 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
        I != E; ++I) {
     ArgTypes.push_back(I->getType());
     if (I->getType()->isPointerTy()) {
-      Value* Res = ReadReg(Reg(reg_name), IRB);
-      // Res = IRB->CreatePtrToInt(Res, IntegerType::get(alm->getContext(), 32));
+      Value *Res = ReadReg(Reg(reg_name), IRB);
+      // Res = IRB->CreatePtrToInt(Res, IntegerType::get(alm->getContext(),
+      // 32));
       Res = IRB->CreateIntToPtr(Res, I->getType());
       Args.push_back(Res);
     } else {
       Args.push_back(ReadReg(Reg(reg_name), IRB));
     }
+    // Type *arg_ty = I->getType();
+    // if (I->getType() != IntegerType::get(alm->getContextRef(), 32)) {
+    //   outs() << "Warning: unsupported parameter type for function call "
+    //          << FName << "\n";
+    //   if (N != NULL) {
+    //     Value *dummyLR = getConstant("0");
+    //     alm->VisitMap[N] = dummyLR;
+    //   }
+    //   return;
+    // }
+    // // arg_ty->dump();
+    // Value *arg_reg = ReadReg(Reg(reg_name), IRB);
+    // ArgTypes.push_back(arg_ty);
+    // Args.push_back(arg_reg);
     reg_name[1]++;
+  }
+
+  if (Func->getReturnType() != IntegerType::get(alm->getContextRef(), 32)) {
+    outs() << "Warning: unsupported return type for function call " << FName
+           << "\n";
+    if (N != NULL) {
+      Value *dummyLR = getConstant("0");
+      alm->VisitMap[N] = dummyLR;
+    }
+    return;
   }
 
   FunctionType *FT = FunctionType::get(
@@ -251,8 +382,8 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
   outs() << " =========================== \n\n";
   outs() << "Tgt        :  " << format("%8" PRIx64, Tgt) << '\n';
   outs() << "instrSize  :  " << format("%8" PRIx64, 4) << '\n';
-  outs() << "DestInt    :  " << format("%8" PRIx64, DestInt) << '\n';
-  outs() << "PC         :  " << format("%8" PRIx64, PC) << '\n';
+  // outs() << "DestInt    :  " << format("%8" PRIx64, DestInt) << '\n';
+  // outs() << "PC         :  " << format("%8" PRIx64, PC) << '\n';
   outs() << "FName      :  " << FName << '\n';
   outs() << " =========================== \n\n";
 
@@ -268,8 +399,10 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
   Value *Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
   if (!Func->getReturnType()->isVoidTy()) WriteReg(Call, Reg("R0"), IRB);
 
-  Value *dummyLR = getConstant("0");
-  alm->VisitMap[N] = dummyLR;
+  if (N != NULL) {
+    Value *dummyLR = getConstant("0");
+    alm->VisitMap[N] = dummyLR;
+  }
   return;
 
   // TODO: Technically visitCall sets the LR to IP+8. We should return that.

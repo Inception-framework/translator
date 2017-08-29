@@ -473,7 +473,8 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   // Calculate function address for printing function names in disassembly
   int64_t Tgt = 0, DestInt = 0;
   StringRef FuncName;
-  if (Inst->isCall() && Inst->getOpcode()!=2788 ) {
+  if (Inst->isCall() && Inst->getOpcode() != 2788 /*tSVC*/ &&
+      Inst->getOpcode() != 2716 /*tBLX*/) {
     Size != 5 ? Size = 4 : Size;  // Instruction size is 4 for ARM
     for (MachineInstr::mop_iterator MII = Inst->operands_begin(); MII !=
          Inst->operands_end(); ++MII)
