@@ -36,6 +36,15 @@ void SVCallLifter::SVCallHandler(SDNode* N, IRBuilder<>* IRB) {
                                "R3",   "R2", "R1", "R0"};
 
   uint32_t PC = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+
+  std::stringstream stream;
+  stream << std::hex << (PC-2);
+  std::string PC_hex(stream.str());
+
+  StringRef reg_name("_SVC_" + PC_hex + "\0");
+  reg = Reg(reg_name);
+  WriteReg(visit(N->getOperand(1).getNode(), IRB), reg, IRB, 32);
+
   WriteReg(getConstant(PC), Reg("PC"), IRB, 32);
 
   for (auto target : targets) {
@@ -71,26 +80,37 @@ void SVCallLifter::SVCallHandler(SDNode* N, IRBuilder<>* IRB) {
         /*Name=*/"inception_sv_call", alm->Mod);  // (external, no body)
     func_inception_dump_registers->setCallingConv(CallingConv::C);
   }
-  AttributeSet func_inception_dump_registers_PAL;
-  {
-    SmallVector<AttributeSet, 4> Attrs;
-    AttributeSet PAS;
-    {
-      AttrBuilder B;
-      PAS = AttributeSet::get(alm->Mod->getContext(), ~0U, B);
-    }
 
-    Attrs.push_back(PAS);
-    func_inception_dump_registers_PAL =
-        AttributeSet::get(alm->Mod->getContext(), Attrs);
-  }
-  func_inception_dump_registers->setAttributes(
-      func_inception_dump_registers_PAL);
+  // AttributeSet func_inception_dump_registers_PAL;
+  // {
+  //   SmallVector<AttributeSet, 4> Attrs;
+  //   AttributeSet PAS;
+  //   {
+  //     AttrBuilder B;
+  //     PAS = AttributeSet::get(alm->Mod->getContext(), ~0U, B);
+  //   }
+  //
+  //   Attrs.push_back(PAS);
+  //   func_inception_dump_registers_PAL =
+  //       AttributeSet::get(alm->Mod->getContext(), Attrs);
+  // }
+  // func_inception_dump_registers->setAttributes(
+  //     func_inception_dump_registers_PAL);
 
   // Constant Definitions
   Constant* const_ptr_7 = ConstantExpr::getCast(
       Instruction::BitCast, func_inception_dump_registers, PointerTy_1);
   std::vector<Value*> params;
 
-  IRB->CreateCall(const_ptr_7, params);
+  Instruction* call = IRB->CreateCall(const_ptr_7, params);
+
+  // GlobalVariable* gvar = dyn_cast<GlobalVariable>(reg);
+
+  // MDNode* Node =
+  //     MDNode::get(alm->Mod->getContext(),
+  //                 MDString::get(alm->Mod->getContext(), std::to_string(PC)));
+  //
+  // call->setMetadata("FixedAllocation", Node);
+  // gvar->addAttribute(StringRef("FixedAllocation"),
+  //                    StringRef(std::to_string(PC)));
 }
