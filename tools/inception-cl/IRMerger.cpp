@@ -2,6 +2,7 @@
 
 #include "FunctionCleaner.h"
 #include "FunctionsHelperWriter.h"
+#include "SectionsWriter.h"
 #include "StackAllocator.h"
 
 extern bool nameLookupAddr(StringRef funcName, uint64_t& Address);
@@ -49,6 +50,9 @@ void IRMerger::Run(llvm::StringRef name) {
   Function* main = DEC->getModule()->getFunction("main");
   FunctionsHelperWriter::Write(END, DUMP_REGISTERS, mod, main);
   FunctionsHelperWriter::Write(BEGIN, INIT_STACK, mod, main);
+
+  SectionsWriter::WriteSection(".data" , DEC->getDisassembler(), mod);
+  SectionsWriter::WriteSection(".bss" , DEC->getDisassembler(), mod);
 }
 
 void IRMerger::Decompile(llvm::StringRef name) {
