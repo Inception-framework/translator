@@ -26,6 +26,10 @@ void BranchLifter::registerLifter() {
                       (LifterHandler)&BranchLifter::BranchHandlerB);
   alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tBLXr,
                       (LifterHandler)&BranchLifter::BranchHandlerBLXr);
+  alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tCBZ,
+                      (LifterHandler)&BranchLifter::BranchHandlerCB);
+  alm->registerLifter(this, std::string("BranchLifter"), (unsigned)ARM::tCBNZ,
+                      (LifterHandler)&BranchLifter::BranchHandlerCB);
 }
 
 void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
@@ -325,7 +329,7 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
 
   Function *Func = Mod->getFunction(FName);
   if (Func == NULL) {
-    outs() << "Error, Func == NULL\n";
+    outs() << "[CallHanlder] Error, Function to call is NULL\n";
     exit(0);
   }
 
@@ -407,3 +411,59 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
 
   // TODO: Technically visitCall sets the LR to IP+8. We should return that.
 }
+
+void BranchLifter::BranchHandlerCB(SDNode *N, IRBuilder<> *IRB) {
+  // Get the address
+  const ConstantSDNode *DestNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
+  if (!DestNode) {
+    outs() << "visitBRCOND: Not a constant integer for branch!\n";
+    return;
+  }
+
+  uint32_t DestInt = DestNode->getSExtValue();
+  uint32_t PC = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+  // Note: pipeline is 8 bytes
+  outs() << "Target = PC + 4 + DestInt = " << PC << " + 4 + " << DestInt
+         << "\n";
+  uint32_t Tgt = PC + 4 + DestInt;
+
+  Function *F = IRB->GetInsertBlock()->getParent();
+  BasicBlock *CurBB = IRB->GetInsertBlock();
+
+  BasicBlock *BBTgt = alm->Dec->getOrCreateBasicBlock(Tgt, F);
+
+  // get the condition register
+  Value *Rn = visit(N->getOperand(1).getNode(), IRB);
+
+  // find the successor block
+  BasicBlock *NextBB = NULL;
+  Function::iterator BI = F->begin(), BE = F->end();
+  while (BI != BE && BI->getName() != CurBB->getName()) ++BI;
+  ++BI;
+  if (BI == BE) {  // NOTE: This should never happen...
+    NextBB = alm->Dec->getOrCreateBasicBlock("end", F);
+  } else {
+    NextBB = &(*BI);
+  }
+
+  // Compute the condition
+  Value *Cmp = NULL;
+  switch (N->getMachineOpcode()) {
+    default:
+      errs() << "[BranchHandlerCB] Error, unknown opcode\n";
+      return;
+    case ARM::tCBZ:
+      Cmp = IRB->CreateICmpEQ(Rn, getConstant("0"));
+      break;
+    case ARM::tCBNZ:
+      Cmp = IRB->CreateICmpNE(Rn, getConstant("0"));
+      break;
+  }
+
+  // Conditional branch
+  Instruction *Br = IRB->CreateCondBr(Cmp, BBTgt, NextBB);
+  Br->setDebugLoc(N->getDebugLoc());
+  alm->VisitMap[N] = Br;
+  return;
+}
+

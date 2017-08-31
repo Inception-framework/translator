@@ -30,6 +30,7 @@ class BranchLifter : public ARMLifter{
   void BranchHandlerB(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void BranchHandlerBL(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void BranchHandlerBLXr(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void BranchHandlerCB(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void CallHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB, uint32_t Tgt);
 };
 
