@@ -109,8 +109,6 @@ class SectionsWriter {
 
       ptr = IRB->CreateAdd(c_addr, c_4);
     }
-
-    ReturnInst::Create(mod->getContext(), bb);
   }
 
   static Value* getReg(StringRef name, Module* mod) {
