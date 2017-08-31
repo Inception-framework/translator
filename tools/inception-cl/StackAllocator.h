@@ -7,11 +7,14 @@ class StackAllocator {
 
   ~StackAllocator() {}
 
-  static void Allocate(llvm::Module* mod) {
+  static void Allocate(llvm::Module* mod, const Disassembler* Dis) {
+    const object::SectionRef Section = Dis->getSectionByName(".stack");
+
     Value* Reg = mod->getGlobalVariable("STACK");
 
     if (Reg == NULL) {
-      Type* Ty = ArrayType::get(IntegerType::get(mod->getContext(), 4), 16400);
+      Type* Ty = ArrayType::get(IntegerType::get(mod->getContext(), 4),
+                                Section.getSize());
 
       Constant* Initializer = Constant::getNullValue(Ty);
 

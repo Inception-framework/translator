@@ -51,6 +51,9 @@ class SectionsWriter {
     // Prepare section
     StringRef Bytes;
     const object::SectionRef Section = Dis->getSectionByName(SectionName);
+
+    if (Section.getSize() == 0) return;
+
     std::error_code ec = Section.getContents(Bytes);
     if (ec) {
       llvm::errs() << ec.message();
