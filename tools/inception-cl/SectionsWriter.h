@@ -88,19 +88,23 @@ class SectionsWriter {
     c_4 = ConstantInt::get(mod->getContext(), APInt(32, 2));
     Value* R0 = getReg("R0", mod);
 
+    constant = ConstantInt::get(mod->getContext(), APInt(32, 0));
+
     for (auto i = 0; i < (size / 4); i++) {
-      // Read byte of Section
       uint64_t Address = i * 4 + CurSectionMemory->getBase();
-      // TODO: replace the Bytes with something memory safe (StringRef??)
-      uint8_t* B = new uint8_t(4);
-      int NumRead = CurSectionMemory->readBytes(B, Address, 4);
-      if (NumRead < 0) {
-        llvm::errs() << "Unable to read current section memory!\n";
-        return;
+
+      if (SectionName.equals(".bss")) {
+        uint8_t* B = new uint8_t(4);
+        int NumRead = CurSectionMemory->readBytes(B, Address, 4);
+        if (NumRead < 0) {
+          llvm::errs() << "Unable to read current section memory!\n";
+          return;
+        }
+
+        uint32_t val = B[0] | (B[1] << 8) | (B[2] << 16) | (B[3] << 24);
+        constant = ConstantInt::get(mod->getContext(), APInt(32, val));
       }
 
-      uint32_t val = B[0] | (B[1] << 8) | (B[2] << 16) | (B[3] << 24);
-      constant = ConstantInt::get(mod->getContext(), APInt(32, val));
       c_addr = ConstantInt::get(mod->getContext(), APInt(32, Address));
 
       Value* ptr = IRB->CreateIntToPtr(c_addr, R0->getType());
