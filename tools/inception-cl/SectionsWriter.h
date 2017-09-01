@@ -93,7 +93,7 @@ class SectionsWriter {
     for (auto i = 0; i < (size / 4); i++) {
       uint64_t Address = i * 4 + CurSectionMemory->getBase();
 
-      if (SectionName.equals(".bss")) {
+      if (SectionName.equals(".data")) {
         uint8_t* B = new uint8_t(4);
         int NumRead = CurSectionMemory->readBytes(B, Address, 4);
         if (NumRead < 0) {
