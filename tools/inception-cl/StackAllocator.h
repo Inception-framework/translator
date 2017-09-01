@@ -33,7 +33,7 @@ class StackAllocator {
   static void InitSP(llvm::Module* mod, const Disassembler* Dis) {
     const object::SectionRef Section = Dis->getSectionByName(".stack");
 
-    unsigned sp = Section.getAddress() + (Section.getSize() / 2);
+    unsigned sp = Section.getAddress() + (Section.getSize() / 2) - 4;
     ConstantInt* c_sp;
 
     Value* Reg = mod->getGlobalVariable("SP");
