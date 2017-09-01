@@ -25,12 +25,6 @@ IRMerger::~IRMerger() {}
 void IRMerger::Run(llvm::StringRef name) {
   Module* mod = DEC->getModule();
 
-  if (IRMerger::first_call) {
-    IRMerger::first_call = false;
-    // Init the stack
-    StackAllocator::Allocate(mod);
-  }
-
   Function* fct = mod->getFunction(name);
 
   FunctionCleaner::Clean(fct);
@@ -51,8 +45,15 @@ void IRMerger::Run(llvm::StringRef name) {
   FunctionsHelperWriter::Write(END, DUMP_REGISTERS, mod, main);
   FunctionsHelperWriter::Write(BEGIN, INIT_STACK, mod, main);
 
-  SectionsWriter::WriteSection(".data" , DEC->getDisassembler(), mod);
-  SectionsWriter::WriteSection(".bss" , DEC->getDisassembler(), mod);
+  if (IRMerger::first_call) {
+    IRMerger::first_call = false;
+    // Init the stack
+    StackAllocator::Allocate(mod, DEC->getDisassembler());
+    StackAllocator::InitSP(mod, DEC->getDisassembler());
+
+    SectionsWriter::WriteSection(".data", DEC->getDisassembler(), mod);
+    SectionsWriter::WriteSection(".bss", DEC->getDisassembler(), mod);
+  }
 }
 
 void IRMerger::Decompile(llvm::StringRef name) {

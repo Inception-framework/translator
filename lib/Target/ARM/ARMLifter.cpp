@@ -475,29 +475,6 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
                              false,      // isConstant
                              GlobalValue::CommonLinkage, Initializer, RegName);
 
-      if (RegName.find("SP") != std::string::npos) {
-        // Initializer = ConstantInt::get(
-        // Dec->getModule()->getContext(), APInt(32,
-        // StringRef("268435456"), 10));
-        //
-        // gvar_ptr->setInitializer(Initializer);
-
-        // XXX: SP cannot be initialized with other than 0
-        // XXX: Therefore, We introduce a store before the first
-        // instruction
-        Function* main_fct = alm->Mod->getFunction("main");
-        if (!main_fct)
-          llvm::errs() << "Unable to find main function needed to init SP !";
-
-        ConstantInt* const_int32 = ConstantInt::get(
-            alm->getContextRef(), APInt(32, StringRef("536875008"), 10));
-
-        Instruction* inst = main_fct->getEntryBlock().begin();
-
-        IRBuilder<>* builder = new IRBuilder<>(inst);
-        builder->CreateStore(const_int32, gvar_ptr);
-      }
-
       gvar_ptr->setAlignment(4);
       Reg = gvar_ptr;
     }
