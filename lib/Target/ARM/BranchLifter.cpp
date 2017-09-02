@@ -333,7 +333,6 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
     exit(0);
   }
 
-  // TODO: type cast!
   // outs() << FName << " args:\n";
   std::vector<Value *> Args;
   std::vector<Type *> ArgTypes;
@@ -343,42 +342,37 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
     ArgTypes.push_back(I->getType());
     if (I->getType()->isPointerTy()) {
       Value *Res = ReadReg(Reg(reg_name), IRB);
-      // Res = IRB->CreatePtrToInt(Res, IntegerType::get(alm->getContext(),
-      // 32));
       Res = IRB->CreateIntToPtr(Res, I->getType());
+      Args.push_back(Res);
+      reg_name[1]++;
+    } else if (I->getType()->isIntegerTy()) {
+      Value *Res = ReadReg(Reg(reg_name), IRB);
+      Res = IRB->CreateTrunc(
+          Res, IntegerType::get(alm->getContextRef(),
+                                I->getType()->getIntegerBitWidth()));
+      Args.push_back(Res);
+      reg_name[1]++;
+    } else if (I->getType()->isArrayTy()) {
+      Type *Ty = ArrayType::get(IntegerType::get(alm->getContextRef(), 32),
+                                I->getType()->getArrayNumElements());
+      Value *array = IRB->CreateAlloca(Ty);
+      for (int i = 0; i < I->getType()->getArrayNumElements(); i++) {
+        Value *IdxList[2];
+        IdxList[0] = getConstant("0");
+        IdxList[1] = ConstantInt::get(alm->getContextRef(), APInt(32, i, 10));
+        Value *ptr = IRB->CreateGEP(array, IdxList);
+        IRB->CreateStore(ReadReg(Reg(reg_name), IRB), ptr);
+        reg_name[1]++;
+      }
+      Value *Res = IRB->CreateLoad(array);
       Args.push_back(Res);
     } else {
       Args.push_back(ReadReg(Reg(reg_name), IRB));
+      reg_name[1]++;
     }
-    // Type *arg_ty = I->getType();
-    // if (I->getType() != IntegerType::get(alm->getContextRef(), 32)) {
-    //   outs() << "Warning: unsupported parameter type for function call "
-    //          << FName << "\n";
-    //   if (N != NULL) {
-    //     Value *dummyLR = getConstant("0");
-    //     alm->VisitMap[N] = dummyLR;
-    //   }
-    //   return;
-    // }
-    // // arg_ty->dump();
-    // Value *arg_reg = ReadReg(Reg(reg_name), IRB);
-    // ArgTypes.push_back(arg_ty);
-    // Args.push_back(arg_reg);
-    reg_name[1]++;
   }
 
-  // if (Func->getReturnType() != IntegerType::get(alm->getContextRef(), 32)) {
-  //  outs() << "Warning: unsupported return type for function call " << FName
-  //         << "\n";
-  //  if (N != NULL) {
-  //    Value *dummyLR = getConstant("0");
-  //    alm->VisitMap[N] = dummyLR;
-  //  }
-  //  return;
-  //}
-
   FunctionType *FT = FunctionType::get(
-      // Type::getPrimitiveType(alm->getContext(), Type::VoidTyID), false);
       Func->getReturnType(), ArgTypes, false);
 
   Twine TgtAddr(Tgt);
@@ -386,8 +380,6 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
   outs() << " =========================== \n\n";
   outs() << "Tgt        :  " << format("%8" PRIx64, Tgt) << '\n';
   outs() << "instrSize  :  " << format("%8" PRIx64, 4) << '\n';
-  // outs() << "DestInt    :  " << format("%8" PRIx64, DestInt) << '\n';
-  // outs() << "PC         :  " << format("%8" PRIx64, PC) << '\n';
   outs() << "FName      :  " << FName << '\n';
   outs() << " =========================== \n\n";
 
@@ -396,12 +388,19 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
                        "Address", TgtAddr.str());
 
   Function *Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
-  // Value *Proto = Mod->getOrInsertFunction(
-  //    FName, FunctionType::get(Func->getReturnType(), ArgTypes, false), AS);
 
   Proto->setCallingConv(Func->getCallingConv());
   Value *Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
-  if (!Func->getReturnType()->isVoidTy()) WriteReg(Call, Reg("R0"), IRB);
+  if (!Func->getReturnType()->isVoidTy()) {
+    if (Func->getReturnType()->isPointerTy()) {
+      Call =
+          IRB->CreatePtrToInt(Call, IntegerType::get(alm->getContextRef(), 32));
+    } else if (Func->getReturnType()->isIntegerTy()) {
+      Call = IRB->CreateZExt(Call, IntegerType::get(alm->getContextRef(), 32));
+    }
+
+    WriteReg(Call, Reg("R0"), IRB);
+  }
 
   if (N != NULL) {
     Value *dummyLR = getConstant("0");
