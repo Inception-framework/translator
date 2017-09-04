@@ -503,7 +503,19 @@ SelectionDAG *Decompiler::createDAGFromMachineBasicBlock(
     }
 
     // Parse Operands for the Instruction
+
     SmallVector<MachineOperand *, 8> Defs;
+
+    // in case of MSR, add dummy dest register
+    if (OpCode == ARM::t2MSR_M) {
+      outs() << "[Decompiler] t2MSR_M encountered, adding a dummy register "
+                "definition\n";
+      MachineOperand *MOp_dummy = &I->getOperand(3);  // noreg
+      unsigned Reg = MOp_dummy->getReg();
+      Defs.push_back(MOp_dummy);
+      ResultTypes.push_back(Dis->getMCDirector()->getRegType(Reg));
+    }
+
     for (unsigned i = 0, e = I->getNumOperands(); i != e; ++i) {
       MachineOperand *MOp = &I->getOperand(i);
       if (OpCode == ARM::tBX) {
