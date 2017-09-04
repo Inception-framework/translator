@@ -14,6 +14,7 @@
 #include "Target/ARM/StoreLifter.h"
 #include "Target/ARM/SubtractLifter.h"
 #include "Target/ARM/SVCallLifter.h"
+#include "Target/ARM/CoprocLifter.h"
 
 #include "llvm/Support/ErrorHandling.h"
 
@@ -60,6 +61,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("EXTEND", new ExtendLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("COPROC", new CoprocLifter(this)));
 
   registerAll();
 }
