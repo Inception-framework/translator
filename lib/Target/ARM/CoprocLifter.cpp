@@ -45,12 +45,39 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
   * TODO: Add support for PSP/MSP
   */
   switch(reg_id) {
+    case 0: //APSR
+    Res = ReadReg(Reg("APSR"), IRB, 32);
+    break;
+    case 3: //PSR
+    Res = ReadReg(Reg("PSR"), IRB, 32);
+    break;
+    case 5: //IPSR
+    Res = ReadReg(Reg("IPSR"), IRB, 32);
+    break;
+    case 6: //EPSR
+    Res = ReadReg(Reg("EPSR"), IRB, 32);
+    break;
     case 8: //PSP
     // Res = ReadReg(Reg("PSP"), IRB, 32);
     case 9: //MSP
     // Res = ReadReg(Reg("MSP"), IRB, 32);
     Res = ReadReg(Reg("SP"), IRB, 32);
     break;
+    case 16: //PRIMASK
+    Res = ReadReg(Reg("PRIMASK"), IRB, 32);
+    break;
+    case 17: //BASEPRI
+    Res = ReadReg(Reg("BASEPRI"), IRB, 32);
+    break;
+    case 19: //FAULTMASK
+    Res = ReadReg(Reg("FAULTMASK"), IRB, 32);
+    break;
+    case 20: //CONTROL
+    Res = ReadReg(Reg("CONTROL"), IRB, 32);
+    break;
+    default :
+      llvm::errs() << "MRSHandler do not know source coproc register\n";
+      exit(0);
   }
 
   saveNodeValue(N, Res);
