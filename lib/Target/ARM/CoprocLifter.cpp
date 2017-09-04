@@ -25,7 +25,49 @@ void CoprocLifter::registerLifter() {
 }
 
 void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
+  // destination (special register)
+  SDNode* Dest = N->getOperand(0).getNode();
 
+  ConstantSDNode* DestNode = dyn_cast<ConstantSDNode>(Dest);
+  if (DestNode == NULL) {
+    llvm::errs() << "[CoprocLifter] MSR Handler expected ConstantSDNode ...";
+    return;
+  }
+
+  int64_t reg_id = DestNode->getZExtValue() & 0xff;
+
+  // source (normal register)
+  Value* Rn = visit(N->getOperand(1).getNode(), IRB);
+
+  /*
+  * Return SP value instead of PSP/MSP
+  * TODO: Add support for PSP/MSP
+  */
+  Value* Rdest = NULL;
+  switch (reg_id) {
+    case 8:  // PSP
+    case 9:  // MSP
+      Rdest = Reg("SP");
+      break;
+    case 0:  // APSR
+    case 3:  // PSR
+    case 5:  // IPSR
+    case 6:  // EPSR
+    case 16:  // PRIMASK
+    case 17:  // BASEPRI
+    case 19:  // FAULTMASK
+    case 20:  // CONTROL
+    default:
+      llvm::errs() << "MSRHandler unsupported coproc register\n";
+      exit(0);
+  }
+
+  // store in the dest register
+  IRB->CreateStore(Rn, Rdest);
+
+  // dummy output
+  Value* Ret = getConstant("0");
+  saveNodeValue(N, Ret);
 }
 
 void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
@@ -34,7 +76,7 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
 
   ConstantSDNode* SrcNode = dyn_cast<ConstantSDNode>(Op0);
   if (SrcNode == NULL) {
-    llvm::errs() << "[CoprocLifter] DoMSR Handler expected ConstantSDNode ...";
+    llvm::errs() << "[CoprocLifter] MRS Handler expected ConstantSDNode ...";
     return;
   }
 
