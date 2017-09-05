@@ -108,6 +108,10 @@ Value* ARMLifter::visitCopyToReg(const SDNode* N, IRBuilder<>* IRB) {
     return NULL;
   }
 
+  if (IsITSTATE(N->getOperand(1).getNode())) {
+    alm->Dec->it_start = true;
+  }
+
   if (!RegVal->getType()->isPointerTy()) {
     RegVal = IRB->CreateIntToPtr(RegVal, RegVal->getType()->getPointerTo());
   }

@@ -26,6 +26,8 @@ bool IsCPSR(SDNode* N);
 
 bool IsPC(SDNode* N);
 
+bool IsITSTATE(SDNode* N);
+
 bool IsSigned(SDNode* N);
 
 bool IsSetFlags(SDNode* N);
@@ -62,5 +64,7 @@ llvm::Module* getModule();
 Value* getInteger(int value);
 
 std::string getRegisterSDNodeName(const RegisterSDNode* R);
+
+Value* createCondition(int cond, IRBuilder<>* IRB);
 
 #endif

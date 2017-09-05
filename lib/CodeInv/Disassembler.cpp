@@ -15,6 +15,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "CodeInv/Disassembler.h"
+#include "Utils/ErrorHandling.h"
 
 using namespace llvm;
 
@@ -776,7 +777,9 @@ const object::SectionRef Disassembler::getSectionByAddress(
 uint64_t Disassembler::getDebugOffset(const DebugLoc &Loc) const {
   MDNode *Scope = Loc.getScope(*MC->getContext());
   if (Scope == NULL || Scope->getNumOperands() != 3) {
-    errs() << "Error Scope not set properly on Debug Offset.\n";
+    inception::inception_error(
+        "[Disassembler::getDebugOffset] Scope not set properly in the "
+        "debugLoc");
     return 0;
   }
 

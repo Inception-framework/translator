@@ -7,6 +7,8 @@
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
+#include "Target/ARM/ShiftLifter.h"
+
 using namespace llvm;
 using namespace fracture;
 
@@ -26,6 +28,9 @@ void CompareLifter::registerLifter() {
   alm->registerLifter(this, std::string("CompareLifter"),
                       (unsigned)ARM::tCMPhir,
                       (LifterHandler)&CompareLifter::CompareHandler);
+  alm->registerLifter(this, std::string("CompareLifter"),
+                      (unsigned)ARM::t2CMPrs,
+                      (LifterHandler)&CompareLifter::CompareHandler);
 
   // CMN
   alm->registerLifter(this, std::string("CompareLifter"), (unsigned)ARM::tCMNz,
@@ -35,6 +40,9 @@ void CompareLifter::registerLifter() {
                       (LifterHandler)&CompareLifter::CompareNHandler);
   alm->registerLifter(this, std::string("CompareLifter"),
                       (unsigned)ARM::t2CMNri,
+                      (LifterHandler)&CompareLifter::CompareNHandler);
+  alm->registerLifter(this, std::string("CompareLifter"),
+                      (unsigned)ARM::t2CMNzrs,
                       (LifterHandler)&CompareLifter::CompareNHandler);
 }
 
@@ -99,7 +107,20 @@ void CompareLifter::CompareNHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
 ARMCMPInfo *CompareLifter::RetrieveGraphInformation(SDNode *N,
                                                     IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+  Value *Op1 = NULL;  // visit(N->getOperand(1).getNode(), IRB);
+
+  unsigned opcode = N->getMachineOpcode();
+  switch (opcode) {
+    case ARM::t2CMPrs:
+    case ARM::t2CMNzrs: {
+      ShiftLifter *shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("SHIFT"));
+      shiftLifter->ShiftHandlerShiftOp(N, IRB);
+      Op1 = getSavedValue(N);
+      break;
+    }
+    default:
+      Op1 = visit(N->getOperand(1).getNode(), IRB);
+  }
 
   ARMCMPInfo *info = new ARMCMPInfo(Op0, Op1);
 

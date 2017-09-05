@@ -7,6 +7,7 @@
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 #include "Target/ARM/FlagsLifter.h"
+#include "Target/ARM/ShiftLifter.h"
 
 #include "Utils/Builder.h"
 
@@ -49,6 +50,8 @@ void AddLifter::registerLifter() {
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADCri,
                       (LifterHandler)&AddLifter::AdcHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADCrr,
+                      (LifterHandler)&AddLifter::AdcHandler);
+  alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADCrs,
                       (LifterHandler)&AddLifter::AdcHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADC,
                       (LifterHandler)&AddLifter::AdcHandler);
@@ -112,7 +115,22 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 
 ARMADDInfo *AddLifter::RetrieveGraphInformation(SDNode *N, IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+  Value *Op1 = NULL;  // visit(N->getOperand(1).getNode(), IRB);
+
+  unsigned opcode = N->getMachineOpcode();
+  switch (opcode) {
+    case ARM::t2ADDSrs:
+    case ARM::t2ADDrs:
+    case ARM::t2ADCrs: {
+      ShiftLifter *shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("SHIFT"));
+      shiftLifter->ShiftHandlerShiftOp(N, IRB);
+      Op1 = getSavedValue(N);
+      break;
+    }
+    default:
+      Op1 = visit(N->getOperand(1).getNode(), IRB);
+  }
+
   bool S = IsSetFlags(N);
   ARMADDInfo *info = new ARMADDInfo(Op0, Op1, S);
 

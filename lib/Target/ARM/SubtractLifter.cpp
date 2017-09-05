@@ -7,6 +7,7 @@
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 #include "Target/ARM/FlagsLifter.h"
+#include "Target/ARM/ShiftLifter.h"
 
 using namespace llvm;
 using namespace fracture;
@@ -40,6 +41,9 @@ void SubtractLifter::registerLifter() {
                       (unsigned)ARM::t2SBCri,
                       (LifterHandler)&SubtractLifter::SbcHandler);
   alm->registerLifter(this, std::string("SubtractLifter"),
+                      (unsigned)ARM::t2SBCrs,
+                      (LifterHandler)&SubtractLifter::SbcHandler);
+  alm->registerLifter(this, std::string("SubtractLifter"),
                       (unsigned)ARM::t2SUBSri,
                       (LifterHandler)&SubtractLifter::SubHandler);
   alm->registerLifter(this, std::string("SubtractLifter"),
@@ -57,10 +61,25 @@ void SubtractLifter::registerLifter() {
 
 void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
-  Value *cf = getConstant("1");
+
+  Value *Op1 = NULL;
 
   unsigned opcode = N->getMachineOpcode();
+  switch (opcode) {
+    case ARM::t2SUBSrs:
+    case ARM::t2SUBrs: {
+      ShiftLifter *shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("SHIFT"));
+      shiftLifter->ShiftHandlerShiftOp(N, IRB);
+      Op1 = getSavedValue(N);
+      break;
+    }
+    default:
+      Op1 = visit(N->getOperand(1).getNode(), IRB);
+  }
+
+  Value *cf = getConstant("1");
+
+  opcode = N->getMachineOpcode();
   switch (opcode) {
     case ARM::tSUBspi:
       Op1 = IRB->CreateMul(Op1, getConstant("4"));
@@ -92,8 +111,21 @@ void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
 
 void SubtractLifter::SbcHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
+  Value *Op1 = NULL;
+
   Value *cf = ReadReg(Reg("CF"), IRB);
+
+  unsigned opcode = N->getMachineOpcode();
+  switch (opcode) {
+    case ARM::t2SBCrs: {
+      ShiftLifter *shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("SHIFT"));
+      shiftLifter->ShiftHandlerShiftOp(N, IRB);
+      Op1 = getSavedValue(N);
+      break;
+    }
+    default:
+      Op1 = visit(N->getOperand(1).getNode(), IRB);
+  }
 
   // subtraction
   Value *onescompl = IRB->CreateNot(Op1);

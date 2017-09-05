@@ -19,6 +19,7 @@
 #include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "Target/ARM/DummyLifter.h"
+#include "Target/ARM/ITLifter.h"
 
 #include "Utils/IContext.h"
 
@@ -183,7 +184,7 @@ Function *Decompiler::decompileFunction(unsigned Address) {
 
   BI = MF->begin();
   while (BI != BE) {
-    if (decompileBasicBlock(BI, F) == NULL) {
+    if (decompileBasicBlock(BI, F, Address) == NULL) {
       printError("Unable to decompile basic block!");
     }
     BasicBlock *bb = getOrCreateBasicBlock(BI->getName(), F);
@@ -202,10 +203,11 @@ Function *Decompiler::decompileFunction(unsigned Address) {
   // During Decompilation, did any "in-between" basic blocks get created?
   // Nothing ever splits the entry block, so we skip it.
   for (Function::iterator I = ++F->begin(), E = F->end(); I != E; ++I) {
+    // skip basic blocks that already exist (not empty) + those which contain
+    // the condition for conditional instructions
     if (!(I->empty())) {
       continue;
     }
-
     // Right now, the only way to get the right offset is to parse its name
     // it sucks, but it works.
     StringRef Name = I->getName();
@@ -216,7 +218,12 @@ Function *Decompiler::decompileFunction(unsigned Address) {
 
     StringRef BBAddrStr = Name.substr(Off, Size);
     unsigned long long BBAddr;
-    getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
+    int itblock = BBAddrStr.find("_");
+    if (itblock >= 0) {
+      getAsUnsignedInteger(BBAddrStr.substr(0, itblock), 10, BBAddr);
+    } else {
+      getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
+    }
     BBAddr += Address;
     // split Block at AddrStr
     Function::iterator SB;        // Split basic block
@@ -306,11 +313,36 @@ void Decompiler::sortBasicBlock(BasicBlock *BB) {
 void Decompiler::splitBasicBlockIntoBlock(Function::iterator Src,
                                           BasicBlock::iterator FirstInst,
                                           BasicBlock *Tgt) {
+  // inception_message("splitBasicBlockIntoBlock:");
+
+  // if the target is a conditional instruction we should correctly handle the
+  // extra condition block
+  Function *F = Src->getParent();
+  size_t Off = F->getName().size() + 1;
+  StringRef Name = Tgt->getName();
+  size_t Size = Name.size() - Off;
+  StringRef BBAddrStr = Name.substr(Off, Size);
+  int itblock_tgt = BBAddrStr.find("_");
+  BasicBlock *condTgt = NULL;
+  if (itblock_tgt >= 0) {
+    condTgt = getOrCreateBasicBlock(Name.substr(0, Off + itblock_tgt), F);
+  }
+
   assert(Src->getTerminator() && "Can't use splitBasicBlock on degenerate BB!");
   assert(FirstInst != Src->end() &&
          "Trying to get me to create degenerate basic block!");
 
-  Tgt->moveAfter(Src);
+  // inception_message("split before");
+  // Src->dump();
+  // Tgt->dump();
+
+  // reorder new blocks
+  if (itblock_tgt >= 0) {
+    condTgt->moveAfter(Src);
+    Tgt->moveAfter(condTgt);
+  } else {
+    Tgt->moveAfter(Src);
+  }
 
   // Move all of the specified instructions from the original basic block into
   // the new basic block.
@@ -318,7 +350,12 @@ void Decompiler::splitBasicBlockIntoBlock(Function::iterator Src,
                             Src->end());
 
   // Add a branch instruction to the newly formed basic block.
-  BranchInst *BI = BranchInst::Create(Tgt, Src);
+  BranchInst *BI = NULL;
+  if (itblock_tgt >= 0) {
+    BI = BranchInst::Create(condTgt, Src);
+  } else {
+    BI = BranchInst::Create(Tgt, Src);
+  }
   // Set debugLoc to the instruction before the terminator's DebugLoc.
   // Note the pre-inc which can confuse folks.
   BI->setDebugLoc((++Src->rbegin())->getDebugLoc());
@@ -342,6 +379,9 @@ void Decompiler::splitBasicBlockIntoBlock(Function::iterator Src,
       }
     }
   }
+  // inception_message("after");
+  // Src->dump();
+  // Tgt->dump();
 }
 
 void Decompiler::printInstructions(formatted_raw_ostream &Out,
@@ -349,8 +389,8 @@ void Decompiler::printInstructions(formatted_raw_ostream &Out,
   Out << *(decompileFunction(Address));
 }
 
-BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
-                                            Function *F) {
+BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB, Function *F,
+                                            unsigned Address) {
   // Create a Selection DAG of MachineSDNodes
   DAG = createDAGFromMachineBasicBlock(MBB);
 
@@ -373,9 +413,11 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   IRBuilder<> *IRB = new IRBuilder<>(BB);
 
   // Start at root and go to entry token
+  it_state = 0;
+  it_start = false;
+  // is_it = false;
   for (auto b = DAG->allnodes_begin(), e = DAG->allnodes_end(); b != e; b++) {
     SDNode *Node = b;
-
     if (!Node->isMachineOpcode()) {
       DummyLifter *dummy_lifter = new DummyLifter(IContext::alm);
 
@@ -397,6 +439,82 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
       LifterHandler handler = solver->handler;
 
       (lifter->*handler)(Node, IRB);
+
+      // handle IT blocks
+      if (it_start == true) {  //(it_state & 0b1111) != 0) {
+        // outs() << "mask: " << it_state << "\n";
+
+        // first decide if the instruction is true or false
+        bool true_false_n;
+        if ((it_state & 0b10000) != (it_true << 4)) {
+          // outs() << "false\n";
+          true_false_n = false;
+        } else {
+          // outs() << "true\n";
+          true_false_n = true;
+        }
+
+        // create 3 basic blocks
+        // current address:             put the condition
+        // current address true/false:  will contain the code for curr addr
+        // next address:                br here in case the condition is false
+        uint32_t PC = Dis->getDebugOffset(Node->getDebugLoc());
+        uint32_t size = Dis->getMachineInstr(PC)->getDesc().Size;
+        if (size > 8) size = 8;
+        uint32_t nextPC = PC + size;
+        uint32_t offset = PC - Address;
+        uint32_t next_offset = nextPC - Address;
+
+        // current address = block for the condition
+        std::string condName =
+            F->getName().str() + "+" + std::to_string(offset);
+        BasicBlock *condBB = getOrCreateBasicBlock(condName, F);
+
+        // true of false block
+        std::string codeName;
+        if (true_false_n)
+          codeName = condName + "_true";
+        else
+          codeName = condName + "_false";
+        BasicBlock *codeBB = getOrCreateBasicBlock(codeName, F);
+
+        // next block
+        std::string nextName =
+            F->getName().str() + "+" + std::to_string(next_offset);
+        BasicBlock *nextBB = getOrCreateBasicBlock(nextName, F);
+
+        // create the condition code in the in the condBB
+        IRBuilder<> *condIRB = new IRBuilder<>(condBB);
+        int cond = it_state >> 4;
+        // inception_message("it_state %08x cond %08x\n", it_state, cond);
+        Value *Cmp = createCondition(cond, condIRB);
+        if (Cmp != NULL) {
+          Instruction *Br = NULL;
+          Br = condIRB->CreateCondBr(Cmp, codeBB, nextBB);
+          // Now both the original BB and the condBB
+          // have an instruction with this debug loc. Later, we will walk
+          // through all the basic blocks to find where the split instruction
+          // is, fortunately the oringinal BB is located before the condBB so
+          // the walk will return the original BB, as exepected
+          for (BasicBlock::iterator I = condBB->begin(), E = condBB->end();
+               I != E; ++I) {
+            Instruction *Instruction = &*I;
+            Instruction->setDebugLoc(Node->getDebugLoc());
+          }
+        }
+
+        // finally, advance the it state
+        if ((it_state & 0xf) == 8) {
+          // outs() << "last\n";
+          it_state = 0;
+          it_start = false;
+        } else {
+          // advance it state
+          uint32_t it_state_old_high = it_state & ~0b11111;
+          uint32_t it_state_new_low = (it_state << 1) & 0b11111;
+          it_state = it_state_old_high | it_state_new_low;
+        }
+      }
 
       // inception_message("Done");
 
@@ -423,6 +541,7 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
           if (next_instr == begin) set = true;
           if (set) {
             next_instr->setDebugLoc(elem.first->getDebugLoc());
+            // next_instr->dump();
           }
           if (next_instr == elem.second) {
             set = false;

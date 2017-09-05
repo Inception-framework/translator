@@ -5,16 +5,17 @@
 #include "Target/ARM/AddLifter.h"
 #include "Target/ARM/BranchLifter.h"
 #include "Target/ARM/CompareLifter.h"
+#include "Target/ARM/CoprocLifter.h"
 #include "Target/ARM/ExtendLifter.h"
 #include "Target/ARM/FlagsLifter.h"
+#include "Target/ARM/ITLifter.h"
 #include "Target/ARM/LoadLifter.h"
 #include "Target/ARM/LogicalLifter.h"
 #include "Target/ARM/MoveDataLifter.h"
+#include "Target/ARM/SVCallLifter.h"
 #include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/StoreLifter.h"
 #include "Target/ARM/SubtractLifter.h"
-#include "Target/ARM/SVCallLifter.h"
-#include "Target/ARM/CoprocLifter.h"
 
 #include "llvm/Support/ErrorHandling.h"
 
@@ -64,6 +65,8 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("COPROC", new CoprocLifter(this)));
+
+  lifters.insert(std::pair<std::string, ARMLifter*>("IT", new ITLifter(this)));
 
   registerAll();
 }

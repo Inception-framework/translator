@@ -99,6 +99,30 @@ bool IsPC(SDNode* N) {
   return false;
 }
 
+bool IsITSTATE(SDNode* N) {
+  if (IContext::Mod == NULL) inception_error("API has not been initialized.");
+
+  if (N->getOpcode() == ISD::Register) {
+    const RegisterSDNode* R = dyn_cast<RegisterSDNode>(N);
+    if (R == NULL) {
+      return false;
+    }
+
+    std::string RegName;
+    raw_string_ostream RP(RegName);
+
+    RP << PrintReg(R->getReg(), IContext::RegisterInfo);
+
+    RegName = RP.str().substr(1, RP.str().size());
+
+    if (RegName.compare("ITSTATE") == 0) {
+      return true;
+    }
+    return false;
+  }
+  return false;
+}
+
 bool IsSigned(SDNode* N) {
   if (IContext::Mod == NULL) inception_error("API has not been initialized.");
 
@@ -131,6 +155,14 @@ bool IsSetFlags(SDNode* N) {
       //
       // check the S bit
       //
+      case ARM::t2ADDSrs:
+      case ARM::t2ADDrs:
+      case ARM::t2ADCrs:
+
+      case ARM::t2SUBSrs:
+      case ARM::t2SUBrs:
+      case ARM::t2SBCrs:
+
       case ARM::t2ANDrs:
       case ARM::t2EORrs:
       case ARM::t2ORRrs:
@@ -147,10 +179,8 @@ bool IsSetFlags(SDNode* N) {
       case ARM::tADDspr:
       case ARM::t2ADDSri:
       case ARM::t2ADDSrr:
-      case ARM::t2ADDSrs:
       case ARM::t2ADDri:
       case ARM::t2ADDrr:
-      case ARM::t2ADDrs:
       case ARM::t2ADCri:
       case ARM::t2ADCrr:
       case ARM::tADC:
@@ -171,8 +201,6 @@ bool IsSetFlags(SDNode* N) {
       case ARM::t2SBCri:
       case ARM::t2SUBSri:
       case ARM::t2SUBSrr:
-      case ARM::t2SUBSrs:
-      case ARM::t2SUBrs:
 
       case ARM::t2MVNs:
 
@@ -206,7 +234,7 @@ bool IsSetFlags(SDNode* N) {
           return false;
         }
       //
-      // always true outside block
+      // always true outside block, always false inside
       //
       case ARM::tADDrr:
       case ARM::tADDi8:
@@ -235,7 +263,11 @@ bool IsSetFlags(SDNode* N) {
         // TODO more cases
         // TODO should we also check if outside IT block and not AL condition
         // for some of them?
-        return true;
+        if ((IContext::alm->Dec->it_state & 0b1111) == 0) {
+          return true;
+        } else {
+          return false;
+        }
       //
       // alsways false
       //
@@ -456,4 +488,77 @@ std::string getRegisterSDNodeName(const RegisterSDNode* R) {
   RegName = RP.str().substr(1, RP.str().size());
 
   return RegName;
+}
+
+Value* createCondition(int cond, IRBuilder<>* IRB) {
+  if (IContext::Mod == NULL) inception_error("API has not been initialized.");
+
+  ARMCC::CondCodes ARMcc = ARMCC::CondCodes(cond);
+  if (ARMcc == ARMCC::AL) {
+    // do nothing if unconditional
+    return NULL;
+  }
+
+  // create condition and branch
+  Value* Cmp = NULL;
+  Value* Cmp1 = NULL;
+  Value* Cmp2 = NULL;
+  switch (ARMcc) {
+    default:
+      errs() << "Unknown condition code\n";
+      return NULL;
+    case ARMCC::EQ:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("1"));
+      break;
+    case ARMCC::NE:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("0"));
+      break;
+    case ARMCC::HS:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("1"));
+      break;
+    case ARMCC::LO:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("0"));
+      break;
+    case ARMCC::MI:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), getConstant("1"));
+      break;
+    case ARMCC::PL:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), getConstant("0"));
+      break;
+    case ARMCC::VS:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("VF"), IRB), getConstant("1"));
+      break;
+    case ARMCC::VC:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("VF"), IRB), getConstant("0"));
+      break;
+    case ARMCC::HI:
+      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("1"));
+      Cmp2 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("0"));
+      Cmp = IRB->CreateAnd(Cmp1, Cmp2);
+      break;
+    case ARMCC::LS:
+      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("0"));
+      Cmp2 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("1"));
+      Cmp = IRB->CreateOr(Cmp1, Cmp2);
+      break;
+    case ARMCC::GE:
+      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
+      break;
+    case ARMCC::LT:
+      Cmp = IRB->CreateICmpNE(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
+      break;
+    case ARMCC::GT:
+      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("0"));
+      Cmp2 =
+          IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
+      Cmp = IRB->CreateAnd(Cmp1, Cmp2);
+      break;
+    case ARMCC::LE:
+      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("1"));
+      Cmp2 =
+          IRB->CreateICmpNE(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
+      Cmp = IRB->CreateOr(Cmp1, Cmp2);
+      break;
+  }
+  return Cmp;
 }

@@ -66,10 +66,14 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
     errs() << "visitBRCOND: Condition code is not a constant integer!\n";
     return;
   }
-  ARMCC::CondCodes ARMcc = ARMCC::CondCodes(CCNode->getZExtValue());
 
-  // Unconditional branch
-  if (ARMcc == ARMCC::AL) {
+  // create the code that check the condition
+  // NULL if condition is AL
+  int cond = CCNode->getZExtValue();
+  Value *Cmp = createCondition(cond, IRB);
+
+  // Unconditional branch or inside it block (last instruction)
+  if (Cmp == NULL || (IContext::alm->Dec->it_state & 0b1111) != 0) {
     Instruction *Br = IRB->CreateBr(BBTgt);
     Br->setDebugLoc(N->getDebugLoc());
     saveNodeValue(N, Br);
@@ -86,122 +90,6 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   } else {
     NextBB = &(*BI);
   }
-
-  // SDNode *CPSR = N->getOperand(3)->getOperand(1).getNode();
-  // CPSR->dump();
-  // SDNode *CMPNode = NULL;
-  // for (SDNode::use_iterator I = CPSR->use_begin(), E = CPSR->use_end(); I !=
-  // E;
-  //     ++I) {
-  //  if (I->getOpcode() == ISD::CopyToReg) {
-  //    CMPNode = I->getOperand(2).getNode();
-  //  }
-  //}
-
-  //// TODO: maybe we could just always use flags?
-  // if (CMPNode == NULL) {
-  //  errs()
-  //      << "ARMIREmitter ERROR: Could not find CMP SDNode for ARMBRCond !\n ";
-  //  return;
-  //}
-
-  // CMPNode->dump();
-
-  Value *Cmp = NULL;
-  Value *Cmp1 = NULL;
-  Value *Cmp2 = NULL;
-  // Value *LHS = visit(CMPNode->getOperand(0).getNode(), IRB);
-  // Value *RHS = visit(CMPNode->getOperand(1).getNode(), IRB);
-  // See ARMCC::CondCodes IntCCToARMCC(ISD::CondCode CC); in ARMISelLowering.cpp
-  // TODO: Add support for conditions that handle floating point
-  switch (ARMcc) {
-    default:
-      errs() << "Unknown condition code\n";
-      return;
-    case ARMCC::EQ:
-      // Cmp = IRB->CreateICmpEQ(LHS, RHS);
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("1"));
-      break;
-    case ARMCC::NE:
-      // Cmp = IRB->CreateICmpNE(LHS, RHS);
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("0"));
-      break;
-    case ARMCC::HS:
-      // HS - unsigned higher or same (or carry set)
-      // Cmp = IRB->CreateICmpUGE(LHS, RHS);
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("1"));
-      break;
-    case ARMCC::LO:
-      // LO - unsigned lower (or carry clear)
-      // Cmp = IRB->CreateICmpULT(LHS, RHS);
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("0"));
-      break;
-    case ARMCC::MI:
-      // MI - minus (negative)
-      // errs() << "Condition code MI is not handled at this time!\n";
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), getConstant("1"));
-      break;
-    // break;
-    case ARMCC::PL:
-      // PL - plus (positive or zero)
-      // errs() << "Condition code PL is not handled at this time!\n";
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), getConstant("0"));
-      break;
-    // break;
-    case ARMCC::VS:
-      // VS - V Set (signed overflow)
-      // errs() << "Condition code VS is not handled at this time!\n";
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("VF"), IRB), getConstant("1"));
-      break;
-    // break;
-    case ARMCC::VC:
-      // VC - V clear (no signed overflow)
-      // errs() << "Condition code VC is not handled at this time!\n";
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("VF"), IRB), getConstant("0"));
-      break;
-    // break;
-    case ARMCC::HI:
-      // HI - unsigned higher
-      // Cmp = IRB->CreateICmpUGT(LHS, RHS);
-      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("1"));
-      Cmp2 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("0"));
-      Cmp = IRB->CreateAnd(Cmp1, Cmp2);
-      break;
-    case ARMCC::LS:
-      // LS - unsigned lower or same
-      // Cmp = IRB->CreateICmpULE(LHS, RHS);
-      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("CF"), IRB), getConstant("0"));
-      Cmp2 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("1"));
-      Cmp = IRB->CreateOr(Cmp1, Cmp2);
-      break;
-    case ARMCC::GE:
-      // GE - signed greater or equal
-      // Cmp = IRB->CreateICmpSGE(LHS, RHS);
-      Cmp = IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
-      break;
-    case ARMCC::LT:
-      // LT - signed less than
-      // Cmp = IRB->CreateICmpSLT(LHS, RHS);
-      Cmp = IRB->CreateICmpNE(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
-      break;
-    case ARMCC::GT:
-      // GT - signed greater than
-      // Cmp = IRB->CreateICmpSGT(LHS, RHS);
-      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("0"));
-      Cmp2 =
-          IRB->CreateICmpEQ(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
-      Cmp = IRB->CreateAnd(Cmp1, Cmp2);
-      break;
-    case ARMCC::LE:
-      // LE - signed less than or equal
-      // Cmp = IRB->CreateICmpSLE(LHS, RHS);
-      Cmp1 = IRB->CreateICmpEQ(ReadReg(Reg("ZF"), IRB), getConstant("1"));
-      Cmp2 =
-          IRB->CreateICmpNE(ReadReg(Reg("NF"), IRB), ReadReg(Reg("VF"), IRB));
-      Cmp = IRB->CreateOr(Cmp1, Cmp2);
-      break;
-  }
-  (dyn_cast<Instruction>(Cmp))->setDebugLoc(N->getOperand(3)->getDebugLoc());
 
   // Conditional branch
   Instruction *Br = IRB->CreateCondBr(Cmp, BBTgt, NextBB);

@@ -62,6 +62,14 @@ void ShiftLifter::ShiftHandlerShiftOp(SDNode *N, IRBuilder<> *IRB) {
     case ARM::t2ORRrs:
     case ARM::t2ORNrs:
     case ARM::t2BICrs:
+    case ARM::t2ADDSrs:
+    case ARM::t2ADDrs:
+    case ARM::t2ADCrs:
+    case ARM::t2SUBSrs:
+    case ARM::t2SUBrs:
+    case ARM::t2SBCrs:
+    case ARM::t2CMPrs:
+    case ARM::t2CMNzrs:
       index = 2;
       break;
     case ARM::t2MVNs:
@@ -308,6 +316,12 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
     case ARM::t2ORRrs:
     case ARM::t2ORNrs:
     case ARM::t2BICrs:
+    case ARM::t2ADDSrs:
+    case ARM::t2ADDrs:
+    case ARM::t2ADCrs:
+    case ARM::t2SUBSrs:
+    case ARM::t2SUBrs:
+    case ARM::t2SBCrs:
       Op0 = visit(N->getOperand(1).getNode(), IRB);
       ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
       if (!ConstNode) {
@@ -322,6 +336,8 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
       break;
     case ARM::t2TSTrs:
     case ARM::t2TEQrs:
+    case ARM::t2CMPrs:
+    case ARM::t2CMNzrs:
       Op0 = visit(N->getOperand(1).getNode(), IRB);
       ConstNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
       if (!ConstNode) {

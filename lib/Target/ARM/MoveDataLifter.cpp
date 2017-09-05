@@ -92,7 +92,7 @@ void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
   Value* Op0 = NULL;
   unsigned opcode = N->getMachineOpcode();
   if (opcode == ARM::t2MVNs) {
-    ShiftLifter* shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("FLAGS"));
+    ShiftLifter* shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("SHIFT"));
     shiftLifter->ShiftHandlerShiftOp(N, IRB);
     Op0 = getSavedValue(N);
   } else {

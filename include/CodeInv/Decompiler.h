@@ -64,14 +64,16 @@ public:
   ///
   void decompile(unsigned Address);
   Function* decompileFunction(unsigned Address);
-  BasicBlock* decompileBasicBlock(MachineBasicBlock *MBB, Function *F);
+  BasicBlock *decompileBasicBlock(MachineBasicBlock *MBB, Function *F,
+                                  unsigned Address);
 
   BasicBlock* getOrCreateBasicBlock(unsigned Address, Function *F);
   BasicBlock* getOrCreateBasicBlock(StringRef BBName, Function *F);
 
   void sortBasicBlock(BasicBlock *BB);
   void splitBasicBlockIntoBlock(Function::iterator Src,
-    BasicBlock::iterator FirstInst, BasicBlock *Tgt);
+                                BasicBlock::iterator FirstInst,
+                                BasicBlock *Tgt);
 
   SelectionDAG* createDAGFromMachineBasicBlock(MachineBasicBlock *MBB);
 
@@ -84,7 +86,11 @@ public:
   Module* getModule() { return Mod; }
   LLVMContext* getContext() { return Context; }
 
-private:
+  uint32_t it_state;
+  uint32_t it_true;
+  bool it_start;
+
+ private:
   Disassembler *Dis;
   Module *Mod;
   LLVMContext *Context;
