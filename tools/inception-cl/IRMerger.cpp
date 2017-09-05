@@ -4,6 +4,7 @@
 #include "FunctionsHelperWriter.h"
 #include "SectionsWriter.h"
 #include "StackAllocator.h"
+#include "AssemblySupport.h"
 
 extern bool nameLookupAddr(StringRef funcName, uint64_t& Address);
 
@@ -24,6 +25,10 @@ IRMerger::~IRMerger() {}
 
 void IRMerger::Run(llvm::StringRef name) {
   Module* mod = DEC->getModule();
+
+  if (IRMerger::first_call) {
+    AssemblySupport::ImportAll(mod, DEC->getDisassembler());
+  }
 
   Function* fct = mod->getFunction(name);
 
