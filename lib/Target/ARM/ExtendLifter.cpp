@@ -1,7 +1,7 @@
 #include "Target/ARM/ExtendLifter.h"
 #include "Target/ARM/ShiftLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -54,10 +54,10 @@ void ExtendLifter::ExtendHandlerUXTB(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
       uint32_t lsl_amount = 32 - lsr_amount;
 
       if (lsr_amount != 0) {
-        Value *lsr =
-            ConstantInt::get(alm->getContextRef(), APInt(32, lsr_amount, 10));
-        Value *lsl =
-            ConstantInt::get(alm->getContextRef(), APInt(32, lsl_amount, 10));
+        Value *lsr = ConstantInt::get(IContext::getContextRef(),
+                                      APInt(32, lsr_amount, 10));
+        Value *lsl = ConstantInt::get(IContext::getContextRef(),
+                                      APInt(32, lsl_amount, 10));
 
         Value *tmp1 = IRB->CreateLShr(Rm, lsr);
         Value *tmp2 = IRB->CreateShl(Rm, lsl);
@@ -92,19 +92,17 @@ void ExtendLifter::ExtendHandlerUXTB(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   }
 
   // operation
-  Value *trunced =
-      IRB->CreateTrunc(Rm, IntegerType::get(alm->getContextRef(), size));
+  Value *trunced = IRB->CreateTrunc(
+      Rm, IntegerType::get(IContext::getContextRef(), size));
   Value *extended = NULL;
 
   if (sign) {
-    extended =
-        IRB->CreateSExt(trunced, IntegerType::get(alm->getContextRef(), 32));
+    extended = IRB->CreateSExt(
+        trunced, IntegerType::get(IContext::getContextRef(), 32));
   } else {
-    extended =
-        IRB->CreateZExt(trunced, IntegerType::get(alm->getContextRef(), 32));
+    extended = IRB->CreateZExt(
+        trunced, IntegerType::get(IContext::getContextRef(), 32));
   }
 
-  alm->VisitMap[N] = extended;
+  saveNodeValue(N, extended);
 }
-
-

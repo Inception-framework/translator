@@ -29,13 +29,14 @@ void FunctionsHelperWriter::Write(FHW_POSITION position, FUNCTION_HELPER type,
 }
 
 llvm::Instruction* FunctionsHelperWriter::GetBegin(llvm::Function* func) {
-  Instruction* ptr;
   for (auto bb_i = func->getBasicBlockList().begin();
        bb_i != func->getBasicBlockList().end(); bb_i++) {
     BasicBlock& old_bb = *bb_i;
     for (auto int_i = old_bb.begin(); int_i != old_bb.end(); int_i++)
       return int_i;
   }
+
+  return NULL;
 }
 
 llvm::Instruction* FunctionsHelperWriter::GetLast(llvm::Function* func) {

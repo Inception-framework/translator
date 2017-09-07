@@ -1,6 +1,6 @@
 #include "Target/ARM/ShiftLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -78,7 +78,6 @@ void ShiftLifter::ShiftHandlerShiftOp(SDNode *N, IRBuilder<> *IRB) {
     return;
   }
   uint32_t shift_t_n = ConstNode->getZExtValue();
-  uint32_t shift_n = shift_t_n >> 3;
   uint32_t shift_t = shift_t_n & 0x7;
 
   switch (shift_t) {
@@ -132,7 +131,7 @@ void ShiftLifter::ShiftHandlerLSL(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 // note1: shift in two parts, because llvm does not allow shifting a 32-bit
@@ -178,7 +177,7 @@ void ShiftLifter::ShiftHandlerLSR(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 // note1: shift in two parts, because llvm does not allow shifting a 32-bit
@@ -228,7 +227,7 @@ void ShiftLifter::ShiftHandlerASR(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 // Note: llvm does not have ror
@@ -241,8 +240,7 @@ void ShiftLifter::ShiftHandlerROR(SDNode *N, IRBuilder<> *IRB) {
   Value *high = IRB->CreateShl(info->Op0, lshift_amount);
   Value *low = IRB->CreateLShr(info->Op0, info->Op1);
 
-  Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateOr(high, low));
+  Instruction *Res = dyn_cast<Instruction>(IRB->CreateOr(high, low));
 
   if (info->S) {
     // Write the flag updates.
@@ -261,7 +259,7 @@ void ShiftLifter::ShiftHandlerROR(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 void ShiftLifter::ShiftHandlerRRX(SDNode *N, IRBuilder<> *IRB) {
@@ -290,7 +288,7 @@ void ShiftLifter::ShiftHandlerRRX(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
@@ -318,7 +316,8 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
       }
       shift_t_n = ConstNode->getZExtValue();
       shift_n = shift_t_n >> 3;
-      Op1 = ConstantInt::get(alm->getContextRef(), APInt(32, shift_n, 10));
+      Op1 = ConstantInt::get(IContext::getContextRef(),
+                             APInt(32, shift_n, 10));
       S = IsSetFlags(N);
       break;
     case ARM::t2TSTrs:
@@ -331,7 +330,8 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
       }
       shift_t_n = ConstNode->getZExtValue();
       shift_n = shift_t_n >> 3;
-      Op1 = ConstantInt::get(alm->getContextRef(), APInt(32, shift_n, 10));
+      Op1 = ConstantInt::get(IContext::getContextRef(),
+                             APInt(32, shift_n, 10));
       S = true;
       break;
     case ARM::t2MVNs:
@@ -343,7 +343,8 @@ ARMSHIFTInfo *ShiftLifter::RetrieveGraphInformation(SDNode *N,
       }
       shift_t_n = ConstNode->getZExtValue();
       shift_n = shift_t_n >> 3;
-      Op1 = ConstantInt::get(alm->getContextRef(), APInt(32, shift_n, 10));
+      Op1 = ConstantInt::get(IContext::getContextRef(),
+                             APInt(32, shift_n, 10));
       S = IsSetFlags(N);
       break;
     default:

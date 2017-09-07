@@ -16,9 +16,11 @@
 //===----------------------------------------------------------------------===//
 
 #include "CodeInv/Decompiler.h"
-#include "../Target/ARM/ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "Target/ARM/DummyLifter.h"
+
+#include "Utils/IContext.h"
 
 using namespace llvm;
 
@@ -40,7 +42,6 @@ Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
     std::string ModID = Dis->getExecutable()->getFileName().data();
     ModID += "-IR";
     Mod = new Module(StringRef(ModID), *(Dis->getMCDirector()->getContext()));
-    llvm::outs() << "Module : " << Mod->getName() << "\n";
     Context = Dis->getMCDirector()->getContext();
   } else {
     Context = &(Mod->getContext());
@@ -152,8 +153,8 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     return F;
   else {
     AttributeSet AS;
-    AS = AS.addAttribute(*Context, AttributeSet::FunctionIndex,
-                         "Decompiled", "True");
+    AS = AS.addAttribute(*Context, AttributeSet::FunctionIndex, "Decompiled",
+                         "True");
 
     F->setAttributes(AS);
   }
@@ -179,13 +180,9 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     }
     ++BI;
   }
-  // outs() << "END: First BB iteration\n";
 
-  // outs() << "BEGIN: Decompile basic blocks\n";
   BI = MF->begin();
   while (BI != BE) {
-    // outs() << "\n[decompileFunction] call decompileBasicBlock \n";
-    // BI->dump();
     if (decompileBasicBlock(BI, F) == NULL) {
       printError("Unable to decompile basic block!");
     }
@@ -196,13 +193,11 @@ Function *Decompiler::decompileFunction(unsigned Address) {
       IRBuilder<> *IRB = new IRBuilder<>(bb);
       Instruction *Ret = IRB->CreateRetVoid();
       Ret->setDebugLoc(last->getDebugLoc());
+      delete IRB;
     }
 
     ++BI;
-    // outs() << "\n--> done\n\n";
   }
-  // outs() << "END: Decompile basic blocks\n";
-  // outs() << "BEGIN: handling new basic blocks\n";
 
   // During Decompilation, did any "in-between" basic blocks get created?
   // Nothing ever splits the entry block, so we skip it.
@@ -219,45 +214,29 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     size_t Off = F->getName().size() + 1;
     size_t Size = Name.size() - Off;
 
-    outs() << "-----I------\n";
-    outs() << "Name: " << Name << " Offset: " << Off << " Size: " << Size
-           << "\n";
-    I->dump();
-
     StringRef BBAddrStr = Name.substr(Off, Size);
     unsigned long long BBAddr;
     getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
     BBAddr += Address;
-    outs() << "Split Target: " << Name << "\t Address: " << BBAddr << "\n";
     // split Block at AddrStr
     Function::iterator SB;        // Split basic block
     BasicBlock::iterator SI, SE;  // Split instruction
     // Note the ++, nothing ever splits the entry block.
     for (SB = ++F->begin(); SB != E; ++SB) {
-      SB->dump();
       if (SB->empty() || BBAddr < getBasicBlockAddress(SB)) {
-        outs() << "SB->empty() || BBAddr < getBasicBlockAddress(SB)\n";
         continue;
       }
       assert(SB->getTerminator() &&
              "Decompiler::decompileFunction - getTerminator (missing llvm "
              "unreachable?)");
-      outs() << "SB: " << SB->getName()
-             << "\tRange: " << Dis->getDebugOffset(SB->begin()->getDebugLoc())
-             << " " << Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())
-             << "\n";
       if (BBAddr > Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())) {
-        outs() << "BBAddr > "
-                  "Dis->getDebugOffset(SB->getTerminator()->getDebugLoc())\n";
         continue;
       }
 
       // Reorder instructions based on Debug Location
       // sortBasicBlock(SB);
-      outs() << "Found Split Block: " << SB->getName() << "\n";
       // Find iterator to split on.
       for (SI = SB->begin(), SE = SB->end(); SI != SE; ++SI) {
-        outs() << "SI: " << SI->getDebugLoc().getLine() << "\n";
         if (Dis->getDebugOffset(SI->getDebugLoc()) == BBAddr) break;
         if (Dis->getDebugOffset(SI->getDebugLoc()) > BBAddr) {
           outs() << "Could not find address inside basic block!\n"
@@ -272,11 +251,8 @@ Function *Decompiler::decompileFunction(unsigned Address) {
       outs() << "Decompiler: Failed to find instruction offset in function!\n";
       continue;
     }
-    outs() << SB->getName() << " " << SI->getName() << "\n";
-    outs() << "Creating Block...\n";
     splitBasicBlockIntoBlock(SB, SI, I);
   }
-  outs() << "END: handling new basic blocks\n";
 
   // Clean up unnecessary stores and loads
   FunctionPassManager FPM(Mod);
@@ -389,57 +365,44 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   // This sets the use on the first node and prevents root from being deleted.
   HandleSDNode Dummy(DAG->getRoot());
 
-  ARMLifterManager *alm = new ARMLifterManager();
-
-  alm->RegisterInfo = DAG->getTarget().getSubtargetImpl()->getRegisterInfo();
-  alm->Mod = Mod;
-  alm->DAG = DAG;
-  alm->Dec = this;
-  alm->RegMap.grow(Dis->getMCDirector()->getMCRegisterInfo()->getNumRegs());
+  IContext::RegisterInfo =
+      DAG->getTarget().getSubtargetImpl()->getRegisterInfo();
 
   // Create a new basic block (if necessary)
   BasicBlock *BB = getOrCreateBasicBlock(MBB->getName(), F);
-  // llvm::errs() << "Generating BB : " << MBB->getName() << "\n";
+  IRBuilder<> *IRB = new IRBuilder<>(BB);
 
   // Start at root and go to entry token
   for (auto b = DAG->allnodes_begin(), e = DAG->allnodes_end(); b != e; b++) {
     SDNode *Node = b;
 
-    IRBuilder<> *IRB = new IRBuilder<>(BB);
-
     if (!Node->isMachineOpcode()) {
-      DummyLifter* dummy_lifter = new DummyLifter(alm);
+      DummyLifter *dummy_lifter = new DummyLifter(IContext::alm);
 
       if (Node->getOpcode() == ISD::CopyFromReg)
         dummy_lifter->handler(Node, IRB);
-      if (Node->getOpcode() == ISD::CopyToReg)
-        dummy_lifter->handler(Node, IRB);
+      if (Node->getOpcode() == ISD::CopyToReg) dummy_lifter->handler(Node, IRB);
       continue;
     }
 
     uint16_t TargetOpc = Node->getMachineOpcode();
 
-    // llvm::errs() << "----------------------------\n";
-    // llvm::errs() << "Next Node : \n";
-    // Node->dump();
-
     // XXX: Emit IR code for each supported node
-    LifterSolver *solver = alm->resolve(TargetOpc);
+    LifterSolver *solver = IContext::alm->resolve(TargetOpc);
     if (solver != NULL) {
       ARMLifter *lifter = solver->lifter;
+
+      // inception_message("Entering lifter %s ", solver->name.c_str());
 
       LifterHandler handler = solver->handler;
 
       (lifter->*handler)(Node, IRB);
 
-      // lifter->handler(Node, IRB);
-      // solver->handler(Node, IRB);
+      // inception_message("Done");
+
     } else {
-      llvm::errs() << "Couldn't find lifter for opcode " << TargetOpc << "\n";
-      assert(solver && "Unable to solve opcode ...");
-      break;
+      inception_error("Unable to find lifter for opcode %d", TargetOpc);
     }
-    // llvm::errs() << "\n----------------------------\n";
   }
   DAG->setRoot(Dummy.getValue());
 
@@ -447,12 +410,11 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
   // TODO this algo is inefficient, do it better
   Instruction *begin = NULL;
   for (auto int_i = BB->begin(); int_i != BB->end(); int_i++) {
-    Instruction &inst = *int_i;
     if (begin == NULL) {
       // outs() << "first instruction in sequence\n";
       begin = int_i;
     }
-    for (auto elem : alm->VisitMap) {
+    for (auto elem : IContext::VisitMap) {
       if (elem.second == int_i) {
         // outs() << "last instruction in sequence\n";
         bool set = false;
@@ -460,9 +422,7 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
           Instruction *next_instr = next;
           if (next_instr == begin) set = true;
           if (set) {
-            // next_instr->dump();
             next_instr->setDebugLoc(elem.first->getDebugLoc());
-            // elem.first->getDebugLoc().dump();
           }
           if (next_instr == elem.second) {
             set = false;
@@ -473,7 +433,10 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB,
     }
   }
 
-  free(DAG);
+  IContext::VisitMap.clear();
+  delete DAG;
+  delete IRB;
+
   return BB;
 }
 
@@ -508,8 +471,6 @@ SelectionDAG *Decompiler::createDAGFromMachineBasicBlock(
 
     // in case of MSR, add dummy dest register
     if (OpCode == ARM::t2MSR_M) {
-      outs() << "[Decompiler] t2MSR_M encountered, adding a dummy register "
-                "definition\n";
       MachineOperand *MOp_dummy = &I->getOperand(3);  // noreg
       unsigned Reg = MOp_dummy->getReg();
       Defs.push_back(MOp_dummy);
@@ -523,8 +484,6 @@ SelectionDAG *Decompiler::createDAGFromMachineBasicBlock(
           OpCode = ARM::tBX_RET;
         } else
           OpCode = ARM::tBX_CALL;
-
-        std::cout << "ARM:tBX replaced by ARM::tBX_RET" << std::endl;
       }
 
       if (MOp->isReg()) {
@@ -654,8 +613,7 @@ BasicBlock *Decompiler::getOrCreateBasicBlock(StringRef BBName, Function *F) {
   Function::iterator BI = F->begin(), BE = F->end();
   while (BI->getName() != BBName && BI != BE) ++BI;
   if (BI == BE) {
-    BBTgt =
-        BasicBlock::Create(*Context, BBName, F);
+    BBTgt = BasicBlock::Create(*Context, BBName, F);
   } else {
     BBTgt = &(*BI);
   }

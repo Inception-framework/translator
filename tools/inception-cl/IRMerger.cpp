@@ -1,10 +1,12 @@
 #include "IRMerger.h"
 
+#include "AssemblySupport.h"
 #include "FunctionCleaner.h"
 #include "FunctionsHelperWriter.h"
 #include "SectionsWriter.h"
 #include "StackAllocator.h"
-#include "AssemblySupport.h"
+#include "Utils/Builder.h"
+#include "Utils/IContext.h"
 
 extern bool nameLookupAddr(StringRef funcName, uint64_t& Address);
 
@@ -14,12 +16,7 @@ bool IRMerger::first_call = true;
 
 std::map<std::string, SDNode*> IRMerger::registersNodes = {};
 
-IRMerger::IRMerger(Decompiler* P_DEC) : DEC(P_DEC) {
-  // RegMap.grow(DEC->getDisassembler()
-  //                 ->getMCDirector()
-  //                 ->getMCRegisterInfo()
-  //                 ->getNumRegs());
-}
+IRMerger::IRMerger(Decompiler* P_DEC) : DEC(P_DEC) {}
 
 IRMerger::~IRMerger() {}
 
@@ -41,7 +38,6 @@ void IRMerger::Run(llvm::StringRef name) {
 
   WriteABIPrologue(fct);
 
-  fct->dump();
   Decompile(name);
 
   WriteABIEpilogue(fct);
@@ -68,8 +64,6 @@ void IRMerger::Decompile(llvm::StringRef name) {
     return;
   }
 
-  formatted_raw_ostream Out(outs(), false);
-
   DEC->decompile(Address);
 }
 
@@ -85,22 +79,19 @@ void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
     return;
   }
 
-  auto bb = fct->begin();
-
-  for (bb; bb != fct->end(); bb++) {
+  for (auto bb = fct->begin(); bb != fct->end(); bb++) {
     Instruction* inst = (*bb).begin();
 
     while (inst != (*bb).end() || inst == nullptr) {
       auto next = inst->getNextNode();
 
       if ((ret = dyn_cast<ReturnInst>(inst)) != NULL) {
-        IRBuilder<>* IRB = new IRBuilder<>(inst);
 
-        Value* Reg = getReg(StringRef("R0"));
+        Value* reg = Reg(StringRef("R0"));
 
         StringRef name("R0_RET" + std::to_string(ret_counter));
 
-        Instruction* Res = new LoadInst(Reg, name, "", inst);
+        Instruction* Res = new LoadInst(reg, name, "", inst);
 
         // caast ptr to int to ptr to correct type if necessary
         if (FType->isPointerTy()) {
@@ -131,7 +122,7 @@ void IRMerger::WriteABIPrologue(llvm::Function* fct) {
   for (auto arg = fct->arg_begin(); arg != fct->arg_end(); arg++) {
     Value* Res = NULL;
 
-    Value* Reg = getReg(StringRef("R" + std::to_string(reg_counter)));
+    Value* reg = Reg(StringRef("R" + std::to_string(reg_counter)));
 
     if (arg->getType()->isPointerTy()) {
       Res = IRB->CreatePtrToInt(arg, IntegerType::get(mod->getContext(), 32));
@@ -142,16 +133,16 @@ void IRMerger::WriteABIPrologue(llvm::Function* fct) {
     }
 
     if (arg->getType()->isArrayTy()) {
-      for (int i = 0; i < arg->getType()->getArrayNumElements(); i++) {
+      for (uint64_t i = 0; i < arg->getType()->getArrayNumElements(); i++) {
         if (i != 0) reg_counter++;
-        Reg = getReg(StringRef("R" + std::to_string(reg_counter)));
+        reg = Reg(StringRef("R" + std::to_string(reg_counter)));
         Value* element = IRB->CreateExtractValue(arg, i);
-        Res = IRB->CreateStore(element, Reg);
+        Res = IRB->CreateStore(element, reg);
       }
       continue;
     }
 
-    IRB->CreateStore(Res, Reg);
+    IRB->CreateStore(Res, reg);
     reg_counter++;
   }
 }

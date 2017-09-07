@@ -71,7 +71,7 @@ struct I2PInfo {
   // e.g., usually when loading from the stack or allocating space the stack
   // pointer gets modified with a binop (and reversed at the end).
   void AnalyzeIntToPtr(IntToPtrInst *IP) {
-    // Build up the use chain 
+    // Build up the use chain
     return;
   }
 
@@ -83,7 +83,6 @@ void AnalyzeVar(Instruction* Alloca, int depth = 0) {
        UI != E; ++UI) {
     Instruction *User = cast<Instruction>(*UI);
     for (unsigned int i = 0, e = depth; i != e; ++i) outs() << "=";
-    outs() << "=>" << *User << "\n";
     AnalyzeVar(User, depth+1);
 
   }
@@ -121,7 +120,7 @@ bool TypeRecovery::runOnFunction(Function &F) {
   //   break;
   // }
 
-  
+
   // First, do a pass that converts
   //  (store var1, inttoptr (add var2, *))
   // to:
@@ -153,9 +152,5 @@ bool TypeRecovery::runOnFunction(Function &F) {
       }
     }
   }
-
-  outs() << "Num Loads and Stores: " << NumStores << "\n";
-
-
   return false;
 }

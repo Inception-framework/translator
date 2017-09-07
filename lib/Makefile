@@ -8,6 +8,6 @@ LEVEL=..
 #
 # List all of the subdirectories that we will compile.
 #
-DIRS=Target utils Commands CodeInv Transforms
+DIRS=Target Utils Commands CodeInv Transforms
 
 include $(LEVEL)/Makefile.common

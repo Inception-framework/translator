@@ -24,7 +24,6 @@ class FunctionCleaner {
 
     std::vector<BasicBlock*>::reverse_iterator rit;
     for (rit = removeList.rbegin(); rit != removeList.rend(); ++rit) {
-      const BasicBlock* bb = *rit;
       (*rit)->dropAllReferences();
       (*rit)->eraseFromParent();
     }
@@ -44,8 +43,6 @@ class FunctionCleaner {
           if (element == inst) append = false;
 
         if (append) {
-          outs() << "Append : " << *inst << "\n";
-
           removeList.push_back(inst);
         }
         inst = inst->getNextNode();
@@ -54,7 +51,6 @@ class FunctionCleaner {
       std::vector<Instruction*>::reverse_iterator rit;
       for (rit = removeList.rbegin(); rit != removeList.rend(); ++rit) {
         const Instruction* instruction = *rit;
-        outs() << "Removing : " << *instruction << "\n";
         (*rit)->dropAllReferences();
         (*rit)->eraseFromParent();
       }
@@ -108,7 +104,6 @@ class FunctionCleaner {
       if (element == instruction) append = false;
 
     if (append) {
-      outs() << "Append : " << *instruction << "\n";
 
       removeList.push_back(instruction);
     }

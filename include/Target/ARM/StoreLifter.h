@@ -42,12 +42,12 @@ class StoreInfo {
 
   StoreInfo(int32_t _n, int32_t _d, int32_t _o, int _Width = 32,
             int32_t _n_max = -1)
-      : width(_Width),
+      : next(_n),
+        width(_Width),
         iOffset(_o),
         iRn(_n),
-        next(_n),
-        iRd(_d),
-        iRn_max(_n_max) {}
+        iRn_max(_n_max),
+        iRd(_d){};
 };
 
 class StoreLifter : public ARMLifter {
@@ -56,7 +56,7 @@ class StoreLifter : public ARMLifter {
 
   StoreLifter(ARMLifterManager* _alm) : ARMLifter(_alm){};
 
-  ~StoreLifter(){};
+  ~StoreLifter() { info.clear(); };
 
   std::map<unsigned, StoreInfo*> info;
 

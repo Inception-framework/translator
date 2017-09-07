@@ -169,7 +169,6 @@ StringRef NameRecovery::getBaseValueName(StringRef BaseName) {
 }
 
 StringRef NameRecovery::getInstructionName(Instruction* I) {
-  unsigned i;
 
   if (isa<ReturnInst>(I) || isa<BranchInst>(I) || isa<SwitchInst>(I) ||
       isa<IndirectBrInst>(I) || isa<ResumeInst>(I) || isa<UnreachableInst>(I) ||
@@ -177,21 +176,11 @@ StringRef NameRecovery::getInstructionName(Instruction* I) {
       isa<AtomicCmpXchgInst>(I) || isa<CallInst>(I) || isa<InvokeInst>(I))
     return StringRef();
 
-  // if(I->hasName())
-  //   return StringRef();
-
-  // llvm::errs() << "NameRecovery found : \n";
-  // I->dump();
-
-  // Look for register name in CopyToReg user
-  for (auto i = 0; i < I->getNumOperands(); i++) {
+  for (uint64_t i = 0; i < I->getNumOperands(); i++) {
     Value* value = I->getOperand(i);
-
-    // llvm::errs() << "Operand(" << i++ << ") : " << value->getName() << "\n";
 
     return getBaseValueName(value->getName());
   }
-  // llvm::errs() << "------------------------\n\n";
 
   return StringRef();
 }

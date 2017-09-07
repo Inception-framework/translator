@@ -1,12 +1,14 @@
 #include "Target/ARM/AddLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 #include "Target/ARM/FlagsLifter.h"
+
+#include "Utils/Builder.h"
 
 using namespace llvm;
 using namespace fracture;
@@ -56,8 +58,7 @@ void AddLifter::AdcHandler(SDNode *N, IRBuilder<> *IRB) {
   auto cf = ReadReg(Reg("CF"), IRB);
 
   AddHandler(N, IRB);  // Si opérande à la même position
-  Value *Res_add = alm->VisitMap[N];
-
+  Value *Res_add = getSavedValue(N);
 
   // then
   Value *Res_adc = IRB->CreateAdd(Res_add, cf);
@@ -78,19 +79,8 @@ void AddLifter::AdcHandler(SDNode *N, IRBuilder<> *IRB) {
     flags->WriteCFAdc(IRB, Res_adc, Res_add);
   }
 
-  alm->VisitMap[N] = Res_adc;
+  saveNodeValue(N, Res_adc);
 }
-
-// void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
-//  ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
-//
-//  Instruction *Res =
-//      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
-//
-//  Res->setDebugLoc(N->getDebugLoc());
-//
-//  alm->VisitMap[N] = Res;
-//}
 
 void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
@@ -100,7 +90,7 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 
   Res->setDebugLoc(N->getDebugLoc());
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 
   if (info->S) {
     // Write the flag updates.

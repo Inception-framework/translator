@@ -27,12 +27,12 @@ typedef void (ARMLifter::*LifterHandler)(llvm::SDNode* N, llvm::IRBuilder<>* IRB
 typedef struct LifterSolver {
   LifterHandler handler;
 
-  std::string name;
-
   ARMLifter* lifter;
 
+  std::string name;
+
   LifterSolver(ARMLifter* _lifter, std::string _name, LifterHandler _handler)
-      : lifter(_lifter), name(_name), handler(_handler){};
+      : handler(_handler), lifter(_lifter), name(_name){};
 } LifterSolver;
 
 class ARMLifterManager {
@@ -51,32 +51,14 @@ class ARMLifterManager {
 
   ARMLifter* resolve(StringRef name);
 
-  const TargetRegisterInfo* RegisterInfo;
-
-  llvm::Module* Mod;
-
-  IndexedMap<Value*> RegMap;
-
-  DenseMap<const SDNode*, Value*> VisitMap;
-
-  StringMap<StringRef> BaseNames;
-
-  llvm::SelectionDAG *DAG;
-
-  fracture::Decompiler* Dec;
-
-  LLVMContext* getContext() {
-    return Dec->getContext();
-  }
-
-  LLVMContext& getContextRef() {
-    return *(Dec->getContext());
-  }
-
  private:
   std::map<unsigned, LifterSolver*> solver;
 
   std::map<std::string, ARMLifter*> lifters;
+
+public:
+  fracture::Decompiler* Dec;
+
 };
 
 #endif

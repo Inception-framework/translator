@@ -17,14 +17,6 @@ class BranchLifter : public ARMLifter{
 
   ~BranchLifter(){};
 
-  #define HANDLER(name) \
-  void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB) { \
-    BranchHandler(N, IRB); \
-  };
-
-  // HANDLER(tBX_RET);
-  // HANDLER(tB);
-
  protected:
   void BranchHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
   void BranchHandlerB(llvm::SDNode* N, llvm::IRBuilder<>* IRB);

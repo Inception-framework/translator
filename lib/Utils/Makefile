@@ -8,7 +8,7 @@ LEVEL=../..
 #
 # Give the name of the library
 #
-LIBRARYNAME=utils
+LIBRARYNAME=Utils
 
 #
 # Include Makefile common so we know what to do. 

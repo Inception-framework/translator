@@ -1,6 +1,6 @@
 #include "Target/ARM/CoprocLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"

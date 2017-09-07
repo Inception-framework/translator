@@ -2,7 +2,7 @@
 #include "Target/ARM/FlagsLifter.h"
 #include "Target/ARM/ShiftLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -135,7 +135,7 @@ void LogicalLifter::TstHandlerRI(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // Dummy CPSR, not used, Flags are used instead if necessary
   Value *dummyCPSR = getConstant("0");
 
-  alm->VisitMap[N] = dummyCPSR;
+  saveNodeValue(N, dummyCPSR);
 }
 
 // TST / TEQ register register
@@ -172,7 +172,7 @@ void LogicalLifter::TstHandlerRR(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // Dummy CPSR, not used, Flags are used instead if necessary
   Value *dummyCPSR = getConstant("0");
 
-  alm->VisitMap[N] = dummyCPSR;
+  saveNodeValue(N, dummyCPSR);
 }
 
 // TST register shift
@@ -183,7 +183,7 @@ void LogicalLifter::TstHandlerRS(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // shift operation
   ShiftLifter *shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("FLAGS"));
   shiftLifter->ShiftHandlerShiftOp(N, IRB);
-  Value *shifted = alm->VisitMap[N];
+  Value *shifted = getSavedValue(N);
 
   // operation
   Value *Res = NULL;
@@ -212,7 +212,7 @@ void LogicalLifter::TstHandlerRS(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // Dummy CPSR, not used, Flags are used instead if necessary
   Value *dummyCPSR = getConstant("0");
 
-  alm->VisitMap[N] = dummyCPSR;
+  saveNodeValue(N, dummyCPSR);
 }
 
 // BITWISE register immediate
@@ -266,7 +266,7 @@ void LogicalLifter::BitwiseHandlerRI(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
     flags->WriteCFconstant(IRB, constant);
   }
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 // Bitwise register register
@@ -316,7 +316,7 @@ void LogicalLifter::BitwiseHandlerRR(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
     flags->WriteCFShiftL(IRB, Op1, getConstant("0"));
   }
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 // Bitwise register shift
@@ -327,7 +327,7 @@ void LogicalLifter::BitwiseHandlerRS(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // shift operation
   ShiftLifter *shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("FLAGS"));
   shiftLifter->ShiftHandlerShiftOp(N, IRB);
-  Value *shifted = alm->VisitMap[N];
+  Value *shifted = getSavedValue(N);
 
   // operation
   Value *Res = NULL;
@@ -366,5 +366,5 @@ void LogicalLifter::BitwiseHandlerRS(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
     // computed by the shift
   }
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }

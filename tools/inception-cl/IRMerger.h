@@ -91,24 +91,6 @@ class IRMerger {
   Decompiler* DEC;
 
   StringRef* function_name;
-
-  Value* getReg(StringRef name) {
-    Module* mod = DEC->getModule();
-    Value* Reg = mod->getGlobalVariable(name);
-
-    if (Reg == NULL) {
-      Type* Ty = IntegerType::get(*(DEC->getContext()), 32);
-
-      Constant* Initializer = Constant::getNullValue(Ty);
-
-      Reg = new GlobalVariable(*mod,   // Module
-                               Ty,     // Type
-                               false,  // isConstant
-                               GlobalValue::CommonLinkage, Initializer, name);
-    }
-
-    return Reg;
-  }
 };
 
 }  // end namespace fracture

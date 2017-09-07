@@ -13,14 +13,14 @@
 // code gen types, passes, etc..
 //
 //===----------------------------------------------------------------------===//
+#include "llvm/Support/ErrorHandling.h"
 
 #ifndef ARMBASEINFO_H
 #define ARMBASEINFO_H
 
-// #include "ARMMCTargetDesc.h"
-#include "llvm/Support/ErrorHandling.h"
 #define GET_REGINFO_ENUM
 #define GET_INSTRINFO_ENUM
+
 #include "ARMGenRegisterInfo.inc"
 #include "ARMGenInstrInfo.inc"
 

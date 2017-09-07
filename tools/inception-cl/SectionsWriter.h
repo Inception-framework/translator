@@ -36,6 +36,8 @@
 #include <llvm/Support/FormattedStream.h>
 #include <llvm/Support/MathExtras.h>
 
+#include "Utils/Builder.h"
+
 using namespace fracture;
 using namespace llvm;
 
@@ -86,11 +88,11 @@ class SectionsWriter {
     DataSection->setAlignment(4);
 
     c_4 = ConstantInt::get(mod->getContext(), APInt(32, 2));
-    Value* R0 = getReg("R0", mod);
+    Value* R0 = Reg("R0");
 
     constant = ConstantInt::get(mod->getContext(), APInt(32, 0));
 
-    for (auto i = 0; i < (size / 4); i++) {
+    for (uint64_t i = 0; i < (size / 4); i++) {
       uint64_t Address = i * 4 + CurSectionMemory->getBase();
 
       if (SectionName.equals(".data")) {
@@ -113,21 +115,6 @@ class SectionsWriter {
 
       ptr = IRB->CreateAdd(c_addr, c_4);
     }
-  }
-
-  static Value* getReg(StringRef name, Module* mod) {
-    Value* Reg = mod->getGlobalVariable(name);
-
-    if (Reg == NULL) {
-      Type* Ty = IntegerType::get(mod->getContext(), 32);
-
-      Reg = new GlobalVariable(*mod,   // Module
-                               Ty,     // Type
-                               false,  // isConstant
-                               GlobalValue::CommonLinkage, 0, name);
-    }
-
-    return Reg;
   }
 };
 #endif

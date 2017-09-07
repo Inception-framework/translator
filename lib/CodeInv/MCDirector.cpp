@@ -17,7 +17,10 @@
 
 #include "CodeInv/MCDirector.h"
 
+#include "Utils/ErrorHandling.h"
+
 using namespace llvm;
+using namespace inception;
 
 namespace fracture {
 
@@ -31,9 +34,9 @@ MCDirector::MCDirector(std::string TripleName,
   raw_ostream &InfoOut,
   raw_ostream &ErrOut) : Infos(InfoOut), Errs(ErrOut) {
 
-  printInfo("Using Triple: " + TripleName);
-  printInfo("Using CPU: " + CPUName.str());
-  printInfo("Using Features: " + Features.str());
+  inception_message("Using Triple: %s", TripleName.c_str());
+  inception_message("Using CPU: %s", CPUName.str().c_str());
+  inception_message("Using Features: %s", Features.str().c_str());
 
   LLVMCtx = &getGlobalContext();
 

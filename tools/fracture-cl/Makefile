@@ -13,7 +13,7 @@ TOOLNAME=fracture-cl
 #
 # List libraries that we'll need
 #
-USEDLIBS = Commands.a FractureCodeInv.a FractureARMCodeInv.a TypeRecovery.a
+USEDLIBS = Commands.a FractureCodeInv.a FractureARMCodeInv.a TypeRecovery.a Utils.a
 
 #
 # LLVM Components we wish to link with.

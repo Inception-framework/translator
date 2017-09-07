@@ -11,6 +11,8 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 
+using namespace fracture;
+
 class AssemblySupport {
  public:
   static void ImportAll(llvm::Module* mod, const Disassembler* Dis) {

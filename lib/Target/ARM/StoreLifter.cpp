@@ -1,6 +1,6 @@
 #include "Target/ARM/StoreLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -53,34 +53,23 @@ void StoreLifter::registerLifter() {
 }
 
 void StoreLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
   info->iRn_max = N->getNumOperands();
   index = info->iRd;
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
-  Value* Rd_init = Rd;
 
-  // Value* Rn = NULL;
-  // while ((index = info->getNext()) != -1) {
-  //
-  //   Rd = UpdateRd(Rd, getConstant("4"), IRB, false);
-  //
-  //   Rn = visit(N->getOperand(index).getNode(), IRB);
-  //
-  //   Rn = WriteReg(Rn, Rd, IRB, info->width);
-  // }
-
-  uint32_t j = info->iRn_max - info->iRn - 1;
-  uint32_t inv_rn[j];
-  while ((index = info->getNext()) != -1) inv_rn[j--] = index;
+  uint32_t j = info->iRn_max - info->iRn;
+  uint32_t* inv_rn = new uint32_t[j];
+  while ((index = info->getNext()) != -1) {
+    inv_rn[--j] = index;
+  }
 
   Value* Rn = NULL;
   for (auto i = 0; i < (info->iRn_max - info->iRn); i++) {
     index = inv_rn[i];
-
-    llvm::errs() << " At index " << i << " = " << index << "\n";
 
     Rd = UpdateRd(Rd, getConstant("4"), IRB, false);
 
@@ -93,10 +82,12 @@ void StoreLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
     saveNodeValue(N, Rd);
   else
     saveNodeValue(N, Rn);
+
+  delete [] inv_rn;
 }
 
 void StoreLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -107,7 +98,7 @@ void StoreLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   index = info->iOffset;
   Value* Offset = visit(N->getOperand(index).getNode(), IRB);
 
-  if(N->getMachineOpcode() != ARM::t2STRD_POST)
+  if (N->getMachineOpcode() != ARM::t2STRD_POST)
     Rd_init = Rd = UpdateRd(Rd, Offset, IRB, true);
 
   Value* Rn = NULL;
@@ -119,23 +110,21 @@ void StoreLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
     if (info->hasManyUses()) Rd = UpdateRd(Rd, getConstant("4"), IRB, true);
   }
 
-  if(N->getMachineOpcode() == ARM::t2STRD_POST) {
+  if (N->getMachineOpcode() == ARM::t2STRD_POST) {
     Rd_init = UpdateRd(Rd_init, Offset, IRB, true);
   }
-  if(N->getMachineOpcode() == ARM::t2STRDi8) {
+  if (N->getMachineOpcode() == ARM::t2STRDi8) {
     saveNodeValue(N, Rn);
   } else
     saveNodeValue(N, Rd_init);
 }
 
-
 void StoreLifter::doPush(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -158,12 +147,11 @@ void StoreLifter::doPush(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void StoreLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -184,13 +172,12 @@ void StoreLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void StoreLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -216,13 +203,12 @@ void StoreLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void StoreLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -248,13 +234,12 @@ void StoreLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void StoreLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
 
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 
@@ -283,12 +268,7 @@ void StoreLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
-  ConstantInt* c4;
-
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  int32_t index;
 
   StoreInfo* info = getInfo(N->getMachineOpcode());
 

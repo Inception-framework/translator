@@ -1,6 +1,6 @@
 #include "Target/ARM/LoadLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -10,11 +10,7 @@ using namespace llvm;
 using namespace fracture;
 
 void LoadLifter::registerLifter() {
-#define REGISTER_LOAD_OPCODE(opcode, handler)                                 \
-  alm->registerLifter(this, std::string("LoadLifter"), (unsigned)ARM::opcode, \
-                      (LifterHandler)&LoadLifter::handler##Handler);
-
-#define REGISTER_LOAD_OPCODE(opcode, handler, composition)              \
+#define REGISTER_LOAD_OPCODE(opcode, handler, composition)               \
   alm->registerLifter(this, std::string("LoadLifter"), (unsigned)opcode, \
                       (LifterHandler)&LoadLifter::do##handler);          \
   info.insert(std::pair<unsigned, LoadInfo*>((unsigned)opcode, composition));
@@ -26,8 +22,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::tLDMIA, Multi, new LoadInfo(4, 1, 0))
   REGISTER_LOAD_OPCODE(ARM::t2LDMIA, Multi, new LoadInfo(4, 1, 0))
 
-  REGISTER_LOAD_OPCODE(ARM::t2LDMDB_UPD, MultiDB,
-                        new LoadInfo(4, 1, -1, 32, 0))
+  REGISTER_LOAD_OPCODE(ARM::t2LDMDB_UPD, MultiDB, new LoadInfo(4, 1, -1, 32, 0))
 
   REGISTER_LOAD_OPCODE(ARM::t2LDMDB, MultiDB, new LoadInfo(4, 1, -1, 32, 0))
 
@@ -63,13 +58,13 @@ void LoadLifter::registerLifter() {
 }
 
 void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
-  Value* PC = Reg("PC");
-  uint32_t debugLoc =
-      alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+  const Disassembler* Dis = alm->Dec->getDisassembler();
+
+  uint32_t debugLoc = Dis->getDebugOffset(N->getDebugLoc());
   debugLoc += 4;
 
   index = info->iOffset;
@@ -82,8 +77,7 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   int64_t offset = OffsetNode->getZExtValue();
 
-  const Disassembler* dis = alm->Dec->getDisassembler();
-  FractureMemoryObject* fmo = dis->getCurSectionMemory();
+  FractureMemoryObject* fmo = Dis->getCurSectionMemory();
 
   if (!fmo->isValidAddress(debugLoc + offset)) {
     llvm::errs() << "[LoadLifter] DoPC encountered a memory adress out of "
@@ -94,28 +88,24 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   uint8_t byte;
   uint32_t value = 0;
   uint64_t address = (debugLoc + offset);
-  address &= ~(1<<1);
+  address &= ~(1 << 1);
   for (int i = 0; i < 4; i++) {
     if (fmo->readByte(&byte, address + i) == -1) {
       llvm::errs() << "[LoadLifter] DoPC encountered a memory adress out of "
                       "current section ...";
       return;
     } else {
-      // printf("Read at 0x%08x the value 0x%02x\n", address+i, byte);
-      value |= byte<<(i*8);
+      value |= byte << (i * 8);
     }
   }
-  // printf("Read at 0x%08x the value 0x%08x\n", address, value);
 
-  Value* Rd = ConstantInt::get(alm->getContextRef(), APInt(32, value));
+  Value* Rd = ConstantInt::get(IContext::getContextRef(), APInt(32, value));
 
   saveNodeValue(N, Rd);
 }
 
 void LoadLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
-
-  ConstantInt* c4;
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -148,7 +138,7 @@ void LoadLifter::doD(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
 void LoadLifter::doDPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Value* Rn = NULL;
-  uint32_t index;
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -181,7 +171,7 @@ void LoadLifter::doDPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
 void LoadLifter::doDPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Value* Rn = NULL;
-  uint32_t index;
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -219,12 +209,11 @@ void LoadLifter::doDPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void LoadLifter::doPop(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -249,12 +238,11 @@ void LoadLifter::doPop(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -262,7 +250,6 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   index = info->iRd;
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
 
-  Value* Rn = NULL;
   while ((index = info->getNext()) != -1) {
     SDNode* pred = N->getOperand(index).getNode();
 
@@ -270,7 +257,7 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
     Value* value = ReadReg(Rd, IRB, info->width);
 
-    Rn = WriteReg(value, Dest, IRB, info->width);
+    WriteReg(value, Dest, IRB, info->width);
 
     if (info->hasManyUses()) Rd = UpdateRd(Rd, c4, IRB, true);
   }
@@ -279,12 +266,11 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void LoadLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
+  int32_t index;
   ConstantInt* c4;
 
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  c4 = ConstantInt::get(IContext::getContextRef(),
+                        APInt(32, StringRef("4"), 10));
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -292,11 +278,12 @@ void LoadLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   index = info->iRd;
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
 
-  uint32_t j = info->iRn_max - 1 - info->iRn;
-  uint32_t inv_rn[j];
-  while ((index = info->getNext()) != -1) inv_rn[j--] = index;
+  uint32_t j = info->iRn_max - info->iRn;
+  uint32_t* inv_rn = new uint32_t[j];
+  while ((index = info->getNext()) != -1) {
+    inv_rn[--j] = index;
+  }
 
-  Value* Rn = NULL;
   for (auto i = 0; i < (info->iRn_max - info->iRn); i++) {
     index = inv_rn[i];
 
@@ -310,27 +297,22 @@ void LoadLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
     Value* value = ReadReg(Rd, IRB, info->width);
 
-    Rn = WriteReg(value, Dest, IRB, info->width);
+    WriteReg(value, Dest, IRB, info->width);
   }
 
   saveNodeValue(N, Rd);
+
+  delete[] inv_rn;
 }
 
 void LoadLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
-
-  ConstantInt* c4;
-
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
   index = info->iRd;
   std::string AddrRegName = getReg(N->getOperand(index).getNode());
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
-  Value* Rd_temp = Rd;
 
   index = info->iOffset;
   Value* Offset = visit(N->getOperand(index).getNode(), IRB);
@@ -352,13 +334,7 @@ void LoadLifter::doPost(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void LoadLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
-
-  ConstantInt* c4;
-
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -386,13 +362,7 @@ void LoadLifter::doPre(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void LoadLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
-
-  ConstantInt* c4;
-
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
@@ -415,12 +385,7 @@ void LoadLifter::doSigned(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 }
 
 void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
-  uint32_t index;
-  ConstantInt* c4;
-
-  Type* Ty_word = IntegerType::get(alm->getContextRef(), 32);
-
-  c4 = ConstantInt::get(alm->getContextRef(), APInt(32, StringRef("4"), 10));
+  int32_t index;
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 

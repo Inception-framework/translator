@@ -1,6 +1,6 @@
 #include "Target/ARM/MoveDataLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -59,7 +59,6 @@ void MoveDataLifter::registerLifter() {
 }
 
 void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
-  N->dump();
 
   Value* Op0 = visit(N->getOperand(0).getNode(), IRB);
 
@@ -84,7 +83,7 @@ void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
     }
   }
 
-  alm->VisitMap[N] = Op0;
+  saveNodeValue(N, Op0);
 }
 
 void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
@@ -95,14 +94,12 @@ void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
   if (opcode == ARM::t2MVNs) {
     ShiftLifter* shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("FLAGS"));
     shiftLifter->ShiftHandlerShiftOp(N, IRB);
-    Op0 = alm->VisitMap[N];
+    Op0 = getSavedValue(N);
   } else {
     Op0 = visit(N->getOperand(0).getNode(), IRB);
   }
-  Op0->dump();
 
   Value* Res = IRB->CreateNot(Op0);
-  Res->dump();
 
   if (IsSetFlags(N)) {
     // Write the flag updates.
@@ -128,5 +125,5 @@ void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
     }
   }
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }

@@ -17,6 +17,9 @@
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/IR/IRBuilder.h"
 
+#include "Utils/Builder.h"
+#include "Utils/IContext.h"
+
 #ifndef ARM_LIFTER_H
 #define ARM_LIFTER_H
 
@@ -44,12 +47,11 @@ class ARMLifter {
  protected:
   llvm::Value* visit(const llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 
+  #define HANDLER(name) \
+    void name##Handler(llvm::SDNode* N, IRBuilder<>* IRB) { AddHandler(N, IRB); };
+
   // Store handler for each supported opcode
   std::map<unsigned, LifterHandler> solver;
-
-  ARMLifterManager* alm;
-
-  std::string getReg(const SDNode* N);
 
   llvm::Value* visitRegister(const llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 
@@ -59,37 +61,8 @@ class ARMLifter {
 
   llvm::Value* visitConstant(const llvm::SDNode* N);
 
-  Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width = 32,
-                  bool extend = true);
+  ARMLifterManager* alm;
 
-  Value* ReadReg(Value* Rd, IRBuilder<>* IRB, int Width=32);
-
-  Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB);
-
-  Value* saveNodeValue(SDNode* N, Value* Rn);
-
-  Value* UpdateRd(Value* Rn, Value* Offset, IRBuilder<>* IRB, bool Increment);
-
-  Value* getConstant(StringRef value);
-
-  Value* getConstant(uint32_t value);
-
-  Value* Reg(StringRef name);
-
-  Value* Bool2Int(Value* v, IRBuilder<>* IRB);
-
-  bool IsSigned(SDNode* N);
-
-  bool IsSetFlags(SDNode* N);
-
-  bool IsCPSR(SDNode* N);
-
-  bool IsPC(SDNode* N);
-
-  SDNode* LookUpSDNode(SDNode* N, std::string name);
-
-  void ThumbExpandImmediateCarry(Value* expanded, Value* carry, const SDNode* N,
-                                 IRBuilder<>* IRB);
 };
 
 #endif

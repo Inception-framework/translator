@@ -45,7 +45,6 @@ class LoadInfo {
       return iRn_max;
     }
 
-
     if (next >= iRn_max) {
       next = iRn;
       return -1;
@@ -54,34 +53,33 @@ class LoadInfo {
   };
 
   LoadInfo(int32_t _n, int32_t _d, int32_t _o, int32_t width = 32,
-            int32_t _n_max = -1, bool _shifted = false)
-      : iOffset(_o),
+           int32_t _n_max = -1, bool _shifted = false)
+      : next(_n),
+        iOffset(_o),
         iRn(_n),
-        next(_n),
-        iRd(_d),
         iRn_max(_n_max),
+        iRd(_d),
         width(width),
         shifted(_shifted) {}
 
   LoadInfo(int32_t _n, int32_t _d, int32_t _o, int32_t width, bool _shifted)
-      : iOffset(_o),
+      : next(_n),
+        iOffset(_o),
         iRn(_n),
-        next(_n),
-        iRd(_d),
         iRn_max(-1),
+        iRd(_d),
         width(width),
         shifted(_shifted) {}
 
   LoadInfo(int32_t _n, int32_t _d, int32_t _o, bool _shifted)
-      : iOffset(_o),
+      : next(_n),
+        iOffset(_o),
         iRn(_n),
-        next(_n),
-        iRd(_d),
         iRn_max(-1),
+        iRd(_d),
         width(32),
         shifted(_shifted) {}
 };
-
 
 class LoadLifter : public ARMLifter {
  public:
@@ -89,7 +87,7 @@ class LoadLifter : public ARMLifter {
 
   LoadLifter(ARMLifterManager* _alm) : ARMLifter(_alm){};
 
-  ~LoadLifter(){};
+  ~LoadLifter() { info.clear(); };
 
  protected:
   void LifteNode(LoadInfo* info, llvm::IRBuilder<>* IRB);
@@ -145,20 +143,20 @@ class LoadLifter : public ARMLifter {
     return NULL;
   }
 
-#define HANDLER_LOAD2(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
+#define HANDLER_LOAD(name) void do##name(llvm::SDNode* N, IRBuilder<>* IRB);
 
-  HANDLER_LOAD2(DPost)
-  HANDLER_LOAD2(DPre)
-  HANDLER_LOAD2(D)
-  HANDLER_LOAD2(Post)
-  HANDLER_LOAD2(Pre)
-  HANDLER_LOAD2(Signed)
-  HANDLER_LOAD2(Multi)
-  HANDLER_LOAD2(Pop)
-  HANDLER_LOAD2(Common)
-  HANDLER_LOAD2(MultiDB)
-  HANDLER_LOAD2(PC)
-// Declare each handler
+  HANDLER_LOAD(DPost)
+  HANDLER_LOAD(DPre)
+  HANDLER_LOAD(D)
+  HANDLER_LOAD(Post)
+  HANDLER_LOAD(Pre)
+  HANDLER_LOAD(Signed)
+  HANDLER_LOAD(Multi)
+  HANDLER_LOAD(Pop)
+  HANDLER_LOAD(Common)
+  HANDLER_LOAD(MultiDB)
+  HANDLER_LOAD(PC)
+  // Declare each handler
 };
 
 #endif

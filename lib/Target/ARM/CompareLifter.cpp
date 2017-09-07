@@ -1,7 +1,7 @@
 #include "Target/ARM/CompareLifter.h"
 #include "Target/ARM/FlagsLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -66,7 +66,7 @@ void CompareLifter::CompareHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   // Dummy CPSR, not used, Flags are used instead if necessary
   Value *dummyCPSR = getConstant("0");
 
-  alm->VisitMap[N] = dummyCPSR;
+  saveNodeValue(N, dummyCPSR);
 }
 
 // CMN
@@ -93,7 +93,7 @@ void CompareLifter::CompareNHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   // Dummy CPSR, not used, Flags are used instead if necessary
   Value *dummyCPSR = getConstant("0");
 
-  alm->VisitMap[N] = dummyCPSR;
+  saveNodeValue(N, dummyCPSR);
 }
 
 ARMCMPInfo *CompareLifter::RetrieveGraphInformation(SDNode *N,

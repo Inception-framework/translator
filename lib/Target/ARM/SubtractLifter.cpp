@@ -1,6 +1,6 @@
 #include "Target/ARM/SubtractLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
@@ -55,22 +55,6 @@ void SubtractLifter::registerLifter() {
                       (LifterHandler)&SubtractLifter::SbcHandler);
 }
 
-// void SubtractLifter::SubHandler(SDNode *N, IRBuilder<> *IRB) {
-//  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-//  Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
-//
-//  unsigned opcode = N->getMachineOpcode();
-//  switch(opcode) {
-//    case ARM::tSUBspi:
-//      Op1 = IRB->CreateMul(Op1, getConstant("4"));
-//  }
-//
-//  Instruction *Res =
-//      dyn_cast<Instruction>(IRB->CreateSub(Op0, Op1));
-//
-//  saveNodeValue(N, Res);
-//}
-
 void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
   Value *Op1 = visit(N->getOperand(1).getNode(), IRB);
@@ -103,7 +87,7 @@ void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
     flags->WriteCFAdc(IRB, Res, Res_add);
   }
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
 
 void SubtractLifter::SbcHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
@@ -132,6 +116,5 @@ void SubtractLifter::SbcHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
     flags->WriteCFAdc(IRB, Res, Res_add);
   }
 
-  alm->VisitMap[N] = Res;
+  saveNodeValue(N, Res);
 }
-

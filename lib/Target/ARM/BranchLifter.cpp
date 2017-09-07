@@ -1,12 +1,15 @@
 #include "Target/ARM/BranchLifter.h"
 
-#include "ARMBaseInfo.h"
+#include "Target/ARM/ARMBaseInfo.h"
 #include "Target/ARM/ARMISD.h"
 #include "Target/ARM/ARMLifterManager.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 #include <vector>
+
+#include "Utils/Builder.h"
+#include "Utils/IContext.h"
 
 using namespace llvm;
 using namespace fracture;
@@ -35,7 +38,7 @@ void BranchLifter::registerLifter() {
 void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
   Instruction *Ret = IRB->CreateRetVoid();
   Ret->setDebugLoc(N->getDebugLoc());
-  alm->VisitMap[N] = Ret;
+  saveNodeValue(N, Ret);
   return;
 }
 
@@ -50,8 +53,6 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   uint32_t DestInt = DestNode->getSExtValue();
   uint32_t PC = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
   // Note: pipeline is 8 bytes
-  outs() << "Target = PC + 4 + DestInt = " << PC << " + 4 + " << DestInt
-         << "\n";
   uint32_t Tgt = PC + 4 + DestInt;
 
   Function *F = IRB->GetInsertBlock()->getParent();
@@ -71,7 +72,7 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   if (ARMcc == ARMCC::AL) {
     Instruction *Br = IRB->CreateBr(BBTgt);
     Br->setDebugLoc(N->getDebugLoc());
-    alm->VisitMap[N] = Br;
+    saveNodeValue(N, Br);
     return;
   }
 
@@ -205,7 +206,7 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   // Conditional branch
   Instruction *Br = IRB->CreateCondBr(Cmp, BBTgt, NextBB);
   Br->setDebugLoc(N->getDebugLoc());
-  alm->VisitMap[N] = Br;
+  saveNodeValue(N, Br);
   return;
 }
 
@@ -231,11 +232,11 @@ void BranchLifter::BranchHandlerBLXr(SDNode *N, IRBuilder<> *IRB) {
   Rm = IRB->CreateAnd(Rm, getConstant("4294967294"));  // remove last bit
 
   // if necessary create the indirect call promotion function
-  Function *icp = alm->Mod->getFunction("icp");
+  Function *icp = IContext::Mod->getFunction("icp");
   if (icp == NULL) {
-    Constant *c = alm->Mod->getOrInsertFunction(
-        "icp", Type::getVoidTy(alm->getContextRef()),
-        IntegerType::get(alm->getContextRef(), 32), NULL);
+    Constant *c = IContext::Mod->getOrInsertFunction(
+        "icp", Type::getVoidTy(IContext::getContextRef()),
+        IntegerType::get(IContext::getContextRef(), 32), NULL);
     icp = cast<Function>(c);
     icp->setCallingConv(CallingConv::C);
     Function::arg_iterator args = icp->arg_begin();
@@ -252,7 +253,7 @@ void BranchLifter::BranchHandlerBLXr(SDNode *N, IRBuilder<> *IRB) {
     IRBuilder<> *bbIRB = NULL;
 
     BasicBlock *entry_block =
-        BasicBlock::Create(alm->getContextRef(), "entry", icp);
+        BasicBlock::Create(IContext::getContextRef(), "entry", icp);
 
     unsigned num_cases = 0;
     std::vector<ConstantInt *> addresses;
@@ -284,8 +285,8 @@ void BranchLifter::BranchHandlerBLXr(SDNode *N, IRBuilder<> *IRB) {
         NameRef = StringRef(FOut.str());
       }
       // if the register points to the function, call it
-      outs() << "FUNCTION " << NameRef << " " << (unsigned)SymAddr << "\n";
-      BasicBlock *bb = BasicBlock::Create(alm->getContextRef(),
+      // outs() << "FUNCTION " << NameRef << " " << (unsigned)SymAddr << "\n";
+      BasicBlock *bb = BasicBlock::Create(IContext::getContextRef(),
                                           "call_" + NameRef.str(), icp);
       bbIRB = new IRBuilder<>(bb);
       CallHandler(NULL, bbIRB, (unsigned)SymAddr);
@@ -293,17 +294,17 @@ void BranchLifter::BranchHandlerBLXr(SDNode *N, IRBuilder<> *IRB) {
       delete bbIRB;
       num_cases++;
       // Value *cmp = prevIRB->CreateICmpEQ(
-      //    ptr_reg, ConstantInt::get(alm->getContextRef(),
+      //    ptr_reg, ConstantInt::get(IContext::getContextRef(),
       //                              APInt(32, (unsigned)SymAddr, 10)));
       SymAddr &= 0xfffffffe;  // remove last bit
-      ConstantInt *addr = ConstantInt::get(alm->getContextRef(),
+      ConstantInt *addr = ConstantInt::get(IContext::getContextRef(),
                                            APInt(32, (unsigned)SymAddr, 10));
       addresses.push_back(addr);
       blocks.push_back(bb);
     }
 
     BasicBlock *end_block =
-        BasicBlock::Create(alm->getContextRef(), "end", icp);
+        BasicBlock::Create(IContext::getContextRef(), "end", icp);
     bbIRB = new IRBuilder<>(end_block);
     bbIRB->CreateRetVoid();
     delete bbIRB;
@@ -311,14 +312,14 @@ void BranchLifter::BranchHandlerBLXr(SDNode *N, IRBuilder<> *IRB) {
     IRBuilder<> *entryIRB = new IRBuilder<>(entry_block);
     SwitchInst *sw = entryIRB->CreateSwitch(ptr_reg, end_block, num_cases);
 
-    for (int i = 0; i < num_cases; i++) {
+    for (unsigned int i = 0; i < num_cases; i++) {
       sw->addCase(addresses[i], blocks[i]);
     }
   }
 
   IRB->CreateCall(icp, Rm);
   Value *dummyLR = getConstant("0");
-  alm->VisitMap[N] = dummyLR;
+  saveNodeValue(N, dummyLR);
 }
 
 void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
@@ -348,18 +349,20 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
     } else if (I->getType()->isIntegerTy()) {
       Value *Res = ReadReg(Reg(reg_name), IRB);
       Res = IRB->CreateTrunc(
-          Res, IntegerType::get(alm->getContextRef(),
+          Res, IntegerType::get(IContext::getContextRef(),
                                 I->getType()->getIntegerBitWidth()));
       Args.push_back(Res);
       reg_name[1]++;
     } else if (I->getType()->isArrayTy()) {
-      Type *Ty = ArrayType::get(IntegerType::get(alm->getContextRef(), 32),
-                                I->getType()->getArrayNumElements());
+      Type *Ty = ArrayType::get(
+          IntegerType::get(IContext::getContextRef(), 32),
+          I->getType()->getArrayNumElements());
       Value *array = IRB->CreateAlloca(Ty);
-      for (int i = 0; i < I->getType()->getArrayNumElements(); i++) {
+      for (unsigned int i = 0; i < I->getType()->getArrayNumElements(); i++) {
         Value *IdxList[2];
         IdxList[0] = getConstant("0");
-        IdxList[1] = ConstantInt::get(alm->getContextRef(), APInt(32, i, 10));
+        IdxList[1] = ConstantInt::get(IContext::getContextRef(),
+                                      APInt(32, i, 10));
         Value *ptr = IRB->CreateGEP(array, IdxList);
         IRB->CreateStore(ReadReg(Reg(reg_name), IRB), ptr);
         reg_name[1]++;
@@ -372,20 +375,19 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
     }
   }
 
-  FunctionType *FT = FunctionType::get(
-      Func->getReturnType(), ArgTypes, false);
+  FunctionType *FT = FunctionType::get(Func->getReturnType(), ArgTypes, false);
 
   Twine TgtAddr(Tgt);
 
-  outs() << " =========================== \n\n";
-  outs() << "Tgt        :  " << format("%8" PRIx64, Tgt) << '\n';
-  outs() << "instrSize  :  " << format("%8" PRIx64, 4) << '\n';
-  outs() << "FName      :  " << FName << '\n';
-  outs() << " =========================== \n\n";
+  // outs() << " =========================== \n\n";
+  // outs() << "Tgt        :  " << format("%8" PRIx64, Tgt) << '\n';
+  // outs() << "instrSize  :  " << format("%8" PRIx64, 4) << '\n';
+  // outs() << "FName      :  " << FName << '\n';
+  // outs() << " =========================== \n\n";
 
   AttributeSet AS;
-  AS = AS.addAttribute(alm->getContextRef(), AttributeSet::FunctionIndex,
-                       "Address", TgtAddr.str());
+  AS = AS.addAttribute(IContext::getContextRef(),
+                       AttributeSet::FunctionIndex, "Address", TgtAddr.str());
 
   Function *Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
 
@@ -393,10 +395,11 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
   Value *Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
   if (!Func->getReturnType()->isVoidTy()) {
     if (Func->getReturnType()->isPointerTy()) {
-      Call =
-          IRB->CreatePtrToInt(Call, IntegerType::get(alm->getContextRef(), 32));
+      Call = IRB->CreatePtrToInt(
+          Call, IntegerType::get(IContext::getContextRef(), 32));
     } else if (Func->getReturnType()->isIntegerTy()) {
-      Call = IRB->CreateZExt(Call, IntegerType::get(alm->getContextRef(), 32));
+      Call = IRB->CreateZExt(
+          Call, IntegerType::get(IContext::getContextRef(), 32));
     }
 
     WriteReg(Call, Reg("R0"), IRB);
@@ -404,7 +407,7 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
 
   if (N != NULL) {
     Value *dummyLR = getConstant("0");
-    alm->VisitMap[N] = dummyLR;
+    saveNodeValue(N, dummyLR);
   }
   return;
 
@@ -422,8 +425,6 @@ void BranchLifter::BranchHandlerCB(SDNode *N, IRBuilder<> *IRB) {
   uint32_t DestInt = DestNode->getSExtValue();
   uint32_t PC = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
   // Note: pipeline is 8 bytes
-  outs() << "Target = PC + 4 + DestInt = " << PC << " + 4 + " << DestInt
-         << "\n";
   uint32_t Tgt = PC + 4 + DestInt;
 
   Function *F = IRB->GetInsertBlock()->getParent();
@@ -462,6 +463,6 @@ void BranchLifter::BranchHandlerCB(SDNode *N, IRBuilder<> *IRB) {
   // Conditional branch
   Instruction *Br = IRB->CreateCondBr(Cmp, BBTgt, NextBB);
   Br->setDebugLoc(N->getDebugLoc());
-  alm->VisitMap[N] = Br;
+  saveNodeValue(N, Br);
   return;
 }
