@@ -50,7 +50,6 @@ class FunctionCleaner {
 
       std::vector<Instruction*>::reverse_iterator rit;
       for (rit = removeList.rbegin(); rit != removeList.rend(); ++rit) {
-        const Instruction* instruction = *rit;
         (*rit)->dropAllReferences();
         (*rit)->eraseFromParent();
       }

@@ -86,8 +86,7 @@
 
 #include "Utils/Builder.h"
 #include "Utils/ErrorHandling.h"
-// #include "InterruptSupport.h"
-// InterruptSupport::WriteInterruptPrologue(mod);
+#include "InterruptSupport.h"
 
 using namespace llvm;
 using namespace fracture;
@@ -276,6 +275,8 @@ static std::error_code runInception(StringRef FileName) {
     return make_error_code(std::errc::not_supported);
   }
 
+  IContext::Mod = module;
+
   std::set<std::string> asm_functions;
 
   inception_message("\n");
@@ -308,6 +309,17 @@ static std::error_code runInception(StringRef FileName) {
 
     merger->Run(llvm::StringRef(str));
     inception_message("Done");
+  }
+
+  inception_message("\n");
+  //Which IRQ handlers should we patch ?
+  StringRef handlers[] = {""};
+
+  //Iterate over each handlers
+  for(auto handler: handlers) {
+    /*This adds instructions sequence to stacked current context */
+    InterruptSupport::WriteInterruptPrologue(handler);
+    InterruptSupport::WriteInterruptEpilogue(handler);
   }
 
   std::string bc_output(FileName.str());

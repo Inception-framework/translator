@@ -11,6 +11,8 @@
 #include <llvm/IR/Function.h>
 #include <llvm/IR/Module.h>
 
+#include "Utils/IContext.h"
+
 using namespace fracture;
 
 class AssemblySupport {
@@ -56,7 +58,13 @@ class AssemblySupport {
     FunctionType* FType = FunctionType::get(
         Type::getPrimitiveType(mod->getContext(), Type::VoidTyID), false);
 
-    mod->getOrInsertFunction(name, FType);
+    Constant* fct = mod->getOrInsertFunction(name, FType);
+    Function* function = dyn_cast<Function>(fct);
+
+    BasicBlock* bb = BasicBlock::Create(IContext::getContextRef(), "entry", function);
+
+    IRBuilder<> *IRB = new IRBuilder<>(bb);
+    IRB->CreateRetVoid();
   }
 };
 
