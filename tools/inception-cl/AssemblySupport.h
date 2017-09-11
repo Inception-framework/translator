@@ -17,11 +17,15 @@ using namespace fracture;
 
 class AssemblySupport {
  public:
-  static void ImportAll(llvm::Module* mod, const Disassembler* Dis) {
+  static void ImportAll(llvm::Module* mod, Disassembler* Dis) {
     uint64_t SymAddr;
     llvm::StringRef SymName;
     object::SymbolRef::Type SymbolTy;
     std::error_code ec;
+
+    if (Dis->getExecutable()->symbols().begin() ==
+        Dis->getExecutable()->symbols().end())
+      return;
 
     for (object::symbol_iterator I = Dis->getExecutable()->symbols().begin(),
                                  E = Dis->getExecutable()->symbols().end();
@@ -61,9 +65,10 @@ class AssemblySupport {
     Constant* fct = mod->getOrInsertFunction(name, FType);
     Function* function = dyn_cast<Function>(fct);
 
-    BasicBlock* bb = BasicBlock::Create(IContext::getContextRef(), "entry", function);
+    BasicBlock* bb =
+        BasicBlock::Create(IContext::getContextRef(), "entry", function);
 
-    IRBuilder<> *IRB = new IRBuilder<>(bb);
+    IRBuilder<>* IRB = new IRBuilder<>(bb);
     IRB->CreateRetVoid();
   }
 };

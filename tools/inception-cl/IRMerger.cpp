@@ -21,10 +21,10 @@ IRMerger::IRMerger(Decompiler* P_DEC) : DEC(P_DEC) {}
 IRMerger::~IRMerger() {}
 
 void IRMerger::Run(llvm::StringRef name) {
-  Module* mod = DEC->getModule();
+  Module* mod = IContext::Mod;
 
   if (IRMerger::first_call) {
-    AssemblySupport::ImportAll(mod, DEC->getDisassembler());
+    AssemblySupport::ImportAll(mod, (Disassembler*)DEC->getDisassembler());
   }
 
   Function* fct = mod->getFunction(name);
@@ -58,13 +58,30 @@ void IRMerger::Run(llvm::StringRef name) {
 }
 
 void IRMerger::Decompile(llvm::StringRef name) {
-  uint64_t Address;
+  uint64_t address;
 
-  if (nameLookupAddr(name, Address) == false) {
-    return;
+  if (nameLookupAddr(name, address) == false) {
+    inception_error("Wrong symbol table, function %s undefined", name);
   }
 
-  DEC->decompile(Address);
+  Disassembler* DIS = (Disassembler*)DEC->getDisassembler();
+
+  std::string fileName = name.str() + std::string(".dis");
+
+  DIS->setDisassFileNameAndAddr(fileName, address);
+
+  std::error_code ErrorInfo;
+  raw_fd_ostream FOut(fileName, ErrorInfo, sys::fs::OpenFlags::F_RW);
+  formatted_raw_ostream Out(FOut, false);
+
+  StringRef SectionName;
+  object::SectionRef Section = DIS->getSectionByAddress(address);
+  DIS->setSection(Section);
+
+  if(DIS->printInstructions(Out, address, 0, false) != 0)
+    inception_warning("Cannot create disassembled file for %s", name);
+
+  DEC->decompile(address);
 }
 
 void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
@@ -86,7 +103,6 @@ void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
       auto next = inst->getNextNode();
 
       if ((ret = dyn_cast<ReturnInst>(inst)) != NULL) {
-
         Value* reg = Reg(StringRef("R0"));
 
         StringRef name("R0_RET" + std::to_string(ret_counter));
