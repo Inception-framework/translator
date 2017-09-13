@@ -78,7 +78,7 @@ void IRMerger::Decompile(llvm::StringRef name) {
   object::SectionRef Section = DIS->getSectionByAddress(address);
   DIS->setSection(Section);
 
-  if(DIS->printInstructions(Out, address, 0, false) != 0)
+  if (DIS->printInstructions(Out, address, 0, false) == 0)
     inception_warning("Cannot create disassembled file for %s", name);
 
   DEC->decompile(address);
