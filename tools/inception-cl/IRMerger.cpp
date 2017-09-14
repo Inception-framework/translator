@@ -1,10 +1,6 @@
 #include "IRMerger.h"
 
-#include "AssemblySupport.h"
 #include "FunctionCleaner.h"
-#include "FunctionsHelperWriter.h"
-#include "SectionsWriter.h"
-#include "StackAllocator.h"
 #include "Utils/Builder.h"
 #include "Utils/IContext.h"
 
@@ -12,20 +8,12 @@ extern bool nameLookupAddr(StringRef funcName, uint64_t& Address);
 
 namespace fracture {
 
-bool IRMerger::first_call = true;
-
-std::map<std::string, SDNode*> IRMerger::registersNodes = {};
-
 IRMerger::IRMerger(Decompiler* P_DEC) : DEC(P_DEC) {}
 
 IRMerger::~IRMerger() {}
 
 void IRMerger::Run(llvm::StringRef name) {
   Module* mod = IContext::Mod;
-
-  if (IRMerger::first_call) {
-    AssemblySupport::ImportAll(mod, (Disassembler*)DEC->getDisassembler());
-  }
 
   Function* fct = mod->getFunction(name);
 
@@ -41,30 +29,16 @@ void IRMerger::Run(llvm::StringRef name) {
   Decompile(name);
 
   WriteABIEpilogue(fct);
-
-  Function* main = DEC->getModule()->getFunction("main");
-  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, mod, main);
-  FunctionsHelperWriter::Write(BEGIN, INIT_STACK, mod, main);
-
-  if (IRMerger::first_call) {
-    IRMerger::first_call = false;
-    // Init the stack
-    StackAllocator::Allocate(mod, DEC->getDisassembler());
-    StackAllocator::InitSP(mod, DEC->getDisassembler());
-
-    SectionsWriter::WriteSection(".data", DEC->getDisassembler(), mod);
-    SectionsWriter::WriteSection(".bss", DEC->getDisassembler(), mod);
-  }
 }
 
 void IRMerger::Decompile(llvm::StringRef name) {
   uint64_t address;
 
-  if (nameLookupAddr(name, address) == false) {
+  Disassembler* DIS = (Disassembler*)DEC->getDisassembler();
+
+  if (nameLookupAddr(name, address, DIS) == false) {
     inception_error("Wrong symbol table, function %s undefined", name);
   }
-
-  Disassembler* DIS = (Disassembler*)DEC->getDisassembler();
 
   std::string fileName = name.str() + std::string(".dis");
 

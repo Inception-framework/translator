@@ -705,7 +705,7 @@ BasicBlock *Decompiler::getOrCreateBasicBlock(unsigned Address, Function *F) {
   BasicBlock *FB =
       getOrCreateBasicBlock(StringRef(Twine(F->getName() + "+0").str()), F);
   if (FB->begin() == FB->end()) {
-    printError("Cannot find by address when BasicBlock '+0' is empty!");
+    inception_warning("Cannot find by address when BasicBlock '+0' is empty!");
     return NULL;
   }
   uint64_t FuncAddr = getBasicBlockAddress(FB);

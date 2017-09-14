@@ -34,7 +34,7 @@
 #include "llvm/IR/Metadata.h"
 
 typedef enum FUNCTION_HELPER {
-  INIT_STACK = 0,
+  DUMP_STACK = 0,
   DUMP_REGISTERS = 1
 } FUNCTION_HELPER;
 
@@ -45,7 +45,7 @@ class FunctionsHelperWriter {
   FunctionsHelperWriter(){};
   ~FunctionsHelperWriter(){};
 
-  static void FNHInitStack(llvm::Module* mod, llvm::Instruction* before);
+  static void FNHDumpStack(llvm::Module* mod, llvm::Instruction* before);
 
   static void FNHDumpRegisters(llvm::Module* mod, llvm::Instruction* before);
 

@@ -67,4 +67,8 @@ std::string getRegisterSDNodeName(const RegisterSDNode* R);
 
 Value* createCondition(int cond, IRBuilder<>* IRB);
 
+Constant* GetVoidFunctionPointer(StringRef function_name);
+
+Constant* GetIntIntFunctionPointer(StringRef function_name);
+
 #endif

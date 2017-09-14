@@ -58,35 +58,8 @@ void SVCallLifter::SVCallHandler(SDNode* N, IRBuilder<>* IRB) {
   WriteReg(sp, Reg("SP"), IRB, 32);
   WriteReg(getConstant("4"), Reg("LR"), IRB, 32);
 
-  std::vector<Type*> FuncTy_3_args;
-  FunctionType* FuncTy_3 = FunctionType::get(
-      /*Result=*/Type::getVoidTy(IContext::getContextRef()),
-      /*Params=*/FuncTy_3_args,
-      /*isVarArg=*/false);
-
-  PointerType* PointerTy_1 = PointerType::get(FuncTy_3, 0);
-
-  std::vector<Type*> FuncTy_4_args;
-  FunctionType* FuncTy_4 = FunctionType::get(
-      /*Result=*/Type::getVoidTy(IContext::getContextRef()),
-      /*Params=*/FuncTy_4_args,
-      /*isVarArg=*/true);
-
-  // Function Declarations
-  Function* func_inception_dump_registers =
-      IContext::Mod->getFunction("inception_sv_call");
-  if (!func_inception_dump_registers) {
-    func_inception_dump_registers = Function::Create(
-        /*Type=*/FuncTy_4,
-        /*Linkage=*/GlobalValue::ExternalLinkage,
-        /*Name=*/"inception_sv_call", IContext::Mod);  // (external, no body)
-    func_inception_dump_registers->setCallingConv(CallingConv::C);
-  }
-
-  // Constant Definitions
-  Constant* const_ptr_7 = ConstantExpr::getCast(
-      Instruction::BitCast, func_inception_dump_registers, PointerTy_1);
+  Constant* fct_ptr = GetVoidFunctionPointer("inception_sv_call");
   std::vector<Value*> params;
 
-  IRB->CreateCall(const_ptr_7, params);
+  IRB->CreateCall(fct_ptr, params);
 }

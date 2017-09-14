@@ -66,7 +66,7 @@ class AssemblySupport {
     Function* function = dyn_cast<Function>(fct);
 
     BasicBlock* bb =
-        BasicBlock::Create(IContext::getContextRef(), "entry", function);
+        BasicBlock::Create(mod->getContext(), "entry", function);
 
     IRBuilder<>* IRB = new IRBuilder<>(bb);
     IRB->CreateRetVoid();

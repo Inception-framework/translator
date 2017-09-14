@@ -19,7 +19,8 @@
 
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
-#include "llvm/ADT/IndexedMap.h"
+#include "CodeInv/FractureSymbol.h"
+
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/IR/BasicBlock.h"
@@ -53,17 +54,29 @@
 #include <algorithm>
 #include "llvm/IR/Metadata.h"
 
-#include <map>
-#include <stack>
+#include "llvm/Object/Binary.h"
+#include "llvm/Object/COFF.h"
+#include "llvm/Object/ELFObjectFile.h"
+#include "llvm/Object/Error.h"
+#include "llvm/Object/ObjectFile.h"
+
+#include "Utils/ErrorHandling.h"
+
 #include <string>
+#include <system_error>
 #include <vector>
 
+using std::string;
+
 using namespace llvm;
+using namespace fracture;
+using namespace inception;
 
 namespace fracture {
 
 class Decompiler;
 class Disassembler;
+class FractureSymbol;
 
 class IRMerger {
  public:
@@ -73,11 +86,7 @@ class IRMerger {
 
   void Run(llvm::StringRef name);
 
-  static std::map<std::string, SDNode*> registersNodes;
-
  protected:
-  static bool first_call;
-
   void Decompile(llvm::StringRef name);
 
   StringRef getIndexedValueName(StringRef BaseName);
@@ -91,6 +100,110 @@ class IRMerger {
   Decompiler* DEC;
 
   StringRef* function_name;
+
+  ///===---------------------------------------------------------------------===//
+  /// nameLookupAddr - lookup a function address based on its name.
+  /// @note: COFF support function has not been written yet...
+  ///
+  /// @param Executable - The executable under analysis.
+  ///
+  bool nameLookupAddr(StringRef funcName, uint64_t& Address,
+                      Disassembler* DAS) {
+    bool retVal = false;
+    const object::ObjectFile* Executable = DAS->getExecutable();
+
+    // Binary is not stripped, return address based on symbol name
+    if (  // const object::COFFObjectFile *coff =
+        dyn_cast<const object::COFFObjectFile>(Executable)) {
+      // dumpCOFFSymbols(coff, Address);
+      errs() << "COFF is Unsupported section type.\n";
+    } else if (const object::ELF32LEObjectFile* elf =
+                   dyn_cast<const object::ELF32LEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address, DAS);
+    } else if (const object::ELF32BEObjectFile* elf =
+                   dyn_cast<const object::ELF32BEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address, DAS);
+    } else if (const object::ELF64BEObjectFile* elf =
+                   dyn_cast<const object::ELF64BEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address, DAS);
+    } else if (const object::ELF64LEObjectFile* elf =
+                   dyn_cast<const object::ELF64LEObjectFile>(Executable)) {
+      retVal = lookupELFName(elf, funcName, Address, DAS);
+    } else {
+      errs() << "Unsupported section type.\n";
+    }
+    return retVal;
+  }
+
+  //===---------------------------------------------------------------------===//
+  /// lookupELFName   - With an ELF file, lookup a function address based on its
+  /// name.
+  ///
+  /// @param Executable - The executable under analysis.
+  ///
+  template <class ELFT>
+  static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
+                            StringRef funcName, uint64_t& Address,
+                            Disassembler* DAS) {
+    bool retVal = false;
+    std::error_code ec;
+    std::vector<FractureSymbol*> Syms;
+
+    Address = 0;
+    for (object::symbol_iterator si = elf->symbols().begin(),
+                                 se = elf->symbols().end();
+         si != se; ++si) {
+      Syms.push_back(new FractureSymbol(*si));
+    }
+    for (object::symbol_iterator si = elf->dynamic_symbol_begin(),
+                                 se = elf->dynamic_symbol_end();
+         si != se; ++si) {
+      FractureSymbol* temp = new FractureSymbol(*si);
+      Syms.push_back(temp);
+    }
+    // if (isStripped)
+    //   for (auto& it : SDAS->getStrippedGraph()->getHeadNodes()) {
+    //     StringRef name = (SDAS->getMain() == it->Address
+    //                           ? "main"
+    //                           : DAS->getFunctionName(it->Address));
+    //     FractureSymbol tempSym(it->Address, name, 0,
+    //                            object::SymbolRef::Type::ST_Function, 0);
+    //     Syms.push_back(new FractureSymbol(tempSym));
+    //   }
+
+    for (std::vector<FractureSymbol*>::iterator si = Syms.begin(),
+                                                se = Syms.end();
+         si != se; ++si) {
+      if (error(ec)) {
+        for (auto& it : Syms) delete it;
+        return retVal;
+      }
+
+      StringRef Name;
+
+      if (error((*si)->getName(Name))) continue;
+      if (error((*si)->getAddress(Address))) continue;
+
+      if (Address == object::UnknownAddressOrSize) {
+        retVal = false;
+        Address = 0;
+      }
+
+      if (funcName.str() == Name.str()) {
+        retVal = true;
+        for (auto& it : Syms) delete it;
+        return retVal;
+      }
+    }
+    for (auto& it : Syms) delete it;
+    return retVal;
+  }
+
+  static bool error(std::error_code ec) {
+    if (!ec) return false;
+    inception_error("Unable to read file... %s", ec.message().c_str());
+    return true;
+  }
 };
 
 }  // end namespace fracture

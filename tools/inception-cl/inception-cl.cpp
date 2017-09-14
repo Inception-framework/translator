@@ -27,11 +27,6 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/IR/Type.h"
-#include "llvm/Object/Binary.h"
-#include "llvm/Object/COFF.h"
-#include "llvm/Object/ELFObjectFile.h"
-#include "llvm/Object/Error.h"
-#include "llvm/Object/ObjectFile.h"
 #include "llvm/PassAnalysisSupport.h"
 #include "llvm/Support/COFF.h"
 #include "llvm/Support/CodeGen.h"
@@ -79,12 +74,14 @@
 #include "BinFun.h"
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
-#include "CodeInv/StrippedDisassembler.h"
 #include "Commands/Commands.h"
-#include "DummyObjectFile.h"
 #include "IRMerger.h"
 
+#include "AssemblySupport.h"
+#include "FunctionsHelperWriter.h"
 #include "InterruptSupport.h"
+#include "SectionsWriter.h"
+#include "StackAllocator.h"
 #include "Utils/Builder.h"
 #include "Utils/ErrorHandling.h"
 
@@ -93,9 +90,7 @@ using namespace fracture;
 using namespace inception;
 using std::string;
 
-bool nameLookupAddr(StringRef funcName, uint64_t &Address);
-
-static void save(std::string fileName);
+static void save(std::string fileName, Module* module);
 
 //===----------------------------------------------------------------------===//
 // Global Variables and Parameters
@@ -103,15 +98,8 @@ static void save(std::string fileName);
 static std::string ProgramName;
 static Commands CommandParser;
 
-// ErrorOr<std::unique_ptr<MemoryBuffer>> *fileOrErr;
-// ErrorOr<llvm::Module *> *moduleOrErr;
-Module *module = 0;
-MCDirector *MCD = 0;
-Disassembler *DAS = 0;
-Decompiler *DEC = 0;
-StrippedDisassembler *SDAS = 0;
 std::unique_ptr<object::ObjectFile> TempExecutable;
-bool isStripped = false;
+// bool isStripped = false;
 
 // Command Line Options
 cl::opt<std::string> TripleName("triple",
@@ -149,13 +137,6 @@ static cl::opt<bool> printGraph(
     cl::desc(
         "Print graph for stripped file, must also enable stripped command"));
 
-static bool error(std::error_code ec) {
-  if (!ec) return false;
-
-  errs() << ProgramName << ": error reading file: " << ec.message() << ".\n";
-  return true;
-}
-
 ///===---------------------------------------------------------------------===//
 /// loadBitcode     - Tries to open the bitcode file and set the ObjectFile.
 ///
@@ -180,29 +161,20 @@ static ErrorOr<std::unique_ptr<MemoryBuffer>> loadBitcode(StringRef FileName) {
 }
 
 static std::error_code runInception(StringRef FileName) {
+  Module *module = 0;
+  MCDirector *MCD = 0;
+  Disassembler *DAS = 0;
+  Decompiler *DEC = 0;
+
   // File should be stdin or it should exist.
   if (FileName != "-" && !sys::fs::exists(FileName)) {
-    errs() << ProgramName << ": No such binary file or directory: '"
-           << FileName.data() << "'.\n";
-    return make_error_code(std::errc::no_such_file_or_directory);
+    inception_error("No such binary file or directory : %s ", FileName.data());
   }
 
   ErrorOr<object::OwningBinary<object::Binary>> Binary =
       object::createBinary(FileName);
   if (std::error_code err = Binary.getError()) {
-    errs() << ProgramName << ": Unknown binary file format: '"
-           << FileName.data() << "'.\n Error Msg: " << err.message() << "\n";
-
-    ErrorOr<std::unique_ptr<MemoryBuffer>> MemBuf =
-        MemoryBuffer::getFile(FileName);
-    if (std::error_code err = MemBuf.getError()) {
-      errs() << ProgramName << ": Bad Memory!: '" << FileName.data() << "'.\n";
-      return err;
-    }
-
-    std::unique_ptr<object::ObjectFile> ret(
-        object::DummyObjectFile::createDummyObjectFile(MemBuf.get()));
-    TempExecutable.swap(ret);
+    inception_error("Unknown binary file format : %s ", FileName.data());
   } else {
     if (Binary.get().getBinary()->isObject()) {
       std::pair<std::unique_ptr<object::Binary>, std::unique_ptr<MemoryBuffer>>
@@ -257,10 +229,6 @@ static std::error_code runInception(StringRef FileName) {
 
   module = old_module.release();
 
-  delete DEC;
-  delete DAS;
-  delete MCD;
-
   MCD = new MCDirector(TripleName, "cortex-m3", FeaturesStr, TargetOptions(),
                        Reloc::DynamicNoPIC, CodeModel::Default,
                        CodeGenOpt::Default, outs(), errs());
@@ -276,8 +244,8 @@ static std::error_code runInception(StringRef FileName) {
   }
 
   std::set<std::string> asm_functions;
-
   inception_message("\n");
+
   inception_message("Detecting all assembly functions ...");
   for (auto iter1 = module->getFunctionList().begin();
        iter1 != module->getFunctionList().end(); iter1++) {
@@ -300,17 +268,40 @@ static std::error_code runInception(StringRef FileName) {
 
   initAPI(module, DEC);
 
+  inception_message("Importing pure assembly code...");
+  AssemblySupport::ImportAll(module, DAS);
+  inception_message("Done\n");
+
   IRMerger *merger = new IRMerger(DEC);
 
   for (auto &str : asm_functions) {
-    inception_message("Processing function %s ...", str.c_str());
+    inception_message("Processing function %s...", str.c_str());
 
     merger->Run(llvm::StringRef(str));
-    inception_message("Done");
+    inception_message("Done\n");
   }
+  inception_message("Decompilation stage done\n");
 
-  inception_message("\n");
+  inception_message("Allocating and initializing virtual stack...");
+  StackAllocator::Allocate(module, DAS);
+  StackAllocator::InitSP(module, DAS);
+  inception_message("Done\n");
+
+  inception_message("Importing sections .data and .bss...");
+  SectionsWriter::WriteSection(".data", DAS, module);
+  SectionsWriter::WriteSection(".bss", DAS, module);
+  inception_message("Done\n");
+
+  inception_message("Adding call to functions helper...");
+  Function *main = module->getFunction("main");
+  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, module, main);
+  FunctionsHelperWriter::Write(END, DUMP_STACK, module, main);
+  inception_message("Done\n");
+
   // Which IRQ handlers should we patch ?
+  // XXX: It could be better if we use the symbols table or the config.json
+  // XXX: unfortunately patching inside Compiler does not allow runtime
+  // modification of the IRQ vector
   StringRef handlers[] = {""};
 
   // Iterate over each handlers
@@ -323,120 +314,22 @@ static std::error_code runInception(StringRef FileName) {
   std::string bc_output(FileName.str());
   bc_output += ".ll";
 
-  save(bc_output);
-
-  exit(0);
+  save(bc_output, module);
 
   return std::error_code();
-}
-
-//===---------------------------------------------------------------------===//
-/// lookupELFName   - With an ELF file, lookup a function address based on its
-/// name.
-///
-/// @param Executable - The executable under analysis.
-///
-template <class ELFT>
-static bool lookupELFName(const object::ELFObjectFile<ELFT> *elf,
-                          StringRef funcName, uint64_t &Address) {
-  bool retVal = false;
-  std::error_code ec;
-  std::vector<FractureSymbol *> Syms;
-
-  Address = 0;
-  for (object::symbol_iterator si = elf->symbols().begin(),
-                               se = elf->symbols().end();
-       si != se; ++si) {
-    Syms.push_back(new FractureSymbol(*si));
-  }
-  for (object::symbol_iterator si = elf->dynamic_symbol_begin(),
-                               se = elf->dynamic_symbol_end();
-       si != se; ++si) {
-    FractureSymbol *temp = new FractureSymbol(*si);
-    Syms.push_back(temp);
-  }
-  if (isStripped)
-    for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
-      StringRef name =
-          (SDAS->getMain() == it->Address ? "main"
-                                          : DAS->getFunctionName(it->Address));
-      FractureSymbol tempSym(it->Address, name, 0,
-                             object::SymbolRef::Type::ST_Function, 0);
-      Syms.push_back(new FractureSymbol(tempSym));
-    }
-
-  for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
-                                               se = Syms.end();
-       si != se; ++si) {
-    if (error(ec)) {
-      for (auto &it : Syms) delete it;
-      return retVal;
-    }
-
-    StringRef Name;
-
-    if (error((*si)->getName(Name))) continue;
-    if (error((*si)->getAddress(Address))) continue;
-
-    if (Address == object::UnknownAddressOrSize) {
-      retVal = false;
-      Address = 0;
-    }
-
-    if (funcName.str() == Name.str()) {
-      retVal = true;
-      for (auto &it : Syms) delete it;
-      return retVal;
-    }
-  }
-  for (auto &it : Syms) delete it;
-  return retVal;
-}
-
-///===---------------------------------------------------------------------===//
-/// nameLookupAddr - lookup a function address based on its name.
-/// @note: COFF support function has not been written yet...
-///
-/// @param Executable - The executable under analysis.
-///
-bool nameLookupAddr(StringRef funcName, uint64_t &Address) {
-  bool retVal = false;
-  const object::ObjectFile *Executable = DAS->getExecutable();
-
-  // Binary is not stripped, return address based on symbol name
-  if (  // const object::COFFObjectFile *coff =
-      dyn_cast<const object::COFFObjectFile>(Executable)) {
-    // dumpCOFFSymbols(coff, Address);
-    errs() << "COFF is Unsupported section type.\n";
-  } else if (const object::ELF32LEObjectFile *elf =
-                 dyn_cast<const object::ELF32LEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address);
-  } else if (const object::ELF32BEObjectFile *elf =
-                 dyn_cast<const object::ELF32BEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address);
-  } else if (const object::ELF64BEObjectFile *elf =
-                 dyn_cast<const object::ELF64BEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address);
-  } else if (const object::ELF64LEObjectFile *elf =
-                 dyn_cast<const object::ELF64LEObjectFile>(Executable)) {
-    retVal = lookupELFName(elf, funcName, Address);
-  } else {
-    errs() << "Unsupported section type.\n";
-  }
-  return retVal;
 }
 
 ///===---------------------------------------------------------------------===//
 /// save - Saves current module to a .ll file
 ///
-static void save(std::string fileName) {
+static void save(std::string fileName, Module *module) {
   std::error_code ErrorInfo;
   raw_fd_ostream FOut(fileName, ErrorInfo, sys::fs::OpenFlags::F_RW);
 
-  FOut << *(DEC->getModule());
+  FOut << *module;
 
   if (ErrorInfo) {
-    outs() << "Errors on write: \n" << ErrorInfo.message() << "\n";
+    inception_error("Cannot save result into %s", fileName.c_str());
   }
 }
 
@@ -491,24 +384,10 @@ int main(int argc, char *argv[]) {
   cl::ParseCommandLineOptions(argc, argv, "DIsassembler SHell");
 
   if (std::error_code Err = runInception(InputBinaryFileName.getValue())) {
-    errs() << ProgramName << ": Could not open the binary file '"
-           << InputBinaryFileName.getValue() << "'. " << Err.message() << ".\n";
+    inception_error("Could not open the binary file %s : %s",
+                    InputBinaryFileName.getValue().c_str(),
+                    Err.message().c_str());
   }
 
-  // If the -stripped flag is set and the file is actually stripped.
-  if (DAS->getExecutable()->symbol_begin() ==
-          DAS->getExecutable()->symbol_end() &&
-      StrippedBinary) {
-    isStripped = true;
-    outs() << "File is Stripped\n";
-    SDAS = new StrippedDisassembler(DAS, TripleName);
-    SDAS->findStrippedMain();
-    SDAS->functionsIterator(SDAS->getStrippedSection(".code"));
-    // Also print stripped graph
-    if (printGraph) SDAS->getStrippedGraph()->printGraph();
-    SDAS->getStrippedGraph()->correctHeadNodes();
-  }
-
-  delete SDAS;
   return 0;
 }

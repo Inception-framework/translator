@@ -562,3 +562,74 @@ Value* createCondition(int cond, IRBuilder<>* IRB) {
   }
   return Cmp;
 }
+
+Constant* GetVoidFunctionPointer(StringRef function_name) {
+  if (IContext::Mod == NULL) inception_error("API has not been initialized.");
+
+  std::vector<Type*> FuncTy_args;
+  FunctionType* FuncTy = FunctionType::get(
+      /*Result=*/Type::getVoidTy(IContext::getContextRef()),
+      /*Params=*/FuncTy_args,
+      /*isVarArg=*/true);
+
+  PointerType* PointerTy = PointerType::get(FuncTy, 0);
+
+  // Function Declarations
+  Function* function = IContext::Mod->getFunction(function_name);
+  if (!function) {
+    function = Function::Create(
+        /*Type=*/FuncTy,
+        /*Linkage=*/GlobalValue::ExternalLinkage,
+        /*Name=*/function_name, IContext::Mod);
+    function->setCallingConv(CallingConv::C);
+  }
+
+  // Constant Definitions
+  Constant* fct_ptr =
+      ConstantExpr::getCast(Instruction::BitCast, function, PointerTy);
+
+  return fct_ptr;
+}
+
+Constant* GetIntIntFunctionPointer(StringRef function_name) {
+  if (IContext::Mod == NULL) inception_error("API has not been initialized.");
+
+  // Type Definitions
+  std::vector<Type*> FuncTy_args;
+  FuncTy_args.push_back(IntegerType::get(IContext::getContextRef(), 32));
+  FuncTy_args.push_back(IntegerType::get(IContext::getContextRef(), 32));
+  FunctionType* FuncTy = FunctionType::get(
+      /*Result=*/Type::getVoidTy(IContext::getContextRef()),
+      /*Params=*/FuncTy_args,
+      /*isVarArg=*/false);
+
+  PointerType* PointerTy = PointerType::get(FuncTy, 0);
+
+  Function* function = IContext::Mod->getFunction("inception_dump_stack");
+  if (!function) {
+    function = Function::Create(
+        /*Type=*/FuncTy,
+        /*Linkage=*/GlobalValue::ExternalLinkage,
+        /*Name=*/"inception_dump_stack", IContext::Mod);
+    function->setCallingConv(67);
+  }
+  AttributeSet function_PAL;
+  {
+    SmallVector<AttributeSet, 4> Attrs;
+    AttributeSet PAS;
+    {
+      AttrBuilder B;
+      B.addAttribute(Attribute::NoUnwind);
+      PAS = AttributeSet::get(IContext::getContextRef(), ~0U, B);
+    }
+
+    Attrs.push_back(PAS);
+    function_PAL = AttributeSet::get(IContext::getContextRef(), Attrs);
+  }
+
+  // Constant Definitions
+  Constant* fct_ptr =
+      ConstantExpr::getCast(Instruction::BitCast, function, PointerTy);
+
+  return fct_ptr;
+}

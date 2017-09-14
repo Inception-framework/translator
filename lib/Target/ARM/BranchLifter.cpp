@@ -218,8 +218,7 @@ void BranchLifter::CallHandler(SDNode *N, IRBuilder<> *IRB, uint32_t Tgt) {
 
   Function *Func = Mod->getFunction(FName);
   if (Func == NULL) {
-    errs() << "[BranchLifter] Unable to resolve address : " << Tgt << "\n";
-    exit(0);
+    inception_error("BranchLifter cannot resolve address : 0x%08x", Tgt);
   }
 
   // outs() << FName << " args:\n";
