@@ -12,6 +12,7 @@
 #include "Target/ARM/LoadLifter.h"
 #include "Target/ARM/LogicalLifter.h"
 #include "Target/ARM/MoveDataLifter.h"
+#include "Target/ARM/MulLifter.h"
 #include "Target/ARM/SVCallLifter.h"
 #include "Target/ARM/ShiftLifter.h"
 #include "Target/ARM/StoreLifter.h"
@@ -67,6 +68,9 @@ ARMLifterManager::ARMLifterManager() {
       std::pair<std::string, ARMLifter*>("COPROC", new CoprocLifter(this)));
 
   lifters.insert(std::pair<std::string, ARMLifter*>("IT", new ITLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("MUL", new MulLifter(this)));
 
   registerAll();
 }

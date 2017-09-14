@@ -321,14 +321,16 @@ Value* Reg(StringRef name) {
   return Reg;
 }
 
-Value* getConstant(StringRef value) {
+Value* getConstant(StringRef value, int Width) {
   if (IContext::Mod == NULL) inception_error("API has not been initialized.");
 
   ConstantInt* constante =
-      ConstantInt::get(IContext::getContextRef(), APInt(32, value, 10));
+      ConstantInt::get(IContext::getContextRef(), APInt(Width, value, 10));
 
   return constante;
 }
+
+Value* getConstant(StringRef value) { return getConstant(value, 32); }
 
 Value* getConstant(uint32_t value) {
   if (IContext::Mod == NULL) inception_error("API has not been initialized.");

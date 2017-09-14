@@ -38,6 +38,8 @@ Value* Reg(StringRef name);
 
 Value* getConstant(StringRef value);
 
+Value* getConstant(StringRef value, int Width);
+
 Value* getConstant(uint32_t value);
 
 Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB);
