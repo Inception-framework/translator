@@ -8,6 +8,7 @@
 #include "Target/ARM/CoprocLifter.h"
 #include "Target/ARM/ExtendLifter.h"
 #include "Target/ARM/FlagsLifter.h"
+#include "Target/ARM/HintLifter.h"
 #include "Target/ARM/ITLifter.h"
 #include "Target/ARM/LoadLifter.h"
 #include "Target/ARM/LogicalLifter.h"
@@ -71,6 +72,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("MUL", new MulLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("HINT", new HintLifter(this)));
 
   registerAll();
 }
