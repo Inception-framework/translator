@@ -174,9 +174,7 @@ bool IsSetFlags(SDNode* N) {
           return false;
         }
 
-      case ARM::tADDspi:
       case ARM::tADDframe:
-      case ARM::tADDspr:
       case ARM::t2ADDSri:
       case ARM::t2ADDSrr:
       case ARM::t2ADDri:
@@ -271,6 +269,8 @@ bool IsSetFlags(SDNode* N) {
       //
       // alsways false
       //
+      case ARM::tADDspi:
+      case ARM::tADDspr:
       case ARM::t2ADDri12:
       case ARM::tADDhirr:
       case ARM::tADDrSP:
