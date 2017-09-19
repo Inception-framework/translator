@@ -81,7 +81,8 @@ Disassembler::~Disassembler() {
   delete Executable;
 }
 
-MachineFunction *Disassembler::disassemble(unsigned Address) {
+MachineFunction *Disassembler::disassemble(unsigned Address,
+                                           unsigned entryAddress, Function *F) {
   MachineFunction *MF = getOrCreateFunction(Address);
 
   if (MF->size() == 0) {
@@ -90,7 +91,7 @@ MachineFunction *Disassembler::disassemble(unsigned Address) {
     MachineBasicBlock *MBB;
     do {
       unsigned MBBSize = 0;
-      MBB = decodeBasicBlock(Address + Size, MF, MBBSize);
+      MBB = decodeBasicBlock(Address + Size, entryAddress, MF, F, MBBSize);
       Size += MBBSize;
     } while (Address + Size < CurSectionEnd && MBB->size() > 0 &&
              hasReturnInstruction(MBB) == false);
@@ -141,17 +142,26 @@ bool Disassembler::hasPCReturnInstruction(MachineBasicBlock *MBB) {
 }
 
 MachineBasicBlock *Disassembler::decodeBasicBlock(unsigned Address,
+                                                  unsigned entryAddress,
                                                   MachineFunction *MF,
-                                                  unsigned &Size) {
+                                                  Function *F, unsigned &Size) {
   assert(MF && "Unable to decode basic block without Machine Function!");
 
-  uint64_t MFLoc = MF->getFunctionNumber();  // FIXME: Horrible, horrible hack
-  uint64_t Off = Address - MFLoc;
-  std::stringstream MBBName;
-  MBBName << MF->getName().str() << "+" << Off;
+  // give a name to the basic block: name+offset, relative to the entry point
+  uint64_t Off = Address;
+  std::string MBBName;
+  if (F == NULL) {
+    MBBName = MF->getName().str();
+    Off -= MF->getFunctionNumber();  // FIXME: Horrible, horrible hack
+  } else {
+    MBBName = F->getName().str();
+    Off -= entryAddress;
+  }
+  MBBName += "+";
+  MBBName += std::to_string(Off);
 
   // Dummy holds the name.
-  BasicBlock *Dummy = BasicBlock::Create(*MC->getContext(), MBBName.str());
+  BasicBlock *Dummy = BasicBlock::Create(*MC->getContext(), MBBName);
   MachineBasicBlock *MBB = MF->CreateMachineBasicBlock(Dummy);
   MF->push_back(MBB);
 
@@ -366,6 +376,8 @@ MachineFunction *Disassembler::getNearestFunction(unsigned Address) {
 unsigned Disassembler::printInstructions(formatted_raw_ostream &Out,
                                          unsigned Address, unsigned Size,
                                          bool PrintTypes) {
+  inception::inception_warning(
+      "[printInstructions] printing only from entry to first return");
   MachineFunction *MF = disassemble(Address);
 
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();

@@ -65,7 +65,7 @@ public:
   void decompile(unsigned Address);
   Function* decompileFunction(unsigned Address);
   BasicBlock *decompileBasicBlock(MachineBasicBlock *MBB, Function *F,
-                                  unsigned Address);
+                                  unsigned Address, unsigned entryAddress);
 
   BasicBlock* getOrCreateBasicBlock(unsigned Address, Function *F);
   BasicBlock* getOrCreateBasicBlock(StringRef BBName, Function *F);
@@ -101,6 +101,12 @@ public:
   void printSDNode(std::map<SDValue, std::string> &OpMap,
     std::stack<SDNode *> &NodeStack, SDNode *CurNode, SelectionDAG *DAG);
   void printDAG(SelectionDAG *DAG);
+
+  void checkAddrInSection(unsigned Address);
+  Function *getFunctionFromMF(MachineFunction *MF);
+  void decompileBasicBlocks(MachineFunction *MF, Function *F, unsigned Address,
+                            unsigned entryAddress);
+  void handleInBetweenBasicBlocks(Function *F, unsigned Address);
 
   /// Error printing
   raw_ostream &Infos, &Errs;

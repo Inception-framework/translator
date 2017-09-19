@@ -95,7 +95,8 @@ public:
   ///               the end of the function. Always stops at end of function.
   ///
   /// \returns A vector of MachineInstr* with valid MC Instruction Descriptors
-  MachineFunction* disassemble(unsigned Address);
+  MachineFunction *disassemble(unsigned Address, unsigned entryAddress = 0,
+                               Function *F = NULL);
 
   /// \brief Check if a bb contains a return instruction
   ///
@@ -119,9 +120,9 @@ public:
     printInstruction(OutF, Inst, PrintTypes);
   }
 
-
-  MachineBasicBlock* decodeBasicBlock(unsigned Address, MachineFunction* MF,
-    unsigned &Size);
+  MachineBasicBlock *decodeBasicBlock(unsigned Address, unsigned entryAddress,
+                                      MachineFunction *MF, Function *F,
+                                      unsigned &Size);
 
   unsigned decodeInstruction(unsigned Address, MachineBasicBlock *Block);
   /// \brief Create a function object at the specified address.

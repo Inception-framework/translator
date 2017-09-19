@@ -113,23 +113,23 @@ void Decompiler::decompile(unsigned Address) {
   } while (Children.size() != 0);  // While there are children, decompile
 }
 
-Function *Decompiler::decompileFunction(unsigned Address) {
-  // Check that Address is inside the current section.
-  // TODO: Find a better way to do this check. What we really care about is
-  // avoiding reads to library calls and areas of memory we can't "see".
+// Check that Address is inside the current section.
+// TODO: Find a better way to do this check. What we really care about is
+// avoiding reads to library calls and areas of memory we can't "see".
+void Decompiler::checkAddrInSection(unsigned Address) {
   const object::SectionRef Sect = Dis->getCurrentSection();
   uint64_t SectStart, SectEnd;
   SectStart = Sect.getAddress();
   SectEnd = Sect.getSize();
   SectEnd += SectStart;
   if (Address < SectStart || Address > SectEnd) {
-    errs() << "Address out of bounds for section (is this a library call?): "
-           << format("%1" PRIx64, Address) << "\n";
-    return NULL;
+    inception_error(
+        "Address out of bounds for section (is this a library call?): %08x\n",
+        Address);
   }
+}
 
-  MachineFunction *MF = Dis->disassemble(Address);
-
+Function *Decompiler::getFunctionFromMF(MachineFunction *MF) {
   std::string fct_name = MF->getName().str();
 
   Function *F = NULL;
@@ -137,7 +137,6 @@ Function *Decompiler::decompileFunction(unsigned Address) {
   for (Module::const_iterator i = Mod->getFunctionList().begin(),
                               e = Mod->getFunctionList().end();
        i != e; ++i) {
-    // errs() << *i << "\n";
     if (!i->isDeclaration())
       if (i->getName().str() == fct_name) {
         F = Mod->getFunction(fct_name);
@@ -150,42 +149,23 @@ Function *Decompiler::decompileFunction(unsigned Address) {
     F = cast<Function>(Mod->getOrInsertFunction(fct_name, FType));
   }
 
-  if (F->hasFnAttribute("Decompiled"))
-    return F;
-  else {
-    AttributeSet AS;
-    AS = AS.addAttribute(*Context, AttributeSet::FunctionIndex, "Decompiled",
-                         "True");
+  return F;
+}
 
-    F->setAttributes(AS);
-  }
-
-  // if (!F->empty()) {
-  // }
-
-  // Create a basic block to hold entry point (alloca) information
-  BasicBlock *entry = getOrCreateBasicBlock("entry", F);
-
-  // For each basic block
+void Decompiler::decompileBasicBlocks(MachineFunction *MF, Function *F,
+                                      unsigned Address, unsigned entryAddress) {
+  // create BBs from MMBs
   MachineFunction::iterator BI = MF->begin(), BE = MF->end();
-  // outs() << "BEGIN: First BB iteration\n";
   while (BI != BE) {
-    // outs() << "-----BI------\n";
-    // BI->dump();
-    // Add branch from "entry"
-    if (BI == MF->begin()) {
-      entry->getInstList().push_back(
-          BranchInst::Create(getOrCreateBasicBlock(BI->getName(), F)));
-    } else {
-      getOrCreateBasicBlock(BI->getName(), F);
-    }
+    getOrCreateBasicBlock(BI->getName(), F);
     ++BI;
   }
 
+  // decompile each BB
   BI = MF->begin();
   while (BI != BE) {
-    if (decompileBasicBlock(BI, F, Address) == NULL) {
-      printError("Unable to decompile basic block!");
+    if (decompileBasicBlock(BI, F, Address, entryAddress) == NULL) {
+      inception_error("Unable to decompile basic block!");
     }
     BasicBlock *bb = getOrCreateBasicBlock(BI->getName(), F);
     Instruction *last = NULL;
@@ -197,9 +177,13 @@ Function *Decompiler::decompileFunction(unsigned Address) {
       delete IRB;
     }
 
+    bb->dump();
+
     ++BI;
   }
+}
 
+void Decompiler::handleInBetweenBasicBlocks(Function *F, unsigned Address) {
   // During Decompilation, did any "in-between" basic blocks get created?
   // Nothing ever splits the entry block, so we skip it.
   for (Function::iterator I = ++F->begin(), E = F->end(); I != E; ++I) {
@@ -255,19 +239,96 @@ Function *Decompiler::decompileFunction(unsigned Address) {
       break;
     }
     if (!SB || SI == SE || SB == E) {
-      outs() << "Decompiler: Failed to find instruction offset in function!\n";
+      // outs() << "Decompiler: Failed to find instruction offset in
+      // function!\n";
+      // now this case is legal
       continue;
     }
     splitBasicBlockIntoBlock(SB, SI, I);
   }
+}
 
-  // Clean up unnecessary stores and loads
+Function *Decompiler::decompileFunction(unsigned Address) {
+  // recursive disass/dec
+  // 1) first we do a linear disassembly of the code, from the entry address to
+  //    the first return instruction.
+  // 2) we decompile each of the machine basic blocks found in 1)
+  // 3) at the end the decompiled control flow instructions may have created
+  //    branches to new basic blocks, there are two options:
+  //    3a) the new basic block is inside the first linear scan, in this case we
+  //        simply have to refactor the decompiled code: we split a basic block
+  //        and
+  //        move part of the code to the new one
+  //    3b) the new basic block is outside the region of the first linear scan,
+  //        in this case we repeat from 1)
+
+  // entry address, the first to decompile
+  unsigned entryAddress = Address;
+
+  // main decompilation loop
+  unsigned currentAddress = entryAddress;
+  bool decompile = true;
+  Function *F = NULL;
+  while (decompile) {
+    decompile = false;
+
+    // check that the current address is inside the current section
+    checkAddrInSection(currentAddress);
+
+    // linear disassemble starting from the current address
+    MachineFunction *MF = Dis->disassemble(currentAddress, entryAddress, F);
+
+    if (currentAddress == entryAddress) {
+      // get the LLVM function, return it if already decompiled
+      F = getFunctionFromMF(MF);
+      if (F->hasFnAttribute("Decompiled")) return F;
+      AttributeSet AS;
+      AS = AS.addAttribute(*Context, AttributeSet::FunctionIndex, "Decompiled",
+                           "True");
+      F->setAttributes(AS);
+
+      // Create a basic block to hold entry point
+      // (alloca) information
+      // and add a branch to from it to the first basic block
+      BasicBlock *entry = getOrCreateBasicBlock("entry", F);
+      MachineFunction::iterator firstMBB = MF->begin();
+      entry->getInstList().push_back(
+          BranchInst::Create(getOrCreateBasicBlock(firstMBB->getName(), F)));
+    }
+
+    // create BBs form MBBs and decompile them (use offset from entryAddress)
+    decompileBasicBlocks(MF, F, currentAddress, entryAddress);
+
+    // refactor code for new in-between blocks
+    // at the end, the only empty basic blocks that will remain will be those
+    // (if any) outside the linear region
+    handleInBetweenBasicBlocks(F, entryAddress);
+
+    // find (if it exists) the address of the first BB outside the linear region
+    for (Function::iterator I = ++F->begin(), E = F->end(); I != E; ++I) {
+      if (I->empty()) {
+        StringRef Name = I->getName();
+        size_t Off = F->getName().size() + 1;
+        size_t Size = Name.size() - Off;
+        StringRef BBAddrStr = Name.substr(Off, Size);
+        unsigned long long BBAddr;
+        int itblock = BBAddrStr.find("_");
+        if (itblock >= 0) {
+          getAsUnsignedInteger(BBAddrStr.substr(0, itblock), 10, BBAddr);
+        } else {
+          getAsUnsignedInteger(BBAddrStr, 10, BBAddr);
+        }
+        currentAddress = entryAddress + BBAddr;
+        inception_message("new address to decompile found %s: 0x%08x\n",
+                          Name.str().c_str(), currentAddress);
+        decompile = true;
+        break;
+      }
+    }
+  }
+
+  // rename variables
   FunctionPassManager FPM(Mod);
-  // Line below adds decompiler optimization.  Function pass manager for
-  // optimization.
-  //    This is where to focus for type recovery.
-  // FPM.add(createPromoteMemoryToRegisterPass()); // See Scalar.h for more.
-  // FPM.add(createTypeRecoveryPass());
   FPM.add(createNameRecoveryPass());
   FPM.run(*F);
 
@@ -390,7 +451,8 @@ void Decompiler::printInstructions(formatted_raw_ostream &Out,
 }
 
 BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB, Function *F,
-                                            unsigned Address) {
+                                            unsigned Address,
+                                            unsigned entryAddress) {
   // Create a Selection DAG of MachineSDNodes
   DAG = createDAGFromMachineBasicBlock(MBB);
 
@@ -462,8 +524,8 @@ BasicBlock *Decompiler::decompileBasicBlock(MachineBasicBlock *MBB, Function *F,
         uint32_t size = Dis->getMachineInstr(PC)->getDesc().Size;
         if (size > 8) size = 8;
         uint32_t nextPC = PC + size;
-        uint32_t offset = PC - Address;
-        uint32_t next_offset = nextPC - Address;
+        uint32_t offset = PC - entryAddress;
+        uint32_t next_offset = nextPC - entryAddress;
 
         // current address = block for the condition
         std::string condName =
