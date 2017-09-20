@@ -63,10 +63,9 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
   }
 
   // store in the dest register
-  IRB->CreateStore(Rn, Rdest);
+  Instruction* Ret = IRB->CreateStore(Rn, Rdest);
 
   // dummy output
-  Value* Ret = getConstant("0");
   saveNodeValue(N, Ret);
 }
 
