@@ -87,6 +87,9 @@ class SectionsWriter {
         /*Name=*/StringRef(SectionName));
     DataSection->setAlignment(4);
 
+    //We do not need to initialize the heap
+    if (SectionName.equals(".heap") == 0) return;
+
     c_4 = ConstantInt::get(mod->getContext(), APInt(32, 2));
     Value* R0 = Reg("R0");
 

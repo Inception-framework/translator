@@ -287,15 +287,16 @@ static std::error_code runInception(StringRef FileName) {
   StackAllocator::InitSP(module, DAS);
   inception_message("Done\n");
 
-  inception_message("Importing sections .data and .bss...");
+  inception_message("Importing sections .data, .bss and .heap...");
   SectionsWriter::WriteSection(".data", DAS, module);
   SectionsWriter::WriteSection(".bss", DAS, module);
+  SectionsWriter::WriteSection(".heap", DAS, module);
   inception_message("Done\n");
 
   inception_message("Adding call to functions helper...");
   Function *main = module->getFunction("main");
-  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, module, main);
-  FunctionsHelperWriter::Write(END, DUMP_STACK, module, main);
+  // FunctionsHelperWriter::Write(END, DUMP_REGISTERS, module, main);
+  // FunctionsHelperWriter::Write(END, DUMP_STACK, module, main);
   inception_message("Done\n");
 
   // Which IRQ handlers should we patch ?

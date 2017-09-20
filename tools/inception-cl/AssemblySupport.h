@@ -14,12 +14,13 @@
 #include "Utils/IContext.h"
 
 using namespace fracture;
+using namespace llvm;
 
 class AssemblySupport {
  public:
   static void ImportAll(llvm::Module* mod, Disassembler* Dis) {
-    uint64_t SymAddr;
-    llvm::StringRef SymName;
+    uint64_t SymbolAddr;
+    llvm::StringRef SymbolName;
     object::SymbolRef::Type SymbolTy;
     std::error_code ec;
 
@@ -30,46 +31,115 @@ class AssemblySupport {
     for (object::symbol_iterator I = Dis->getExecutable()->symbols().begin(),
                                  E = Dis->getExecutable()->symbols().end();
          I != E; ++I) {
-      if ((ec = I->getType(SymbolTy))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
+      // Retrieve symbols information
+      if ((ec = I->getType(SymbolTy))) continue;
+      if ((ec = I->getAddress(SymbolAddr))) continue;
+      if ((ec = I->getName(SymbolName))) continue;
 
-      if (SymbolTy != object::SymbolRef::ST_Function) {
-        continue;
-      }
+      if (SymbolName.find("heap_low") != std::string::npos) printf("Get it !");
 
-      if ((ec = I->getAddress(SymAddr))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
-
-      if ((ec = I->getName(SymName))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
-
-      std::string FName = Dis->getFunctionName(SymAddr);
-
-      Function* Func = mod->getFunction(FName);
-      if (Func == NULL) {
-        Import(SymName, mod);
+      switch (SymbolTy) {
+        case object::SymbolRef::ST_Unknown:
+          importUnknown(SymbolName, SymbolAddr);
+          break;
+        case object::SymbolRef::ST_Data:
+          importData(SymbolName, SymbolAddr);
+          break;
+        case object::SymbolRef::ST_Debug:
+          importDebug(SymbolName, SymbolAddr);
+          break;
+        case object::SymbolRef::ST_File:
+          importFile(SymbolName, SymbolAddr);
+          break;
+        case object::SymbolRef::ST_Function:
+          importFunction(SymbolName, SymbolAddr);
+          break;
+        case object::SymbolRef::ST_Other:
+          importOther(SymbolName, SymbolAddr);
+          break;
       }
     }
   }
 
-  static void Import(llvm::StringRef name, llvm::Module* mod) {
-    FunctionType* FType = FunctionType::get(
-        Type::getPrimitiveType(mod->getContext(), Type::VoidTyID), false);
+ private:
+  static void importUnknown(StringRef name, uint64_t address) {
+    GlobalVariable* var = IContext::Mod->getGlobalVariable(name);
 
-    Constant* fct = mod->getOrInsertFunction(name, FType);
-    Function* function = dyn_cast<Function>(fct);
+    if (var == NULL) {
+      // How to guess the size ?
+      // inception_warning("Unused symbol %s", name.str().c_str());
+    } else {
+      if (!var->hasInitializer()) {  // Replace by an internally linked obj
+        inception_warning("Replacing external symbol %s", name.str().c_str());
 
-    BasicBlock* bb =
-        BasicBlock::Create(mod->getContext(), "entry", function);
+        std::string newName = name.str() + "_substitute";
 
-    IRBuilder<>* IRB = new IRBuilder<>(bb);
-    IRB->CreateRetVoid();
+        Type* Ty;
+        if(var->getType()->isPointerTy()) {
+          Ty = var->getType()->getPointerElementType();
+        } else
+          Ty =  var->getType();
+
+        Value* substitute = Reg(StringRef(newName), Ty);
+
+        for (auto b = var->user_begin(); b != var->user_end(); b++) {
+          b->replaceUsesOfWith(var, substitute);
+
+          for (auto o = b->op_begin(); o != b->op_end(); o++) {
+            User* u = cast<User>(*b);
+            u->replaceUsesOfWith(var, substitute);
+          }
+        }
+
+        // var->replaceAllUsesWith(substitute);
+
+        var->dropAllReferences();
+        var->eraseFromParent();
+      }
+    }
+  }
+
+  static void importData(StringRef name, uint64_t address) {}
+
+  static void importDebug(StringRef name, uint64_t address) {}
+
+  static void importFile(StringRef name, uint64_t address) {}
+
+  static void importFunction(StringRef name, uint64_t address) {
+    // Is there any other function at the same address ?
+    // if( Function** friends = Dis->getFriends(address) ) {
+    //   // if it does, we need to check if :
+    //   // One is empty and the other not : Redirection
+    //   // Both are empty : nothing
+    //   // Both are not empty : compilation issue !
+    //
+    //   for(auto Friend: friends){
+    //     (Friend);
+    //   }
+    //
+    // }
+    // std::string FName = Dis->getFunctionName(address);
+
+    Function* Func = IContext::Mod->getFunction(name);
+    if (Func == NULL) {
+      FunctionType* FType = FunctionType::get(
+          Type::getPrimitiveType(IContext::Mod->getContext(), Type::VoidTyID),
+          false);
+
+      Constant* fct = IContext::Mod->getOrInsertFunction(name, FType);
+      Function* function = dyn_cast<Function>(fct);
+
+      BasicBlock* bb =
+          BasicBlock::Create(IContext::Mod->getContext(), "entry", function);
+
+      IRBuilder<>* IRB = new IRBuilder<>(bb);
+      IRB->CreateRetVoid();
+    }
+  }
+
+  static void importOther(StringRef name, uint64_t address) {
+    inception_warning("What should I do with %s at 0x%8x", name.str().c_str(),
+                      (uint32_t)address);
   }
 };
 

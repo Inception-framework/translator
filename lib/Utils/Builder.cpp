@@ -303,12 +303,17 @@ Value* Bool2Int(Value* v, IRBuilder<>* IRB) {
 }
 
 Value* Reg(StringRef name) {
+  Type* Ty_word = IntegerType::get(IContext::getContextRef(), 32);
+
+  return Reg(name, Ty_word);
+}
+
+Value* Reg(StringRef name, Type* Ty) {
   if (IContext::Mod == NULL) inception_error("API has not been initialized.");
 
   Value* Reg = IContext::Mod->getGlobalVariable(name);
 
   if (Reg == NULL) {
-    Type* Ty = IntegerType::get(IContext::getContextRef(), 32);
 
     Constant* Initializer = Constant::getNullValue(Ty);
 

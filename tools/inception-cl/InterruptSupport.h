@@ -123,9 +123,9 @@ class InterruptSupport {
     llvm::StringRef targets[] = {"R0",  "R1", "R2", "R3",
                                  "R12", "LR", "PC", "xPSR"};
 
-    Type* Ty_word = IntegerType::get(IContext::getContextRef(), 32);
+    // Type* Ty_word = IntegerType::get(IContext::getContextRef(), 32);
 
-    AllocaInst* APSR = IRB->CreateAlloca(Ty_word);
+    // AllocaInst* APSR = IRB->CreateAlloca(Ty_word);
 
     for (auto target : targets) {
       /*xPSR is build at run-time*/

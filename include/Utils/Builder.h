@@ -36,6 +36,8 @@ Value* Bool2Int(Value* v, IRBuilder<>* IRB);
 
 Value* Reg(StringRef name);
 
+Value* Reg(StringRef name, Type* Ty);
+
 Value* getConstant(StringRef value);
 
 Value* getConstant(StringRef value, int Width);
