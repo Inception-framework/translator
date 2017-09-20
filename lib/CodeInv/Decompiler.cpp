@@ -177,8 +177,6 @@ void Decompiler::decompileBasicBlocks(MachineFunction *MF, Function *F,
       delete IRB;
     }
 
-    bb->dump();
-
     ++BI;
   }
 }

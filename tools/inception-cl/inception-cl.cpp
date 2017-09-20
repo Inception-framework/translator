@@ -295,7 +295,7 @@ static std::error_code runInception(StringRef FileName) {
 
   inception_message("Adding call to functions helper...");
   Function *main = module->getFunction("main");
-  // FunctionsHelperWriter::Write(END, DUMP_REGISTERS, module, main);
+  FunctionsHelperWriter::Write(END, DUMP_REGISTERS, module, main);
   // FunctionsHelperWriter::Write(END, DUMP_STACK, module, main);
   inception_message("Done\n");
 

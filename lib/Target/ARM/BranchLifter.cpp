@@ -200,8 +200,23 @@ void BranchLifter::BranchHandlerBLXr(SDNode *N, IRBuilder<> *IRB) {
     IRBuilder<> *entryIRB = new IRBuilder<>(entry_block);
     SwitchInst *sw = entryIRB->CreateSwitch(ptr_reg, end_block, num_cases);
 
-    for (unsigned int i = 0; i < num_cases; i++) {
-      sw->addCase(addresses[i], blocks[i]);
+    // add all cases
+    // if more than one symbol has the same address, put only the first
+    sw->addCase(addresses[0], blocks[0]);
+    for (unsigned int i = 1; i < num_cases; i++) {
+      bool duplicate = false;
+      for (unsigned int j = 0; j < i; j++) {
+        if (addresses[i] == addresses[j]) {
+          duplicate = true;
+          inception_warning(
+              "[BranchHandlerBLXr] icp creation, duplicate function symbol at "
+              "the same address, skipping it\n");
+          break;
+        }
+      }
+      if (!duplicate) {
+        sw->addCase(addresses[i], blocks[i]);
+      }
     }
   }
 
