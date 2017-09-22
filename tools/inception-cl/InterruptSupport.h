@@ -11,8 +11,8 @@
 #include <llvm/IR/Module.h>
 #include "llvm/ADT/StringRef.h"
 
-#include "llvm/PassManager.h"
 #include "Transforms/NameRecovery.h"
+#include "llvm/PassManager.h"
 
 #include "Utils/Builder.h"
 #include "Utils/IContext.h"
@@ -20,9 +20,7 @@
 class InterruptSupport {
  public:
   static void WriteInterruptPrologue(llvm::StringRef handler) {
-
-    if(handler.find("SVC") != StringRef::npos)
-      return;
+    if (handler.find("SVC") != StringRef::npos) return;
 
     Function* function = IContext::Mod->getFunction(handler);
 
@@ -114,6 +112,10 @@ class InterruptSupport {
                       handler.str().c_str());
 
     Instruction* last = GetLastInstruction(function);
+    if (last == NULL) {
+      inception_error("Handler %s has no return instruction",
+                      handler.str().c_str());
+    }
 
     llvm::IRBuilder<>* IRB = new IRBuilder<>(last);
 
@@ -149,7 +151,7 @@ class InterruptSupport {
         // Dispatch APSR into flags
         uint32_t shift = 31;
         for (auto flag : flags) {
-          //0x1 << shift;
+          // 0x1 << shift;
           Value* val = IRB->CreateShl(getConstant(1), getConstant(shift));
           // AND APSR -> retrieve bit shift
           val = IRB->CreateAnd(reg, val);

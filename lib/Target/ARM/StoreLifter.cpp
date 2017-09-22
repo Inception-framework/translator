@@ -17,6 +17,7 @@ void StoreLifter::registerLifter() {
 
   REGISTER_STORE_OPCODE(ARM::tPUSH, Push, new StoreInfo(3, -1, 0))
   REGISTER_STORE_OPCODE(ARM::t2STMIA_UPD, Multi, new StoreInfo(4, 1, 0))
+  REGISTER_STORE_OPCODE(ARM::tSTMIA_UPD, Multi, new StoreInfo(4, 1, 0))
   REGISTER_STORE_OPCODE(ARM::t2STMIA, Multi, new StoreInfo(4, 1, 0))
 
   REGISTER_STORE_OPCODE(ARM::t2STMDB_UPD, MultiDB, new StoreInfo(4, 1, 0))

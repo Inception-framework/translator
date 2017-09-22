@@ -291,11 +291,16 @@ static std::error_code runInception(StringRef FileName) {
   SectionsWriter::WriteSection(".data", DAS, module);
   SectionsWriter::WriteSection(".bss", DAS, module);
   SectionsWriter::WriteSection(".heap", DAS, module);
+  SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
   inception_message("Done\n");
 
   inception_message("Adding call to functions helper...");
   Function *main = module->getFunction("main");
   FunctionsHelperWriter::Write(END, DUMP_REGISTERS, module, main);
+  FunctionsHelperWriter::Write(NONE, INTERRUPT_PROLOGUE, module, main);
+  FunctionsHelperWriter::Write(NONE, INTERRUPT_EPILOGUE, module, main);
+  FunctionsHelperWriter::Write(NONE, ICP, module, main);
+  FunctionsHelperWriter::Write(NONE, INTERRUPT_HANDLER, module, main);
   // FunctionsHelperWriter::Write(END, DUMP_STACK, module, main);
   inception_message("Done\n");
 
@@ -303,14 +308,14 @@ static std::error_code runInception(StringRef FileName) {
   // XXX: It could be better if we use the symbols table or the config.json
   // XXX: unfortunately patching inside Compiler does not allow runtime
   // modification of the IRQ vector
-  StringRef handlers[] = {""};
-
-  // Iterate over each handlers
-  for (auto handler : handlers) {
-    /*This adds instructions sequence to stacked current context */
-    InterruptSupport::WriteInterruptPrologue(handler);
-    InterruptSupport::WriteInterruptEpilogue(handler);
-  }
+  // StringRef handlers[] = {""};
+  //
+  // // Iterate over each handlers
+  // for (auto handler : handlers) {
+  //   /*This adds instructions sequence to stacked current context */
+  //   InterruptSupport::WriteInterruptPrologue(handler);
+  //   InterruptSupport::WriteInterruptEpilogue(handler);
+  // }
 
   std::string bc_output(FileName.str());
   bc_output += ".ll";
