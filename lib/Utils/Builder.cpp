@@ -387,7 +387,7 @@ Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
     Rn = IRB->CreateIntToPtr(Rn, Rn->getType()->getPointerTo());
   }
 
-  // Rn = IRB->CreateBitCast(Rn, Ty->getPointerTo());
+  Rn = IRB->CreateBitCast(Rn, Ty->getPointerTo());
 
   Value* load = IRB->CreateLoad(Rn);
 
