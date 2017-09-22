@@ -57,10 +57,12 @@ void SubtractLifter::registerLifter() {
                       (LifterHandler)&SubtractLifter::SubHandler);
   alm->registerLifter(this, std::string("SubtractLifter"), (unsigned)ARM::tSBC,
                       (LifterHandler)&SubtractLifter::SbcHandler);
+  alm->registerLifter(this, std::string("SubtractLifter"), (unsigned)ARM::tRSB,
+                      (LifterHandler)&SubtractLifter::SubHandler);
 }
 
 void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
-  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
+  Value *Op0 = NULL;
 
   Value *Op1 = NULL;
 
@@ -68,12 +70,18 @@ void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
   switch (opcode) {
     case ARM::t2SUBSrs:
     case ARM::t2SUBrs: {
+      Op0 = visit(N->getOperand(0).getNode(), IRB);
       ShiftLifter *shiftLifter = dyn_cast<ShiftLifter>(alm->resolve("SHIFT"));
       shiftLifter->ShiftHandlerShiftOp(N, IRB);
       Op1 = getSavedValue(N);
       break;
     }
+    case ARM::tRSB:
+      Op0 = getConstant("0");
+      Op1 = visit(N->getOperand(0).getNode(), IRB);
+      break;
     default:
+      Op0 = visit(N->getOperand(0).getNode(), IRB);
       Op1 = visit(N->getOperand(1).getNode(), IRB);
   }
 

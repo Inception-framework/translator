@@ -258,6 +258,8 @@ bool IsSetFlags(SDNode* N) {
       case ARM::tEOR:
       case ARM::tORR:
       case ARM::tBIC:
+
+      case ARM::tRSB:
         // TODO more cases
         // TODO should we also check if outside IT block and not AL condition
         // for some of them?
@@ -384,6 +386,8 @@ Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
   if (!Rn->getType()->isPointerTy()) {
     Rn = IRB->CreateIntToPtr(Rn, Rn->getType()->getPointerTo());
   }
+
+  // Rn = IRB->CreateBitCast(Rn, Ty->getPointerTo());
 
   Value* load = IRB->CreateLoad(Rn);
 
