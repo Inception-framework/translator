@@ -287,9 +287,9 @@ static std::error_code runInception(StringRef FileName) {
   StackAllocator::InitSP(module, DAS);
   inception_message("Done\n");
 
-  inception_message("Importing sections .data, .bss and .heap...");
+  inception_message("Importing sections .data and .heap...");
   SectionsWriter::WriteSection(".data", DAS, module);
-  SectionsWriter::WriteSection(".bss", DAS, module);
+  // SectionsWriter::WriteSection(".bss", DAS, module);
   SectionsWriter::WriteSection(".heap", DAS, module);
   inception_message("Done\n");
 
