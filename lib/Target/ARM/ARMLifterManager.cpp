@@ -3,6 +3,7 @@
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 
 #include "Target/ARM/AddLifter.h"
+#include "Target/ARM/BarrierLifter.h"
 #include "Target/ARM/BranchLifter.h"
 #include "Target/ARM/CompareLifter.h"
 #include "Target/ARM/CoprocLifter.h"
@@ -75,6 +76,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("HINT", new HintLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("BARRIER", new BarrierLifter(this)));
 
   registerAll();
 }
