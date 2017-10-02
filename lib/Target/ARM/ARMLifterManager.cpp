@@ -7,6 +7,7 @@
 #include "Target/ARM/BranchLifter.h"
 #include "Target/ARM/CompareLifter.h"
 #include "Target/ARM/CoprocLifter.h"
+#include "Target/ARM/DivLifter.h"
 #include "Target/ARM/ExtendLifter.h"
 #include "Target/ARM/FlagsLifter.h"
 #include "Target/ARM/HintLifter.h"
@@ -83,6 +84,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("MISC", new MiscLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("DIV", new DivLifter(this)));
 
   registerAll();
 }
