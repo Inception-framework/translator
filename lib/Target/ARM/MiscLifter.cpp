@@ -14,6 +14,10 @@ void MiscLifter::registerLifter() {
                       (LifterHandler)&MiscLifter::RBITHandler);
   alm->registerLifter(this, std::string("MiscLifter"), (unsigned)ARM::t2CLZ,
                       (LifterHandler)&MiscLifter::CLZHandler);
+  alm->registerLifter(this, std::string("MiscLifter"), (unsigned)ARM::tREV,
+                      (LifterHandler)&MiscLifter::REVHandler);
+  alm->registerLifter(this, std::string("MiscLifter"), (unsigned)ARM::t2REV,
+                      (LifterHandler)&MiscLifter::REVHandler);
 }
 
 void MiscLifter::RBITHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
@@ -30,6 +34,25 @@ void MiscLifter::RBITHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
       Bit = IRB->CreateLShr(Bit, getConstant(-shift));
     }
     Res = IRB->CreateOr(Res, Bit);
+  }
+
+  saveNodeValue(N, Res);
+}
+
+void MiscLifter::REVHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
+  Value* Op0 = visit(N->getOperand(0).getNode(), IRB);
+
+  Value* Byte = getConstant("0");
+  Value* Res = getConstant("0");
+  for (int i = 0; i < 32; i += 8) {
+    Byte = IRB->CreateAnd(Op0, getConstant(0xff << i));
+    int shift = 24 - 2 * i;
+    if (shift >= 0) {
+      Byte = IRB->CreateShl(Byte, getConstant(shift));
+    } else {
+      Byte = IRB->CreateLShr(Byte, getConstant(-shift));
+    }
+    Res = IRB->CreateOr(Res, Byte);
   }
 
   saveNodeValue(N, Res);
