@@ -12,6 +12,8 @@ using namespace fracture;
 void MiscLifter::registerLifter() {
   alm->registerLifter(this, std::string("MiscLifter"), (unsigned)ARM::t2RBIT,
                       (LifterHandler)&MiscLifter::RBITHandler);
+  alm->registerLifter(this, std::string("MiscLifter"), (unsigned)ARM::t2CLZ,
+                      (LifterHandler)&MiscLifter::CLZHandler);
 }
 
 void MiscLifter::RBITHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
@@ -29,6 +31,71 @@ void MiscLifter::RBITHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
     }
     Res = IRB->CreateOr(Res, Bit);
   }
+
+  saveNodeValue(N, Res);
+}
+
+// slightly modified version of:
+// http://www.icodeguru.com/Embedded/Hacker%27s-Delight/040.htm
+void MiscLifter::CLZHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
+  Value* x = visit(N->getOperand(0).getNode(), IRB);
+
+  Value* positive = IRB->CreateNot(x);
+  positive = IRB->CreateLShr(positive, getConstant(31));
+  positive = IRB->CreateTrunc(positive,
+                              IntegerType::get(IContext::getContextRef(), 1));
+  positive = IRB->CreateSExt(positive,
+                             IntegerType::get(IContext::getContextRef(), 32));
+
+  Value* y = NULL;
+  Value* m = NULL;
+  Value* n = NULL;
+
+  // y = -(x >> 16);  // If left half of x is 0,
+  y = IRB->CreateSub(getConstant("0"), IRB->CreateLShr(x, getConstant(16)));
+  // m = (y >> 16) & 16;  // set n = 16. If left half
+  m = IRB->CreateAnd(IRB->CreateLShr(y, getConstant(16)), getConstant(16));
+  // n = 16 - m;          // is nonzero, set n = 0 and
+  n = IRB->CreateSub(getConstant(16), m);
+  // x = x >> m;          // shift x right 16.
+  x = IRB->CreateLShr(x, m);
+  //                     // Now x is of the form 0000xxxx.
+
+  // y = x - 0x100;       // If positions 8-15 are 0,
+  y = IRB->CreateSub(x, getConstant(0x100));
+  // m = (y >> 16) & 8;   // add 8 to n and shift x left 8.
+  m = IRB->CreateAnd(IRB->CreateLShr(y, getConstant(16)), getConstant(8));
+  // n = n + m;
+  n = IRB->CreateAdd(n, m);
+  // x = x << m;
+  x = IRB->CreateShl(x, m);
+
+  // y = x - 0x1000;     // If positions 12-15 are 0,
+  y = IRB->CreateSub(x, getConstant(0x1000));
+  // m = (y >> 16) & 4;  // add 4 to n and shift x left 4.
+  m = IRB->CreateAnd(IRB->CreateLShr(y, getConstant(16)), getConstant(4));
+  // n = n + m;
+  n = IRB->CreateAdd(n, m);
+  // x = x << m;
+  x = IRB->CreateShl(x, m);
+
+  // y = x - 0x4000;     // If positions 14-15 are 0,
+  y = IRB->CreateSub(x, getConstant(0x4000));
+  // m = (y >> 16) & 2;  // add 2 to n and shift x left 2.
+  m = IRB->CreateAnd(IRB->CreateLShr(y, getConstant(16)), getConstant(2));
+  // n = n + m;
+  n = IRB->CreateAdd(n, m);
+  // x = x << m;
+  x = IRB->CreateShl(x, m);
+
+  // y = x >> 14;        // Set y = 0, 1, 2, or 3.
+  y = IRB->CreateLShr(x, getConstant(14));
+  // m = y & ~(y >> 1);  // Set m = 0, 1, 2, or 2 resp.
+  m = IRB->CreateAnd(y, IRB->CreateNot(IRB->CreateLShr(y, getConstant(1))));
+  // res = (n + 2 - m) & positive
+  Value* Res = IRB->CreateAdd(n, getConstant(2));
+  Res = IRB->CreateSub(Res, m);
+  Res = IRB->CreateAnd(Res, positive);
 
   saveNodeValue(N, Res);
 }

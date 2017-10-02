@@ -18,6 +18,7 @@ class MiscLifter : public ARMLifter {
 
  private:
   void RBITHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+  void CLZHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 };
 
 #endif
