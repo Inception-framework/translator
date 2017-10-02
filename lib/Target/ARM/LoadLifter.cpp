@@ -249,6 +249,7 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   info->iRn_max = N->getNumOperands();
   index = info->iRd;
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
+  Value* Rd_init = visit(N->getOperand(index)->getOperand(1).getNode(), IRB);
 
   while ((index = info->getNext()) != -1) {
     SDNode* pred = N->getOperand(index).getNode();
@@ -260,6 +261,10 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
     WriteReg(value, Dest, IRB, info->width);
 
     if (info->hasManyUses()) Rd = UpdateRd(Rd, c4, IRB, true);
+  }
+
+  if (N->getMachineOpcode() == ARM::tLDMIA) {
+    Rd = WriteReg(Rd, Rd_init, IRB, info->width, false);
   }
 
   saveNodeValue(N, Rd);
