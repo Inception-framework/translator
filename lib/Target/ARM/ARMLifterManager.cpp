@@ -7,12 +7,14 @@
 #include "Target/ARM/BranchLifter.h"
 #include "Target/ARM/CompareLifter.h"
 #include "Target/ARM/CoprocLifter.h"
+#include "Target/ARM/DivLifter.h"
 #include "Target/ARM/ExtendLifter.h"
 #include "Target/ARM/FlagsLifter.h"
 #include "Target/ARM/HintLifter.h"
 #include "Target/ARM/ITLifter.h"
 #include "Target/ARM/LoadLifter.h"
 #include "Target/ARM/LogicalLifter.h"
+#include "Target/ARM/MiscLifter.h"
 #include "Target/ARM/MoveDataLifter.h"
 #include "Target/ARM/MulLifter.h"
 #include "Target/ARM/SVCallLifter.h"
@@ -79,6 +81,12 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("BARRIER", new BarrierLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("MISC", new MiscLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("DIV", new DivLifter(this)));
 
   registerAll();
 }
