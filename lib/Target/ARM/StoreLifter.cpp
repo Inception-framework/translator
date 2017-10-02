@@ -281,6 +281,7 @@ void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   unsigned opcode = N->getMachineOpcode();
   switch (opcode) {
     case ARM::tSTRi:
+    case ARM::tSTRspi:
       Offset = IRB->CreateMul(Offset, getConstant("4"));
   }
 
