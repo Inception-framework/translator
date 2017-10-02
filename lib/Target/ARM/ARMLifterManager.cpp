@@ -13,6 +13,7 @@
 #include "Target/ARM/ITLifter.h"
 #include "Target/ARM/LoadLifter.h"
 #include "Target/ARM/LogicalLifter.h"
+#include "Target/ARM/MiscLifter.h"
 #include "Target/ARM/MoveDataLifter.h"
 #include "Target/ARM/MulLifter.h"
 #include "Target/ARM/SVCallLifter.h"
@@ -79,6 +80,9 @@ ARMLifterManager::ARMLifterManager() {
 
   lifters.insert(
       std::pair<std::string, ARMLifter*>("BARRIER", new BarrierLifter(this)));
+
+  lifters.insert(
+      std::pair<std::string, ARMLifter*>("MISC", new MiscLifter(this)));
 
   registerAll();
 }
