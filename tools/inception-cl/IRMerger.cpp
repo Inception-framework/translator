@@ -17,6 +17,15 @@ void IRMerger::Run(llvm::StringRef name) {
 
   Function* fct = mod->getFunction(name);
 
+  uint64_t address;
+  Disassembler* DIS = (Disassembler*)DEC->getDisassembler();
+  if (nameLookupAddr(name, address, DIS) == false) {
+    inception_warning(
+        "Wrong symbol table, function %s undefined, it will not be decompiled ",
+        name);
+    return;
+  }
+
   FunctionCleaner::Clean(fct);
 
   if (fct->empty()) {

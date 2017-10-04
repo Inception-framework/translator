@@ -62,6 +62,9 @@ void HintLifter::HintHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
           "[HintHandler] tHINT found at address 0x%08x, type not supported",
           address);
   }
+
+  Value* Res = ReadReg(Reg("R0"), IRB);
+  saveNodeValue(N, Res);
 }
 
 

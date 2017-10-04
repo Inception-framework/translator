@@ -46,6 +46,8 @@ void BarrierLifter::BarrierHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
           "supported",
           address);
   }
+  Value* Res = ReadReg(Reg("R0"), IRB);
+  saveNodeValue(N, Res);
 }
 
 
