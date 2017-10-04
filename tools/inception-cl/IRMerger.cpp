@@ -20,8 +20,12 @@ void IRMerger::Run(llvm::StringRef name) {
   uint64_t address;
   Disassembler* DIS = (Disassembler*)DEC->getDisassembler();
   if (nameLookupAddr(name, address, DIS) == false) {
-    inception_warning(
-        "Wrong symbol table, function %s undefined, it will not be decompiled ",
+    Module* mod = IContext::Mod;
+    Function* fct = mod->getFunction(name);
+
+    FunctionCleaner::Clean(fct);
+    inception_message(
+        "Function %s removed because it's not defined in the symbols table",
         name);
     return;
   }
@@ -46,7 +50,9 @@ void IRMerger::Decompile(llvm::StringRef name) {
   Disassembler* DIS = (Disassembler*)DEC->getDisassembler();
 
   if (nameLookupAddr(name, address, DIS) == false) {
-    inception_error("Wrong symbol table, function %s undefined", name);
+    inception_error(
+        "Decompile failed because %s is not present in the symbols table",
+        name.str().c_str());
   }
 
   std::string fileName = name.str() + std::string(".dis");
