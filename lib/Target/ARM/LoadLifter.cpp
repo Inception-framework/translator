@@ -29,6 +29,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::tLDRi, Common, new LoadInfo(-1, 1, 2))
   REGISTER_LOAD_OPCODE(ARM::tLDRspi, Common, new LoadInfo(-1, 1, 2))
   REGISTER_LOAD_OPCODE(ARM::tLDRpci, PC, new LoadInfo(-1, -1, 1))
+  REGISTER_LOAD_OPCODE(ARM::t2LDRpci, PC, new LoadInfo(-1, -1, 1))
   REGISTER_LOAD_OPCODE(ARM::tLDRr, Common, new LoadInfo(-1, 1, 2))
   REGISTER_LOAD_OPCODE(ARM::t2LDRi8, Common, new LoadInfo(-1, 1, 2))
   REGISTER_LOAD_OPCODE(ARM::t2LDRi12, Common, new LoadInfo(-1, 1, 2))
@@ -246,13 +247,19 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   LoadInfo* info = getInfo(N->getMachineOpcode());
 
+  bool writeback = true;
+
   info->iRn_max = N->getNumOperands();
   index = info->iRd;
+  SDNode* Rn = N->getOperand(index).getNode();
   Value* Rd = visit(N->getOperand(index).getNode(), IRB);
   Value* Rd_init = visit(N->getOperand(index)->getOperand(1).getNode(), IRB);
 
   while ((index = info->getNext()) != -1) {
     SDNode* pred = N->getOperand(index).getNode();
+
+    if( getReg(Rn).compare(getReg(pred)) == 0)
+      writeback = false;
 
     Value* Dest = visitRegister(pred->getOperand(1).getNode(), IRB);
 
@@ -264,7 +271,10 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   }
 
   if (N->getMachineOpcode() == ARM::tLDMIA) {
-    Rd = WriteReg(Rd, Rd_init, IRB, info->width, false);
+    //We need to check if tLDMIA is in the registers list
+    // if it is, writeback is enabled
+    if(writeback)
+      Rd = WriteReg(Rd, Rd_init, IRB, info->width, false);
   }
 
   saveNodeValue(N, Rd);

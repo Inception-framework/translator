@@ -290,7 +290,7 @@ static std::error_code runInception(StringRef FileName) {
   inception_message("Importing sections .data and .heap...");
   SectionsWriter::WriteSection(".data", DAS, module);
   // SectionsWriter::WriteSection(".bss", DAS, module);
-  SectionsWriter::WriteSection(".heap", DAS, module);
+  // SectionsWriter::WriteSection(".heap", DAS, module);
   inception_message("Done\n");
 
   inception_message("Adding call to functions helper...");
