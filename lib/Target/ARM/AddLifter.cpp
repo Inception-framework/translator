@@ -88,6 +88,12 @@ void AddLifter::AdcHandler(SDNode *N, IRBuilder<> *IRB) {
 void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   ARMADDInfo *info = RetrieveGraphInformation(N, IRB);
 
+  switch (N->getMachineOpcode()) {
+    case ARM::tADDspi:
+    case ARM::tADDrSPi:
+      info->Op1 = IRB->CreateShl(info->Op1, getConstant("2"));
+  }
+
   Instruction *Res =
       dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
 
