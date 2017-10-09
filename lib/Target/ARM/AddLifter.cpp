@@ -94,10 +94,11 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
       info->Op1 = IRB->CreateShl(info->Op1, getConstant("2"));
   }
 
-  Instruction *Res =
-      dyn_cast<Instruction>(IRB->CreateAdd(info->Op0, info->Op1));
+  Value* Res = IRB->CreateAdd(info->Op0, info->Op1);
 
-  Res->setDebugLoc(N->getDebugLoc());
+  // Instruction *Res =
+  //     dyn_cast<Instruction>();
+  // Res->setDebugLoc(N->getDebugLoc());
 
   saveNodeValue(N, Res);
 
@@ -120,8 +121,17 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 }
 
 ARMADDInfo *AddLifter::RetrieveGraphInformation(SDNode *N, IRBuilder<> *IRB) {
-  Value *Op0 = visit(N->getOperand(0).getNode(), IRB);
-  Value *Op1 = NULL;  // visit(N->getOperand(1).getNode(), IRB);
+  Value *Op1 = NULL;
+  Value *Op0 = NULL;
+
+  /*We must check if pc is the first operand of add*/
+  if (IsPC(N->getOperand(0).getOperand(1).getNode())) {
+    const Disassembler *Dis = alm->Dec->getDisassembler();
+    uint32_t debugLoc = Dis->getDebugOffset(N->getDebugLoc());
+    Op0 = getConstant(debugLoc);
+  } else {
+    Op0 = visit(N->getOperand(0).getNode(), IRB);
+  }
 
   unsigned opcode = N->getMachineOpcode();
   switch (opcode) {
