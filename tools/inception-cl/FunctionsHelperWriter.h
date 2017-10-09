@@ -35,7 +35,11 @@
 
 typedef enum FUNCTION_HELPER {
   DUMP_STACK = 0,
-  DUMP_REGISTERS = 1
+  DUMP_REGISTERS = 1,
+  INTERRUPT_PROLOGUE = 2,
+  INTERRUPT_EPILOGUE = 3,
+  ICP = 4,
+  INTERRUPT_HANDLER = 5,
 } FUNCTION_HELPER;
 
 typedef enum FHW_POSITION { BEGIN = 0, END = 1, NONE = 2 } FHW_POSITION;
@@ -48,6 +52,16 @@ class FunctionsHelperWriter {
   static void FNHDumpStack(llvm::Module* mod, llvm::Instruction* before);
 
   static void FNHDumpRegisters(llvm::Module* mod, llvm::Instruction* before);
+
+  static void FNHInterruptPrologue(llvm::Module* mod,
+                                   llvm::Instruction* before);
+
+  static void FNHInterruptEpilogue(llvm::Module* mod,
+                                   llvm::Instruction* before);
+
+  static void FNHICP(llvm::Module* mod, llvm::Instruction* inst);
+
+  static void FNHInterruptHandler(llvm::Module* mod, llvm::Instruction* inst);
 
   static llvm::Instruction* GetBegin(llvm::Function* func);
 

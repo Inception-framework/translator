@@ -316,7 +316,6 @@ Value* Reg(StringRef name, Type* Ty) {
   Value* Reg = IContext::Mod->getGlobalVariable(name);
 
   if (Reg == NULL) {
-
     Constant* Initializer = Constant::getNullValue(Ty);
 
     Reg = new GlobalVariable(*IContext::Mod,  // Module
@@ -616,12 +615,12 @@ Constant* GetIntIntFunctionPointer(StringRef function_name) {
 
   PointerType* PointerTy = PointerType::get(FuncTy, 0);
 
-  Function* function = IContext::Mod->getFunction("inception_dump_stack");
+  Function* function = IContext::Mod->getFunction(function_name);
   if (!function) {
     function = Function::Create(
         /*Type=*/FuncTy,
         /*Linkage=*/GlobalValue::ExternalLinkage,
-        /*Name=*/"inception_dump_stack", IContext::Mod);
+        /*Name=*/function_name, IContext::Mod);
     function->setCallingConv(67);
   }
   AttributeSet function_PAL;
@@ -643,4 +642,139 @@ Constant* GetIntIntFunctionPointer(StringRef function_name) {
       ConstantExpr::getCast(Instruction::BitCast, function, PointerTy);
 
   return fct_ptr;
+}
+
+Constant* GetIntFunctionPointer(StringRef function_name) {
+  if (IContext::Mod == NULL) inception_error("API has not been initialized.");
+
+  // Type Definitions
+  std::vector<Type*> FuncTy_args;
+  FuncTy_args.push_back(IntegerType::get(IContext::getContextRef(), 32));
+  FunctionType* FuncTy = FunctionType::get(
+      /*Result=*/Type::getVoidTy(IContext::getContextRef()),
+      /*Params=*/FuncTy_args,
+      /*isVarArg=*/false);
+
+  PointerType* PointerTy = PointerType::get(FuncTy, 0);
+
+  Function* function = IContext::Mod->getFunction(function_name);
+  if (!function) {
+    function = Function::Create(
+        /*Type=*/FuncTy,
+        /*Linkage=*/GlobalValue::ExternalLinkage,
+        /*Name=*/function_name, IContext::Mod);
+    function->setCallingConv(67);
+  }
+  AttributeSet function_PAL;
+  {
+    SmallVector<AttributeSet, 4> Attrs;
+    AttributeSet PAS;
+    {
+      AttrBuilder B;
+      B.addAttribute(Attribute::NoUnwind);
+      PAS = AttributeSet::get(IContext::getContextRef(), ~0U, B);
+    }
+
+    Attrs.push_back(PAS);
+    function_PAL = AttributeSet::get(IContext::getContextRef(), Attrs);
+  }
+
+  // Constant Definitions
+  Constant* fct_ptr =
+      ConstantExpr::getCast(Instruction::BitCast, function, PointerTy);
+
+  return fct_ptr;
+}
+
+void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
+  if (IContext::Mod == NULL) inception_error("API has not been initialized.");
+
+  // TODO: Look up address in symbol table.
+  std::string FName =
+      IContext::alm->Dec->getDisassembler()->getFunctionName(Tgt);
+
+  Module* Mod = IRB->GetInsertBlock()->getParent()->getParent();
+
+  Function* Func = Mod->getFunction(FName);
+  if (Func == NULL) {
+    inception_error("BranchLifter cannot resolve address : 0x%08x", Tgt);
+  }
+
+  // outs() << FName << " args:\n";
+  std::vector<Value*> Args;
+  std::vector<Type*> ArgTypes;
+  char reg_name[3] = "R0";
+  for (Function::arg_iterator I = Func->arg_begin(), E = Func->arg_end();
+       I != E; ++I) {
+    ArgTypes.push_back(I->getType());
+    if (I->getType()->isPointerTy()) {
+      Value* Res = ReadReg(Reg(reg_name), IRB);
+      Res = IRB->CreateIntToPtr(Res, I->getType());
+      Args.push_back(Res);
+      reg_name[1]++;
+    } else if (I->getType()->isIntegerTy()) {
+      Value* Res = ReadReg(Reg(reg_name), IRB);
+      Res = IRB->CreateTrunc(
+          Res, IntegerType::get(IContext::getContextRef(),
+                                I->getType()->getIntegerBitWidth()));
+      Args.push_back(Res);
+      reg_name[1]++;
+    } else if (I->getType()->isArrayTy()) {
+      Type* Ty = ArrayType::get(IntegerType::get(IContext::getContextRef(), 32),
+                                I->getType()->getArrayNumElements());
+      Value* array = IRB->CreateAlloca(Ty);
+      for (unsigned int i = 0; i < I->getType()->getArrayNumElements(); i++) {
+        Value* IdxList[2];
+        IdxList[0] = getConstant("0");
+        IdxList[1] =
+            ConstantInt::get(IContext::getContextRef(), APInt(32, i, 10));
+        Value* ptr = IRB->CreateGEP(array, IdxList);
+        IRB->CreateStore(ReadReg(Reg(reg_name), IRB), ptr);
+        reg_name[1]++;
+      }
+      Value* Res = IRB->CreateLoad(array);
+      Args.push_back(Res);
+    } else {
+      Args.push_back(ReadReg(Reg(reg_name), IRB));
+      reg_name[1]++;
+    }
+  }
+
+  FunctionType* FT = FunctionType::get(Func->getReturnType(), ArgTypes, false);
+
+  Twine TgtAddr(Tgt);
+
+  // outs() << " =========================== \n\n";
+  // outs() << "Tgt        :  " << format("%8" PRIx64, Tgt) << '\n';
+  // outs() << "instrSize  :  " << format("%8" PRIx64, 4) << '\n';
+  // outs() << "FName      :  " << FName << '\n';
+  // outs() << " =========================== \n\n";
+
+  AttributeSet AS;
+  AS = AS.addAttribute(IContext::getContextRef(), AttributeSet::FunctionIndex,
+                       "Address", TgtAddr.str());
+
+  Function* Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
+
+  Proto->setCallingConv(Func->getCallingConv());
+  Value* Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
+  if (!Func->getReturnType()->isVoidTy()) {
+    if (Func->getReturnType()->isPointerTy()) {
+      Call = IRB->CreatePtrToInt(
+          Call, IntegerType::get(IContext::getContextRef(), 32));
+    } else if (Func->getReturnType()->isIntegerTy()) {
+      Call = IRB->CreateZExt(Call,
+                             IntegerType::get(IContext::getContextRef(), 32));
+    }
+
+    WriteReg(Call, Reg("R0"), IRB);
+  }
+
+  if (N != NULL) {
+    Value* dummyLR = getConstant("0");
+    saveNodeValue(N, dummyLR);
+  }
+  return;
+
+  // TODO: Technically visitCall sets the LR to IP+8. We should return that.
 }

@@ -75,4 +75,8 @@ Constant* GetVoidFunctionPointer(StringRef function_name);
 
 Constant* GetIntIntFunctionPointer(StringRef function_name);
 
+Constant* GetIntFunctionPointer(StringRef function_name);
+
+void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt);
+
 #endif
