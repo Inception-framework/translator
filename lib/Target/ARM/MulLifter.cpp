@@ -17,6 +17,8 @@ using namespace fracture;
 void MulLifter::registerLifter() {
   alm->registerLifter(this, std::string("MulLifter"), (unsigned)ARM::t2MUL,
                       (LifterHandler)&MulLifter::MulHandler);
+  alm->registerLifter(this, std::string("MulLifter"), (unsigned)ARM::tMUL,
+                      (LifterHandler)&MulLifter::MulHandler);
   alm->registerLifter(this, std::string("MulLifter"), (unsigned)ARM::t2UMLAL,
                       (LifterHandler)&MulLifter::UmlalHandler);
 }
