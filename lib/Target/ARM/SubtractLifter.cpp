@@ -59,6 +59,8 @@ void SubtractLifter::registerLifter() {
                       (LifterHandler)&SubtractLifter::SbcHandler);
   alm->registerLifter(this, std::string("SubtractLifter"), (unsigned)ARM::tRSB,
                       (LifterHandler)&SubtractLifter::SubHandler);
+  alm->registerLifter(this, std::string("SubtractLifter"), (unsigned)ARM::t2RSBri,
+                      (LifterHandler)&SubtractLifter::SubHandler);
 }
 
 void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {

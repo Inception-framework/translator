@@ -50,13 +50,29 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
       Rdest = Reg("SP");
       break;
     case 0:  // APSR
+      Rdest = Reg("APSR");
+      break;
     case 3:  // PSR
+      Rdest = Reg("PSR");
+      break;
     case 5:  // IPSR
+      Rdest = Reg("IPSR");
+      break;
     case 6:  // EPSR
+      Rdest = Reg("EPSR");
+      break;
     case 16:  // PRIMASK
+      Rdest = Reg("PRIMASK");
+      break;
     case 17:  // BASEPRI
+      Rdest = Reg("BASEPRI");
+      break;
     case 19:  // FAULTMASK
+      Rdest = Reg("FAULTMASK");
+      break;
     case 20:  // CONTROL
+      Rdest = Reg("CONTROL");
+      break;
     default:
       llvm::errs() << "MSRHandler unsupported coproc register\n";
       exit(0);
