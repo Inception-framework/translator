@@ -74,9 +74,16 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
 
   // Unconditional branch or inside it block (last instruction)
   if (Cmp == NULL || (IContext::alm->Dec->it_state & 0b1111) != 0) {
-    Instruction *Br = IRB->CreateBr(BBTgt);
-    Br->setDebugLoc(N->getDebugLoc());
-    saveNodeValue(N, Br);
+    if(BBTgt == NULL) {
+      CreateCall(N, IRB, Tgt);
+      Instruction* Ret = IRB->CreateRetVoid();
+      Ret->setDebugLoc(N->getDebugLoc());
+      saveNodeValue(N, Ret);
+    }else {
+      Instruction *Br = IRB->CreateBr(BBTgt);
+      Br->setDebugLoc(N->getDebugLoc());
+      saveNodeValue(N, Br);
+    }
     return;
   }
 
