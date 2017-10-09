@@ -82,7 +82,16 @@ class AssemblySupport {
 
         Value* substitute = Reg(StringRef(newName), Ty);
 
+        bool remove = true;
+
         for (auto b = var->user_begin(); b != var->user_end(); b++) {
+          if( isa<Constant>(*b) || !isa<GlobalValue>(*b)) {
+            b->dump();
+            remove = false;
+            break;
+          }
+
+
           b->replaceUsesOfWith(var, substitute);
 
           for (auto o = b->op_begin(); o != b->op_end(); o++) {
@@ -93,8 +102,10 @@ class AssemblySupport {
 
         // var->replaceAllUsesWith(substitute);
 
-        var->dropAllReferences();
-        var->eraseFromParent();
+        if(remove) {
+          var->dropAllReferences();
+          var->eraseFromParent();
+        }
       }
     }
   }
