@@ -119,9 +119,20 @@ bool Disassembler::hasReturnInstruction(MachineBasicBlock *MBB) {
     const MCRegisterInfo *RI = getMCDirector()->getMCRegisterInfo();
 
     if (instr->isReturn()) {
+      // outs() << "isReturn\n";
       return true;
-    } else if (instr->isBranch()) {
+    }
+
+    if (instr->isBranch()) {
       if (instr->readsVirtualRegister(RI->getRARegister())) {
+        // outs() << "is bx lr\n";
+        return true;
+      }
+    }
+
+    if (instr->getOpcode() == 2766) {  // tPOP
+      if (instr->readsVirtualRegister(RI->getProgramCounter())) {
+        // outs() << "is pop pc\n";
         return true;
       }
     }
@@ -134,8 +145,16 @@ bool Disassembler::hasPCReturnInstruction(MachineBasicBlock *MBB) {
        I != E; ++I) {
     MachineInstr *instr = &(*I);
 
+    const MCRegisterInfo *RI = getMCDirector()->getMCRegisterInfo();
+
     if (instr->isReturn()) {
       return true;
+    }
+
+    if (instr->getOpcode() == 2766) {  // tPOP
+      if (instr->readsVirtualRegister(RI->getProgramCounter())) {
+        return true;
+      }
     }
   }
   return false;
@@ -177,6 +196,12 @@ MachineBasicBlock *Disassembler::decodeBasicBlock(unsigned Address,
     }
     if (MI != NULL && MI->isTerminator()) {
       break;
+    }
+    const MCRegisterInfo *RI = getMCDirector()->getMCRegisterInfo();
+    if (MI != NULL && MI->getOpcode() == 2766) {  // tPOP
+      if (MI->readsVirtualRegister(RI->getProgramCounter())) {
+        break;
+      }
     }
   }
 
@@ -221,11 +246,51 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   MCInstrDesc *MCID = new MCInstrDesc(MII->get(Inst->getOpcode()));
   MCID->Size = InstSize;
 
-  // Check if the instruction can load to program counter and mark it as a Ret
-  // FIXME: Better analysis would be to see if the PC value references memory
-  // sent as a parameter or set locally in the function, but that would need to
-  // happen after decompilation. In either case, this is definitely a BB
-  // terminator or branch!
+  // RETURN INSTRUCTION HANDLING
+  // In ARM, we can have several instructions acting as function returns:
+  //
+  // a. bx lr
+  // b. pop {pc}
+  // c. pop {rn1,rn2,...,pc}, ldr pc, [...]
+  //
+  // Follows a brief description of how code distributed around Disassembler and
+  // Decompiler handles this thing:
+  //
+  // 1. Detection:
+  //    a. detected by looking at the properties of the
+  //       MachineInstruction ( it's a branch, it reads lr )
+  //       done in: Disassembler::hasReturnInstruction
+  //    b. similar ( it's a tPOP, it reads pc as operand )
+  //       done in: Disassembler::hasReturnInstruction
+  //    c. detected by looking at the MCInstrDesc properties
+  //       (mayLoad and mayAffectControlFlow)
+  //       done here before recovering the MachineInstruction and used
+  //        by Disassembler::hasReturnInstruction
+  //
+  // 2. Stopping decompilation of basic blocks
+  //    In Disassembler::disassemble we call the function decodeBasicBlock until
+  //    the function Disassembler::hasReturnInstruction returns true
+  //
+  // 3. Stopping decompilation of the basic block
+  //    In Disassembler::decodeBasicBlock we call the decodeInstruction function
+  //    until we find a Terminator instruction (branch, including a., or c.) or
+  //    c. (detected as is Disassembler::hasReturnInstruction)
+  //
+  // 4. Properly generating a llvm ret instruction during decompilation
+  //    a. In Decompiler::createDAGFromMachineBasicBlock we detect a tBX
+  //       instruction which uses LR and we transform it into a tBX_RET.
+  //       The BranchLifter handler for tBX_RET will add the corresponging
+  //       llvm ret instruction
+  //       instruction.
+  //    b. c. The Disassembler::hasPCReturnInstruction function is similar to
+  //          the Disassembler::hasReturnInstruction but detects only b. and c.
+  //          It is used by Decompiler::decompileBasicBlocks to inject an llvm
+  //          ret instruction at the end of the last basic block if it end with
+  //          b. or c. This way the normal lifter handlers for b. and c. put the
+  //          normal llvm decompilation for them, but we also add the return at
+  //          the end.
+  //
+  // 5. Here we do not discuss return parameters
   if (MCID->mayLoad() &&
       MCID->mayAffectControlFlow(*Inst, *MC->getMCRegisterInfo())) {
     MCID->Flags |= (1 << MCID::Return);
