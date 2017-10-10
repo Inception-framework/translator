@@ -128,6 +128,7 @@ public:
   /// \brief Create a function object at the specified address.
   MachineFunction* getOrCreateFunction(unsigned Address);
 
+  MachineFunction *getNearestFunction(StringRef &NameRef);
   MachineFunction* getNearestFunction(unsigned Address);
 
   /// \brief Disassembles a specific instruction given the specific object file

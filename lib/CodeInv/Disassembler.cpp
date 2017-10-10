@@ -399,9 +399,12 @@ DebugLoc *Disassembler::setDebugLoc(uint64_t Address) {
 }
 
 MachineFunction *Disassembler::getOrCreateFunction(unsigned Address) {
-  MachineFunction *MF = getNearestFunction(Address);
+  StringRef FNameRef = getFunctionName(Address);
+  // MachineFunction *MF = getNearestFunction(Address); //see LIMITATIONS of
+  // this function
+  MachineFunction *MF = getNearestFunction(FNameRef);
   if (MF == NULL) {
-    StringRef FNameRef = getFunctionName(Address);
+    // StringRef FNameRef = getFunctionName(Address);
     // Note: this fixes breakage in the constructor below DO NOT REMOVE
     std::string FN = FNameRef.str();
     FunctionType *FTy = FunctionType::get(
@@ -413,6 +416,21 @@ MachineFunction *Disassembler::getOrCreateFunction(unsigned Address) {
   return MF;
 }
 
+/*
+ * Return the nearest Machine Function based on the address:
+ *   function entry <= Address <= function end
+ *
+ * LIMITATION:
+ *   This function does not work well if we have two functions sharing a portion
+ *   of code, or in other words a function with two entry points.
+ *   E.g.  func1: ...
+ *                ...
+ *         func2: ...
+ *                ...
+ *                ret
+ *   If func1 is disassembled first, getNearestFunction(func2_entry_address)
+ *   returns func1
+ */
 MachineFunction *Disassembler::getNearestFunction(unsigned Address) {
   if (Functions.size() == 0) {
     return NULL;
@@ -432,6 +450,35 @@ MachineFunction *Disassembler::getNearestFunction(unsigned Address) {
       if (Address <= getDebugOffset(LastInstr->getDebugLoc())) {
         return FuncItr->second;
       }
+    }
+    FuncItr++;
+  }
+  return NULL;
+}
+
+/*
+ * This function is introduced to overcome the limitation of the previous one.
+ * It is based on the function name instead of the function address, in order to
+ * avoid ambiguity when there are multiple entry points (multiple functions
+ * sharing some code in the last part).
+ * The fucntion name can be obtained by calling getFunctionName(entry_address)
+ * which returns the name in the symbol table (if the function is there) or an
+ * a generated name (otherwise).
+ */
+MachineFunction *Disassembler::getNearestFunction(StringRef &NameRef) {
+  if (Functions.size() == 0) {
+    return NULL;
+  }
+  std::map<unsigned, MachineFunction *>::reverse_iterator FuncItr =
+      Functions.rbegin();
+  while (FuncItr != Functions.rend()) {
+    if (FuncItr->second == NULL || FuncItr->second->size() == 0 ||
+        FuncItr->second->rbegin()->size() == 0) {
+      FuncItr++;
+      continue;
+    }
+    if (FuncItr->second->getName().equals(NameRef)) {
+      return FuncItr->second;
     }
     FuncItr++;
   }
