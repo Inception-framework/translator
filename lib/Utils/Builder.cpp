@@ -755,6 +755,10 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
                        "Address", TgtAddr.str());
 
   Function* Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
+  if (Proto == NULL) {
+    inception_error("Unsupported function parameter when creating a call to %s",
+                    FName.c_str());
+  }
 
   Proto->setCallingConv(Func->getCallingConv());
   Value* Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
