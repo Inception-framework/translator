@@ -89,7 +89,6 @@ void MoveDataLifter::MoveHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
 
 void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
 
-  llvm::outs() << "MoveNotHandler\n";
   Value* Op0 = NULL;
   unsigned opcode = N->getMachineOpcode();
   if (opcode == ARM::t2MVNs) {

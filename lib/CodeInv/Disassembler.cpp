@@ -656,6 +656,37 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   if (!RelName.empty()) NameRef = RelName;
 }
 
+bool Disassembler::isFunctionInSymbolTable(unsigned Address) const {
+  uint64_t SymAddr;
+  std::error_code ec;
+  StringRef NameRef;
+  // Check in the regular symbol table first
+  for (object::symbol_iterator I = Executable->symbols().begin(),
+                               E = Executable->symbols().end();
+       I != E; ++I) {
+    object::SymbolRef::Type SymbolTy;
+    if ((ec = I->getType(SymbolTy))) {
+      errs() << ec.message() << "\n";
+      continue;
+    }
+    if (SymbolTy != object::SymbolRef::ST_Function) {
+      continue;
+    }
+    if ((ec = I->getAddress(SymAddr))) {
+      errs() << ec.message() << "\n";
+      continue;
+    }
+    if ((unsigned)SymAddr == Address) {
+      if ((ec = I->getName(NameRef))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+      return true;
+    }
+  }
+  return false;
+}
+
 const StringRef Disassembler::getFunctionName(unsigned Address) const {
   uint64_t SymAddr;
   std::error_code ec;
@@ -684,31 +715,6 @@ const StringRef Disassembler::getFunctionName(unsigned Address) const {
       break;
     }
   }
-  // NOTE: Dynamic symbols accessors removed in newer version of llvm-trunk
-  // Now check dynamic symbols
-  // for (object::symbol_iterator I = elf->dynamic_symbol_begin(),
-  //        E = elf->dynamic_symbol_end(); I != E; ++I) {
-  //   object::SymbolRef::Type SymbolTy;
-  //   if ((ec = I->getType(SymbolTy))) {
-  //     errs() << ec.message() << "\n";
-  //     continue;
-  //   }
-  //   if (SymbolTy != object::SymbolRef::ST_Function) {
-  //     continue;
-  //   }
-  //   if ((ec = I->getAddress(SymAddr))) {
-  //     errs() << ec.message() << "\n";
-  //     continue;
-  //   }
-  //   if ((unsigned)SymAddr == Address) {
-  //     if ((ec = I->getName(NameRef))) {
-  //       errs() << ec.message() << "\n";
-  //       continue;
-  //     }
-  //     break;
-  //   }
-  // }
-
   if (NameRef.empty()) {
     std::string *FName = new std::string();
     raw_string_ostream FOut(*FName);

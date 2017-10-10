@@ -759,21 +759,24 @@ SelectionDAG *Decompiler::createDAGFromMachineBasicBlock(
   return DAG;
 }
 
-BasicBlock *Decompiler::getOrCreateBasicBlock(unsigned Address, Function *F) {
+uint64_t Decompiler::getFunctionAddress(Function *F) {
   // Grab offset from the first basic block in the function
   BasicBlock *FB =
       getOrCreateBasicBlock(StringRef(Twine(F->getName() + "+0").str()), F);
   if (FB->begin() == FB->end()) {
-    inception_warning("Cannot find by address when BasicBlock '+0' is empty!");
-    return NULL;
+    inception_error("Cannot find by address when BasicBlock '+0' is empty!");
   }
-  uint64_t FuncAddr = getBasicBlockAddress(FB);
+  return getBasicBlockAddress(FB);
+}
+
+BasicBlock *Decompiler::getOrCreateBasicBlock(unsigned Address, Function *F) {
+  // Get function address
+  uint64_t FuncAddr = getFunctionAddress(F);
 
   // Get Target block offset (and check if the bb is inside this func!)
   if (FuncAddr > Address) {
-    printError("Address is before the function starts!");
-    // TODO: What do we do in this situation?
-    return NULL;
+    inception_error(
+        "[getOrCreateBasicBlock] target address < entry point, unhandled");
   }
 
   uint64_t TBAddr = Address - FuncAddr;

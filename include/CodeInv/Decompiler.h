@@ -67,6 +67,7 @@ public:
   BasicBlock *decompileBasicBlock(MachineBasicBlock *MBB, Function *F,
                                   unsigned Address, unsigned entryAddress);
 
+  uint64_t getFunctionAddress(Function *F);
   BasicBlock* getOrCreateBasicBlock(unsigned Address, Function *F);
   BasicBlock* getOrCreateBasicBlock(StringRef BBName, Function *F);
 

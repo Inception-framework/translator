@@ -151,6 +151,7 @@ public:
 
   /// \brief Symbol accessors
   std::string getSymbolName(unsigned Address);
+  bool isFunctionInSymbolTable(unsigned Address) const;
   const StringRef getFunctionName(unsigned Address) const;
   const StringRef getDataName(unsigned Address) const;
   void getRelocFunctionName(unsigned Address, StringRef &NameRef);

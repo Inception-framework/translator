@@ -56,9 +56,14 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   uint32_t Tgt = PC + 4 + DestInt;
 
   Function *F = IRB->GetInsertBlock()->getParent();
-  BasicBlock *CurBB = IRB->GetInsertBlock();
 
-  BasicBlock *BBTgt = alm->Dec->getOrCreateBasicBlock(Tgt, F);
+  // Check if the target is before the entry point
+  uint64_t FuncAddr = alm->Dec->getFunctionAddress(F);
+  bool TgtBeforeEntry;
+  TgtBeforeEntry = (Tgt < FuncAddr);
+
+  // get current basic block
+  BasicBlock *CurBB = IRB->GetInsertBlock();
 
   // Parse the branch condition code
   const ConstantSDNode *CCNode = dyn_cast<ConstantSDNode>(N->getOperand(2));
@@ -74,17 +79,45 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
 
   // Unconditional branch or inside it block (last instruction)
   if (Cmp == NULL || (IContext::alm->Dec->it_state & 0b1111) != 0) {
-    if(BBTgt == NULL) {
+    if (alm->Dec->getDisassembler()->isFunctionInSymbolTable(Tgt)) {
+      // If the target is a function in the symbols table, we can imagine that
+      // this is a branch there to share code. We can then support this case
+      // with a trick: we call the function and when it returns we return
+      // immediately.
+      inception_warning(
+          "[BranchLifter] found branch to the entry point of another function "
+          "in the symbols table, "
+          "trasnforming it in: call func2; return");
       CreateCall(N, IRB, Tgt);
-      Instruction* Ret = IRB->CreateRetVoid();
+      Instruction *Ret = IRB->CreateRetVoid();
       Ret->setDebugLoc(N->getDebugLoc());
       saveNodeValue(N, Ret);
-    }else {
+    } else if (!TgtBeforeEntry) {
+      // If the target is not a function and it's address is >= of the
+      // function entry point, we can branch there.
+      BasicBlock *BBTgt = alm->Dec->getOrCreateBasicBlock(Tgt, F);
       Instruction *Br = IRB->CreateBr(BBTgt);
       Br->setDebugLoc(N->getDebugLoc());
       saveNodeValue(N, Br);
+    } else {
+      // Otherwise, we are not able to handle a branch to Tgt
+      inception_error(
+          "[BranchLifter] Unsupported case: branch (unconditional or last of "
+          "an IT blcok) to a Tgt address which is "
+          "< of the function entry point and which does not correspond to "
+          "another function in the symbols table");
     }
     return;
+  }
+
+  if (TgtBeforeEntry) {
+    // This case happens when the Tgt address is < of the function entry point
+    // and the branch is conditional, so the trick above is not supported (we
+    // should put a kind of conditional call
+    inception_error(
+        "[BranchLifter] Unsupported case: branch (conditional) to a Tgt "
+        "address which is "
+        "< of the function entry point");
   }
 
   // If conditional branch, find the successor block and look at CC
@@ -99,6 +132,7 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
   }
 
   // Conditional branch
+  BasicBlock *BBTgt = alm->Dec->getOrCreateBasicBlock(Tgt, F);
   Instruction *Br = IRB->CreateCondBr(Cmp, BBTgt, NextBB);
   Br->setDebugLoc(N->getDebugLoc());
   saveNodeValue(N, Br);
