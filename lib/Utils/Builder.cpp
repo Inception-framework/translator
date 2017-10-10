@@ -710,6 +710,26 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
     inception_error("BranchLifter cannot resolve address : 0x%08x", Tgt);
   }
 
+  // if (Func->isVarArg()) {
+  //   inception_warning("Abort call to unsupported var_arg function %s",
+  //                     FName.c_str());
+  //   return;
+  // }
+
+  if (Func->isIntrinsic()) {
+    return;
+  }
+
+  // Can we remove this function ?
+  if (Func->empty())
+    if (Func->isDefTriviallyDead()) {
+      Func->deleteBody();
+      Func->eraseFromParent();
+      return;
+    } else {
+      return;
+    }
+
   // outs() << FName << " args:\n";
   std::vector<Value*> Args;
   std::vector<Type*> ArgTypes;
@@ -764,14 +784,16 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
   AS = AS.addAttribute(IContext::getContextRef(), AttributeSet::FunctionIndex,
                        "Address", TgtAddr.str());
 
-  Function* Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
-  if (Proto == NULL) {
-    inception_error("Unsupported function parameter when creating a call to %s",
-                    FName.c_str());
-  }
+  // Function* Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
+  // if (Proto == NULL) {
+  //   inception_error("Unsupported function parameter when creating a call to
+  //   %s",
+  //                   FName.c_str());
+  // }
+  //
+  // Proto->setCallingConv(Func->getCallingConv());
 
-  Proto->setCallingConv(Func->getCallingConv());
-  Value* Call = IRB->CreateCall(dyn_cast<Value>(Proto), Args);
+  Value* Call = IRB->CreateCall(dyn_cast<Value>(Func), Args);
   if (!Func->getReturnType()->isVoidTy()) {
     if (Func->getReturnType()->isPointerTy()) {
       Call = IRB->CreatePtrToInt(
@@ -782,6 +804,9 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
     }
 
     WriteReg(Call, Reg("R0"), IRB);
+    // else
+    //   inception_error("Function %s has unsupported return type...",
+    //                   FName.c_str());
   }
 
   if (N != NULL) {
