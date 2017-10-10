@@ -35,7 +35,6 @@ Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
       Mod(NewMod),
       DAG(NULL),
       ViewMCDAGs(false),
-      ViewIRDAGs(false),
       Infos(InfoOut),
       Errs(ErrOut) {
   assert(NewDis && "Cannot initialize decompiler with null Disassembler!");

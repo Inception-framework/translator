@@ -82,7 +82,6 @@ public:
   SelectionDAG* getCurrentDAG() { return DAG; }
   const Disassembler* getDisassembler() const { return Dis; }
   void setViewMCDAGs(bool Setting) { ViewMCDAGs = Setting; }
-  void setViewIRDAGs(bool Setting) { ViewIRDAGs = Setting; }
   Module* getModule() { return Mod; }
   LLVMContext* getContext() { return Context; }
 
@@ -96,7 +95,6 @@ public:
   LLVMContext *Context;
   SelectionDAG* DAG;
   bool ViewMCDAGs;
-  bool ViewIRDAGs;
 
   void printSDNode(std::map<SDValue, std::string> &OpMap,
     std::stack<SDNode *> &NodeStack, SDNode *CurNode, SelectionDAG *DAG);

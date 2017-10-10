@@ -90,7 +90,7 @@ using namespace fracture;
 using namespace inception;
 using std::string;
 
-static void save(std::string fileName, Module* module);
+static void save(std::string fileName, Module *module);
 
 //===----------------------------------------------------------------------===//
 // Global Variables and Parameters
@@ -123,19 +123,9 @@ static cl::opt<bool> ViewMachineDAGs(
     "view-machine-dags", cl::Hidden,
     cl::desc("Pop up a window to show dags before Inverse DAG Select."));
 
-static cl::opt<bool> ViewIRDAGs(
-    "view-ir-dags", cl::Hidden,
-    cl::desc("Pop up a window to show dags after Inverse DAG Select."));
-
-static cl::opt<bool> StrippedBinary(
-    "stripped", cl::Hidden,
-    cl::desc(
-        "Run stripped disassembler to locate functions in stripped binary."));
-
-static cl::opt<bool> printGraph(
-    "print-graph", cl::Hidden,
-    cl::desc(
-        "Print graph for stripped file, must also enable stripped command"));
+static cl::opt<bool> DisableInterrupt(
+    "disable-interrupt", cl::Hidden,
+    cl::desc("Disable IR code for handler prolog/epilog"));
 
 ///===---------------------------------------------------------------------===//
 /// loadBitcode     - Tries to open the bitcode file and set the ObjectFile.
@@ -236,7 +226,6 @@ static std::error_code runInception(StringRef FileName) {
   DEC = new Decompiler(DAS, module, outs(), outs());
 
   DEC->setViewMCDAGs(ViewMachineDAGs);
-  DEC->setViewIRDAGs(ViewIRDAGs);
 
   if (!MCD->isValid()) {
     errs() << "Warning: Unable to initialized LLVM MC API!\n";
@@ -287,20 +276,23 @@ static std::error_code runInception(StringRef FileName) {
   StackAllocator::InitSP(module, DAS);
   inception_message("Done\n");
 
-  inception_message("Importing sections .data and .heap...");
-  SectionsWriter::WriteSection(".data", DAS, module);
+  inception_message("Importing sections ...");
+  // SectionsWriter::WriteSection(".data", DAS, module);
   // SectionsWriter::WriteSection(".bss", DAS, module);
   // SectionsWriter::WriteSection(".heap", DAS, module);
-  SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
+  // SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
   inception_message("Done\n");
 
   inception_message("Adding call to functions helper...");
   Function *main = module->getFunction("main");
   FunctionsHelperWriter::Write(END, DUMP_REGISTERS, module, main);
-  FunctionsHelperWriter::Write(NONE, INTERRUPT_PROLOGUE, module, main);
-  FunctionsHelperWriter::Write(NONE, INTERRUPT_EPILOGUE, module, main);
+
+  if (DisableInterrupt == false) {
+    FunctionsHelperWriter::Write(NONE, INTERRUPT_PROLOGUE, module, main);
+    FunctionsHelperWriter::Write(NONE, INTERRUPT_EPILOGUE, module, main);
+    FunctionsHelperWriter::Write(NONE, INTERRUPT_HANDLER, module, main);
+  }
   FunctionsHelperWriter::Write(NONE, ICP, module, main);
-  FunctionsHelperWriter::Write(NONE, INTERRUPT_HANDLER, module, main);
   // FunctionsHelperWriter::Write(END, DUMP_STACK, module, main);
   inception_message("Done\n");
 

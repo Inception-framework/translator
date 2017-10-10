@@ -70,6 +70,8 @@ class SectionsWriter {
     BasicBlock* bb = &(fct->getEntryBlock());
     Instruction* inst = &(bb->front());
 
+    inception_message("%s ...", SectionName.str().c_str());
+
     // IRBuilder to insert new instruction after inst
     IRBuilder<>* IRB = new IRBuilder<>(inst);
 
