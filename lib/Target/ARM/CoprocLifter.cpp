@@ -46,36 +46,59 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
   Value* Rdest = NULL;
   switch (reg_id) {
     case 8:  // PSP
+      Rdest = Reg("SP");
+      inception_warning(
+          "[MSRHandler] PSP/MSP difference is not supported, PSP treated as "
+          "SP");
+      break;
     case 9:  // MSP
       Rdest = Reg("SP");
+      inception_warning(
+          "[MSRHandler] PSP/MSP difference is not supported, MSP treated as "
+          "SP");
       break;
     case 0:  // APSR
       Rdest = Reg("APSR");
+      inception_warning(
+          "[MSRHandler] APSR in not supported, treated as dummy write");
       break;
     case 3:  // PSR
       Rdest = Reg("PSR");
+      inception_warning(
+          "[MSRHandler] PSR in not supported, treated as dummy write");
       break;
     case 5:  // IPSR
       Rdest = Reg("IPSR");
+      inception_warning(
+          "[MSRHandler] IPSR in not supported, treated as dummy write");
       break;
     case 6:  // EPSR
       Rdest = Reg("EPSR");
+      inception_warning(
+          "[MSRHandler] EPSR in not supported, treated as dummy write");
       break;
     case 16:  // PRIMASK
       Rdest = Reg("PRIMASK");
+      inception_warning(
+          "[MSRHandler] PRIMASK in not supported, treated as dummy write");
       break;
     case 17:  // BASEPRI
       Rdest = Reg("BASEPRI");
+      inception_warning(
+          "[MSRHandler] BASEPRI in not supported, treated as dummy write");
       break;
     case 19:  // FAULTMASK
       Rdest = Reg("FAULTMASK");
+      inception_warning(
+          "[MSRHandler] FAULTMASK in not supported, treated as dummy write");
       break;
     case 20:  // CONTROL
       Rdest = Reg("CONTROL");
+      inception_warning(
+          "[MSRHandler] CONTROL in not supported, treated as dummy write");
       break;
     default:
-      llvm::errs() << "MSRHandler unsupported coproc register\n";
-      exit(0);
+      inception_error("[MSRHandler] unsupported coproc register\n");
   }
 
   // store in the dest register
