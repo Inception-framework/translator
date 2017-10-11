@@ -366,7 +366,7 @@ Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
   }
 }
 
-Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
+Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width, bool Sign) {
   if (IContext::Mod == NULL) inception_error("API has not been initialized.");
   Type* Ty = NULL;
 
@@ -393,14 +393,24 @@ Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
   if (Width != 32) {
     load = IRB->CreateTrunc(load, Ty);
 
-    load =
-        IRB->CreateZExt(load, IntegerType::get(IContext::getContextRef(), 32));
+    if (Sign) {
+      load = IRB->CreateSExt(load,
+                             IntegerType::get(IContext::getContextRef(), 32));
+    } else {
+      load = IRB->CreateZExt(load,
+                             IntegerType::get(IContext::getContextRef(), 32));
+    }
   }
 
   return load;
 }
 
-Value* ReadReg(Value* Rn, IRBuilder<>* IRB) { return ReadReg(Rn, IRB, 32); }
+Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width) {
+  return ReadReg(Rn, IRB, Width, false);
+}
+Value* ReadReg(Value* Rn, IRBuilder<>* IRB) {
+  return ReadReg(Rn, IRB, 32, false);
+}
 
 Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width,
                 bool extend) {

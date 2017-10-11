@@ -41,6 +41,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::tLDRBr, Common, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::t2LDRBi8, Common, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::t2LDRBi12, Common, new LoadInfo(-1, 1, 2, 8))
+  REGISTER_LOAD_OPCODE(ARM::t2LDRSBi12, Common, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::t2LDRB_PRE, Pre, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::t2LDRB_POST, Post, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::t2LDRBs, Common, new LoadInfo(-1, 1, 2, 8, true))
@@ -430,7 +431,15 @@ void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
 
   Value* Rn = NULL;
 
-  Rn = ReadReg(Rd, IRB, info->width);
+  switch (OpCode) {
+    case ARM::t2LDRSBi12:
+      // some instructions need sign extension
+      Rn = ReadReg(Rd, IRB, info->width, true);
+      break;
+    default:
+      Rn = ReadReg(Rd, IRB, info->width);
+      break;
+  }
 
   saveNodeValue(N, Rn);
 }

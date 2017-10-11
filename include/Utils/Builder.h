@@ -46,6 +46,8 @@ Value* getConstant(uint32_t value);
 
 Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB);
 
+Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width, bool Sign);
+
 Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width);
 
 Value* ReadReg(Value* Rn, IRBuilder<>* IRB);
