@@ -29,6 +29,8 @@ class AddLifter : public ARMLifter {
 
   void AdcHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 
+  void AdrHandler(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
+
   ARMADDInfo* RetrieveGraphInformation(llvm::SDNode* N, llvm::IRBuilder<>* IRB);
 };
 

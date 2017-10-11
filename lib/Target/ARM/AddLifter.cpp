@@ -55,6 +55,10 @@ void AddLifter::registerLifter() {
                       (LifterHandler)&AddLifter::AdcHandler);
   alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADC,
                       (LifterHandler)&AddLifter::AdcHandler);
+  alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::tADR,
+                      (LifterHandler)&AddLifter::AdrHandler);
+  //  alm->registerLifter(this, std::string("AddLifter"), (unsigned)ARM::t2ADR,
+  //                      (LifterHandler)&AddLifter::AdrHandler);
 }
 
 void AddLifter::AdcHandler(SDNode *N, IRBuilder<> *IRB) {
@@ -96,10 +100,6 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
 
   Value* Res = IRB->CreateAdd(info->Op0, info->Op1);
 
-  // Instruction *Res =
-  //     dyn_cast<Instruction>();
-  // Res->setDebugLoc(N->getDebugLoc());
-
   if (info->S) {
     // Write the flag updates.
     // Compute AF.
@@ -120,18 +120,36 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   saveNodeValue(N, Res);
 }
 
+void AddLifter::AdrHandler(SDNode *N, IRBuilder<> *IRB) {
+  Value *Op0 = NULL;
+  Value *Res = NULL;
+
+  switch (N->getMachineOpcode()) {
+    case ARM::tADR: {
+      const ConstantSDNode *immediateNode =
+          dyn_cast<ConstantSDNode>(N->getOperand(0));
+      if (!immediateNode) {
+        inception_error("[AdrHandler]: Not a constant integer for immediate");
+      }
+
+      uint32_t immediate = immediateNode->getZExtValue() << 2;
+
+      uint64_t pc =
+          alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
+      pc += 4;     // pipeline
+      pc &= ~0x3;  // align(address,4)
+      Res = getInteger(pc + immediate);
+    }
+  }
+
+  saveNodeValue(N, Res);
+}
+
 ARMADDInfo *AddLifter::RetrieveGraphInformation(SDNode *N, IRBuilder<> *IRB) {
   Value *Op1 = NULL;
   Value *Op0 = NULL;
 
-  /*We must check if pc is the first operand of add*/
-  if (IsPC(N->getOperand(0).getOperand(1).getNode())) {
-    const Disassembler *Dis = alm->Dec->getDisassembler();
-    uint32_t debugLoc = Dis->getDebugOffset(N->getDebugLoc());
-    Op0 = getConstant(debugLoc);
-  } else {
-    Op0 = visit(N->getOperand(0).getNode(), IRB);
-  }
+  Op0 = visit(N->getOperand(0).getNode(), IRB);
 
   unsigned opcode = N->getMachineOpcode();
   switch (opcode) {
