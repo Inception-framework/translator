@@ -100,8 +100,6 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
   //     dyn_cast<Instruction>();
   // Res->setDebugLoc(N->getDebugLoc());
 
-  saveNodeValue(N, Res);
-
   if (info->S) {
     // Write the flag updates.
     // Compute AF.
@@ -118,6 +116,8 @@ void AddLifter::AddHandler(SDNode *N, IRBuilder<> *IRB) {
     // Compute CF.
     flags->WriteCFAdd(IRB, Res, info->Op0);
   }
+
+  saveNodeValue(N, Res);
 }
 
 ARMADDInfo *AddLifter::RetrieveGraphInformation(SDNode *N, IRBuilder<> *IRB) {
