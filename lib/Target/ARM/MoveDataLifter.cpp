@@ -113,7 +113,7 @@ void MoveDataLifter::MoveNotHandler(llvm::SDNode* N, IRBuilder<>* IRB) {
     // Compute ZF.
     flags->WriteZF(IRB, Res);
     ////TODO Compute CF. in case of shift only??
-    if (opcode != ARM::t2MVNs) {
+    if (opcode == ARM::t2MOVi) {
       const ConstantSDNode* ConstNode =
           dyn_cast<ConstantSDNode>(N->getOperand(0));
       if (ConstNode) {
