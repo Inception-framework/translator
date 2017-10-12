@@ -55,19 +55,35 @@ class SectionsWriter {
 
     // Prepare section
     StringRef Bytes;
-    const object::SectionRef Section = Dis->getSectionByName(SectionName);
+    const object::SectionRef* Section = NULL;
 
-    if (Section.getSize() == 0) {
+    for (object::section_iterator si = Dis->getExecutable()->section_begin(),
+                                  se = Dis->getExecutable()->section_end();
+         si != se; ++si) {
+      StringRef Name;
+      if (si->getName(Name)) {
+        continue;
+      }
+      if (Name.equals(SectionName)) {
+        Section = &*si;
+        break;
+      }
+    }
+
+    if(Section == NULL)
+      return;
+
+    if (Section->getSize() == 0) {
       inception_error("[SectionsWriter] Section.getSize()");
     }
 
-    std::error_code ec = Section.getContents(Bytes);
+    std::error_code ec = Section->getContents(Bytes);
     if (ec) {
       inception_error("[SectionsWriter] %s", ec.message().c_str());
     }
-    unsigned size = Section.getSize();
+    unsigned size = Section->getSize();
     FractureMemoryObject* CurSectionMemory =
-        new FractureMemoryObject(Bytes, Section.getAddress());
+        new FractureMemoryObject(Bytes, Section->getAddress());
 
     // Set Insertion point
     Function* fct = mod->getFunction("main");
