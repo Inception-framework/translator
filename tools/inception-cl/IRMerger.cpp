@@ -1,6 +1,7 @@
 #include "IRMerger.h"
 
 #include "FunctionCleaner.h"
+#include "Utils/ABIAdapter.h"
 #include "Utils/Builder.h"
 #include "Utils/IContext.h"
 
@@ -26,7 +27,7 @@ void IRMerger::Run(llvm::StringRef name) {
     FunctionCleaner::Clean(fct);
     inception_message(
         "Function %s removed because it's not defined in the symbols table",
-        name);
+        name.str().c_str());
     return;
   }
 
@@ -73,9 +74,10 @@ void IRMerger::Decompile(llvm::StringRef name) {
   DEC->decompile(address);
 }
 
+/*
+ * Transform the return instruction to a return with the right type
+ */
 void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
-  // TRANSFORM NEW RETURN TO A RETURN WITH THE RIGHT TYPE
-  unsigned int ret_counter = 0;
   ReturnInst* ret;
 
   Type* FType = fct->getReturnType();
@@ -92,23 +94,30 @@ void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
       auto next = inst->getNextNode();
 
       if ((ret = dyn_cast<ReturnInst>(inst)) != NULL) {
-        Value* reg = Reg(StringRef("R0"));
+        // StringRef name("R0_RET" + std::to_string(ret_counter));
 
-        StringRef name("R0_RET" + std::to_string(ret_counter));
+        IRBuilder<>* IRB = new IRBuilder<>(inst);
 
-        Instruction* Res = new LoadInst(reg, name, "", inst);
+        // Value* Res = ReadReg(Reg("R0"), IRB);
+        // Instruction* Res = new LoadInst(reg, name, "", inst);
+        // cast ptr to int to ptr to correct type if necessary
+        // if (FType->isPointerTy()) {
+        //   Res = new IntToPtrInst(Res, FType, "", inst);
+        // } else if (FType->isIntegerTy() && FType->getIntegerBitWidth() < 32)
+        // {
+        //   Res = new TruncInst(Res, FType, "", inst);
+        // }
+        // Value* model = ConstantInt::get(IContext::getContextRef(),
+        //                                 APInt(FType->getBitWidth(), value,
+        //                                 10));
 
-        // caast ptr to int to ptr to correct type if necessary
-        if (FType->isPointerTy()) {
-          Res = new IntToPtrInst(Res, FType, "", inst);
-        } else if (FType->isIntegerTy() && FType->getIntegerBitWidth() < 32) {
-          Res = new TruncInst(Res, FType, "", inst);
-        }
+        ABIAdapter abi;
+        Value* Res = abi.Higher(FType, IRB);
 
-        Res = ReturnInst::Create(*(DEC->getContext()), Res);
+        IRB->CreateRet(Res);
 
-        llvm::ReplaceInstWithInst(inst, Res);
-        ret_counter++;
+        inst->eraseFromParent();
+        // llvm::ReplaceInstWithInst(inst, new_res);
       }
       inst = next;
     }
@@ -122,33 +131,32 @@ void IRMerger::WriteABIPrologue(llvm::Function* fct) {
 
   Module* mod = DEC->getModule();
 
-  uint8_t reg_counter = 0;
+  ABIAdapter abi;
 
   for (auto arg = fct->arg_begin(); arg != fct->arg_end(); arg++) {
     Value* Res = NULL;
 
-    Value* reg = Reg(StringRef("R" + std::to_string(reg_counter)));
+    Res = abi.Lower(arg, IRB);
 
-    if (arg->getType()->isPointerTy()) {
-      Res = IRB->CreatePtrToInt(arg, IntegerType::get(mod->getContext(), 32));
-    }
-
-    if (arg->getType()->isIntegerTy()) {
-      Res = IRB->CreateZExt(arg, IntegerType::get(mod->getContext(), 32));
-    }
-
-    if (arg->getType()->isArrayTy()) {
-      for (uint64_t i = 0; i < arg->getType()->getArrayNumElements(); i++) {
-        if (i != 0) reg_counter++;
-        reg = Reg(StringRef("R" + std::to_string(reg_counter)));
-        Value* element = IRB->CreateExtractValue(arg, i);
-        Res = IRB->CreateStore(element, reg);
-      }
-      continue;
-    }
-
-    IRB->CreateStore(Res, reg);
-    reg_counter++;
+    // if (arg->getType()->isPointerTy()) {
+    //   Res = IRB->CreatePtrToInt(arg, IntegerType::get(mod->getContext(),
+    //   32));
+    // }
+    //
+    // if (arg->getType()->isIntegerTy()) {
+    //   Res = IRB->CreateZExt(arg, IntegerType::get(mod->getContext(), 32));
+    // }
+    //
+    // if (arg->getType()->isArrayTy()) {
+    //   for (uint64_t i = 0; i < arg->getType()->getArrayNumElements(); i++) {
+    //     if (i != 0) reg_counter++;
+    //     reg = Reg(StringRef("R" + std::to_string(reg_counter)));
+    //     Value* element = IRB->CreateExtractValue(arg, i);
+    //     Res = IRB->CreateStore(element, reg);
+    //   }
+    //   continue;
+    // }
+    // IRB->CreateStore(Res, reg);
   }
 }
 

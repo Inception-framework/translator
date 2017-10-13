@@ -1,4 +1,5 @@
 #include "Utils/Builder.h"
+#include "Utils/ABIAdapter.h"
 
 #include "llvm/Support/raw_ostream.h"
 
@@ -347,25 +348,6 @@ Value* getConstant(uint32_t value) {
   return constante;
 }
 
-Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB) {
-  if (IContext::Mod == NULL) inception_error("API has not been initialized.");
-
-  Type* Ty_word = IntegerType::get(IContext::getContextRef(), 32);
-
-  if (!Rd->getType()->isPointerTy()) {
-    Rd = IRB->CreateIntToPtr(Rd, Rd->getType()->getPointerTo());
-  }
-
-  if (Ty != NULL && Ty != Ty_word) {
-    Rd = IRB->CreateTrunc(Rd, Ty);
-    Rd = IRB->CreateZExt(Rd, Ty_word);
-
-    Rd = IRB->CreateLoad(Rd);
-
-    return Rd;
-  }
-}
-
 Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width, bool Sign) {
   if (IContext::Mod == NULL) inception_error("API has not been initialized.");
   Type* Ty = NULL;
@@ -703,25 +685,18 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
   std::string FName =
       IContext::alm->Dec->getDisassembler()->getFunctionName(Tgt);
 
-  Module* Mod = IRB->GetInsertBlock()->getParent()->getParent();
+  Module* Mod = IContext::Mod;
 
   Function* Func = Mod->getFunction(FName);
   if (Func == NULL) {
     inception_error("BranchLifter cannot resolve address : 0x%08x", Tgt);
   }
 
-  // if (Func->isVarArg()) {
-  //   inception_warning("Abort call to unsupported var_arg function %s",
-  //                     FName.c_str());
-  //   return;
-  // }
-
   if (Func->isIntrinsic()) {
     return;
   }
 
-  // Can we remove this function ?
-  if (Func->empty())
+  if (Func->empty()) {
     if (Func->isDefTriviallyDead()) {
       Func->deleteBody();
       Func->eraseFromParent();
@@ -729,85 +704,28 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
     } else {
       return;
     }
-
-  // outs() << FName << " args:\n";
-  std::vector<Value*> Args;
-  std::vector<Type*> ArgTypes;
-  char reg_name[3] = "R0";
-  for (Function::arg_iterator I = Func->arg_begin(), E = Func->arg_end();
-       I != E; ++I) {
-    ArgTypes.push_back(I->getType());
-    if (I->getType()->isPointerTy()) {
-      Value* Res = ReadReg(Reg(reg_name), IRB);
-      Res = IRB->CreateIntToPtr(Res, I->getType());
-      Args.push_back(Res);
-      reg_name[1]++;
-    } else if (I->getType()->isIntegerTy()) {
-      Value* Res = ReadReg(Reg(reg_name), IRB);
-      Res = IRB->CreateTrunc(
-          Res, IntegerType::get(IContext::getContextRef(),
-                                I->getType()->getIntegerBitWidth()));
-      Args.push_back(Res);
-      reg_name[1]++;
-    } else if (I->getType()->isArrayTy()) {
-      Type* Ty = ArrayType::get(IntegerType::get(IContext::getContextRef(), 32),
-                                I->getType()->getArrayNumElements());
-      Value* array = IRB->CreateAlloca(Ty);
-      for (unsigned int i = 0; i < I->getType()->getArrayNumElements(); i++) {
-        Value* IdxList[2];
-        IdxList[0] = getConstant("0");
-        IdxList[1] =
-            ConstantInt::get(IContext::getContextRef(), APInt(32, i, 10));
-        Value* ptr = IRB->CreateGEP(array, IdxList);
-        IRB->CreateStore(ReadReg(Reg(reg_name), IRB), ptr);
-        reg_name[1]++;
-      }
-      Value* Res = IRB->CreateLoad(array);
-      Args.push_back(Res);
-    } else {
-      Args.push_back(ReadReg(Reg(reg_name), IRB));
-      reg_name[1]++;
-    }
   }
 
-  FunctionType* FT = FunctionType::get(Func->getReturnType(), ArgTypes, false);
+  Value* Call;
 
-  Twine TgtAddr(Tgt);
+  ABIAdapter abi_higher = ABIAdapter();
 
-  // outs() << " =========================== \n\n";
-  // outs() << "Tgt        :  " << format("%8" PRIx64, Tgt) << '\n';
-  // outs() << "instrSize  :  " << format("%8" PRIx64, 4) << '\n';
-  // outs() << "FName      :  " << FName << '\n';
-  // outs() << " =========================== \n\n";
+  if ((Call = abi_higher.Higher(Func, IRB)) == NULL)
+    inception_error("Function %s has unsupported parameter type...",
+                    FName.c_str());
 
-  AttributeSet AS;
-  AS = AS.addAttribute(IContext::getContextRef(), AttributeSet::FunctionIndex,
-                       "Address", TgtAddr.str());
-
-  // Function* Proto = cast<Function>(Mod->getOrInsertFunction(FName, FT, AS));
-  // if (Proto == NULL) {
-  //   inception_error("Unsupported function parameter when creating a call to
-  //   %s",
-  //                   FName.c_str());
-  // }
+  // Twine TgtAddr(Tgt);
   //
-  // Proto->setCallingConv(Func->getCallingConv());
+  // AttributeSet AS;
+  // AS = AS.addAttribute(IContext::getContextRef(),
+  // AttributeSet::FunctionIndex,
+  //                      "Address", TgtAddr.str());
 
-  Value* Call = IRB->CreateCall(dyn_cast<Value>(Func), Args);
-  if (!Func->getReturnType()->isVoidTy()) {
-    if (Func->getReturnType()->isPointerTy()) {
-      Call = IRB->CreatePtrToInt(
-          Call, IntegerType::get(IContext::getContextRef(), 32));
-    } else if (Func->getReturnType()->isIntegerTy()) {
-      Call = IRB->CreateZExt(Call,
-                             IntegerType::get(IContext::getContextRef(), 32));
-    }
+  ABIAdapter abi_lower = ABIAdapter();
 
-    WriteReg(Call, Reg("R0"), IRB);
-    // else
-    //   inception_error("Function %s has unsupported return type...",
-    //                   FName.c_str());
-  }
+  if (abi_lower.Lower(Call, IRB) == NULL)
+    inception_error("Function %s has unsupported return type...",
+                    FName.c_str());
 
   if (N != NULL) {
     Value* dummyLR = getConstant("0");

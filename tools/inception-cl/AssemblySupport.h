@@ -18,15 +18,17 @@ using namespace llvm;
 
 class AssemblySupport {
  public:
-  static void ImportAll(llvm::Module* mod, Disassembler* Dis) {
+  static std::set<std::string> ImportAll(llvm::Module* mod, Disassembler* Dis) {
     uint64_t SymbolAddr;
     llvm::StringRef SymbolName;
     object::SymbolRef::Type SymbolTy;
     std::error_code ec;
 
+    std::set<std::string> asm_functions;
+
     if (Dis->getExecutable()->symbols().begin() ==
         Dis->getExecutable()->symbols().end())
-      return;
+      return asm_functions;
 
     for (object::symbol_iterator I = Dis->getExecutable()->symbols().begin(),
                                  E = Dis->getExecutable()->symbols().end();
@@ -51,14 +53,19 @@ class AssemblySupport {
         case object::SymbolRef::ST_File:
           importFile(SymbolName, SymbolAddr);
           break;
-        case object::SymbolRef::ST_Function:
-          importFunction(SymbolName, SymbolAddr);
+        case object::SymbolRef::ST_Function: {
+          std::string name = importFunction(SymbolName, SymbolAddr);
+          if(name != "") {
+            asm_functions.insert(name);
+          }
           break;
+        }
         case object::SymbolRef::ST_Other:
           importOther(SymbolName, SymbolAddr);
           break;
       }
     }
+    return asm_functions;
   }
 
  private:
@@ -82,14 +89,14 @@ class AssemblySupport {
 
         Value* substitute = Reg(StringRef(newName), Ty);
 
-        bool remove = true;
+        // bool remove = true;
 
         for (auto b = var->user_begin(); b != var->user_end(); b++) {
-          if( isa<Constant>(*b) || !isa<GlobalValue>(*b)) {
-            b->dump();
-            remove = false;
-            break;
-          }
+          // if( isa<Constant>(*b) || !isa<GlobalValue>(*b)) {
+          //   b->dump();
+          //   remove = false;
+          //   break;
+          // }
 
 
           b->replaceUsesOfWith(var, substitute);
@@ -102,10 +109,10 @@ class AssemblySupport {
 
         // var->replaceAllUsesWith(substitute);
 
-        if(remove) {
+        // if(remove) {
           var->dropAllReferences();
           var->eraseFromParent();
-        }
+        // }
       }
     }
   }
@@ -116,21 +123,7 @@ class AssemblySupport {
 
   static void importFile(StringRef name, uint64_t address) {}
 
-  static void importFunction(StringRef name, uint64_t address) {
-    // Is there any other function at the same address ?
-    // if( Function** friends = Dis->getFriends(address) ) {
-    //   // if it does, we need to check if :
-    //   // One is empty and the other not : Redirection
-    //   // Both are empty : nothing
-    //   // Both are not empty : compilation issue !
-    //
-    //   for(auto Friend: friends){
-    //     (Friend);
-    //   }
-    //
-    // }
-    // std::string FName = Dis->getFunctionName(address);
-
+  static std::string importFunction(StringRef name, uint64_t address) {
     Function* Func = IContext::Mod->getFunction(name);
     if (Func == NULL) {
       FunctionType* FType = FunctionType::get(
@@ -145,7 +138,10 @@ class AssemblySupport {
 
       IRBuilder<>* IRB = new IRBuilder<>(bb);
       IRB->CreateRetVoid();
+
+      return function->getName().str();
     }
+    return "";
   }
 
   static void importOther(StringRef name, uint64_t address) {

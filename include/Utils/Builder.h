@@ -1,13 +1,11 @@
 #include "IContext.h"
 #include "Target/ARM/ARMBaseInfo.h"
-#include "Utils/IContext.h"
-#include "Target/ARM/ARMBaseInfo.h"
+#include "llvm/CodeGen/SelectionDAGNodes.h"
+#include "llvm/IR/Function.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
-#include "llvm/IR/Module.h"
-#include "llvm/IR/Function.h"
-#include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/IR/Module.h"
 #include "llvm/Target/TargetRegisterInfo.h"
 
 #ifndef BUILDER_H
@@ -44,16 +42,13 @@ Value* getConstant(StringRef value, int Width);
 
 Value* getConstant(uint32_t value);
 
-Value* ReadAddress(Value* Rd, Type* Ty, IRBuilder<>* IRB);
-
 Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width, bool Sign);
 
 Value* ReadReg(Value* Rn, IRBuilder<>* IRB, int Width);
 
 Value* ReadReg(Value* Rn, IRBuilder<>* IRB);
 
-Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width,
-                bool extend);
+Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB, int Width, bool extend);
 
 Value* WriteReg(Value* Rn, Value* Rd, IRBuilder<>* IRB);
 
@@ -80,5 +75,13 @@ Constant* GetIntIntFunctionPointer(StringRef function_name);
 Constant* GetIntFunctionPointer(StringRef function_name);
 
 void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt);
+
+Value* AdaptCollections(Value* collection, unsigned size, IRBuilder<>* IRB);
+
+Value* AdaptInteger(Value* integer, IRBuilder<>* IRB);
+
+Value* AdaptPointer(Value* pointer, IRBuilder<>* IRB);
+
+Value* Adapt(Value* inst, IRBuilder<>* IRB);
 
 #endif
