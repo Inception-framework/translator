@@ -175,6 +175,7 @@ void FunctionsHelperWriter::FNHInterruptEpilogue(llvm::Module* mod,
       sp = UpdateRd(sp, getConstant("4"), IRB, true);
     }
   }
+  WriteReg(sp, Reg("SP"), IRB);
 
   IRB->CreateRetVoid();
 
