@@ -48,18 +48,22 @@ class SectionsWriter {
     // Locals
     ConstantInt *c_addr, *constant, *c_4;
 
-    if (mod->getGlobalVariable(SectionName) != NULL) return;
+    if (mod->getGlobalVariable(SectionName) != NULL) {
+      inception_error(
+          "[SectionsWriter] mod->getGlobalVariable(SectionName) != NULL");
+    }
 
     // Prepare section
     StringRef Bytes;
     const object::SectionRef Section = Dis->getSectionByName(SectionName);
 
-    if (Section.getSize() == 0) return;
+    if (Section.getSize() == 0) {
+      inception_error("[SectionsWriter] Section.getSize()");
+    }
 
     std::error_code ec = Section.getContents(Bytes);
     if (ec) {
-      llvm::errs() << ec.message();
-      return;
+      inception_error("[SectionsWriter] %s", ec.message().c_str());
     }
     unsigned size = Section.getSize();
     FractureMemoryObject* CurSectionMemory =
@@ -89,8 +93,12 @@ class SectionsWriter {
         /*Name=*/StringRef(SectionName));
     DataSection->setAlignment(4);
 
-    //We do not need to initialize the heap
-    if (SectionName.equals(".heap") == 0) return;
+    // We do not need to initialize the heap
+    if (SectionName.equals(".heap")) {
+      inception_message("%s declared but not initialised",
+                        SectionName.str().c_str());
+      return;
+    }
 
     c_4 = ConstantInt::get(mod->getContext(), APInt(32, 2));
     Value* R0 = Reg("R0");
@@ -100,7 +108,6 @@ class SectionsWriter {
     for (uint64_t i = 0; i < (size / 4); i++) {
       uint64_t Address = i * 4 + CurSectionMemory->getBase();
 
-      if (SectionName.equals(".data")) {
         uint8_t* B = new uint8_t(4);
         int NumRead = CurSectionMemory->readBytes(B, Address, 4);
         if (NumRead < 0) {
@@ -110,7 +117,6 @@ class SectionsWriter {
 
         uint32_t val = B[0] | (B[1] << 8) | (B[2] << 16) | (B[3] << 24);
         constant = ConstantInt::get(mod->getContext(), APInt(32, val));
-      }
 
       c_addr = ConstantInt::get(mod->getContext(), APInt(32, Address));
 
