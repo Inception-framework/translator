@@ -280,7 +280,7 @@ static std::error_code runInception(StringRef FileName) {
   // SectionsWriter::WriteSection(".data", DAS, module);
   // SectionsWriter::WriteSection(".bss", DAS, module);
   // SectionsWriter::WriteSection(".heap", DAS, module);
-  // SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
+  SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
   inception_message("Done\n");
 
   inception_message("Adding call to functions helper...");
