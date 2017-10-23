@@ -261,7 +261,7 @@ static std::error_code runInception(StringRef FileName) {
   inception_message("Importing pure assembly code...");
   std::set<std::string> asm_functions2;
   asm_functions2 = AssemblySupport::ImportAll(module, DAS);
-  asm_functions.insert(asm_functions2.begin(), asm_functions2.end());
+  // asm_functions.insert(asm_functions2.begin(), asm_functions2.end());
   inception_message("Done\n");
 
   IRMerger *merger = new IRMerger(DEC);
