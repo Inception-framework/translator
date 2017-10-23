@@ -70,8 +70,10 @@ class SectionsWriter {
       }
     }
 
-    if(Section == NULL)
-      return;
+    if (Section == NULL) {
+      inception_error("[SectionsWriter] Section '%s' not found",
+                      SectionName.str().c_str());
+    }
 
     if (Section->getSize() == 0) {
       inception_error("[SectionsWriter] Section.getSize()");
