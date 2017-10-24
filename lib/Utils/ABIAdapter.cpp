@@ -23,7 +23,7 @@ Value* ABIAdapter::getNext(IRBuilder<>* IRB) {
       sp = ReadReg(Reg("SP"), IRB);
     else
       sp = UpdateRd(sp, getConstant(4), IRB, true);
-    return ReadReg(sp, IRB);
+    return sp;
   }
 }
 
