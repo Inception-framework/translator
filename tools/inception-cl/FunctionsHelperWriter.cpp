@@ -368,9 +368,88 @@ void FunctionsHelperWriter::FNHICP(llvm::Module* mod, llvm::Instruction* inst) {
     blocks.push_back(bb);
   }
 
+  // In case we reach the default block, it means we are trying to call an
+  // address which does not correpond to the entry point of a function in the
+  // symbols table. We do a sort of weak CFI and report an error message
+  // Type Definitions
+
+  // error info
+  ArrayType* ArrayTy_0 =
+      ArrayType::get(IntegerType::get(mod->getContext(), 8), 24);
+
+  ArrayType* ArrayTy_2 =
+      ArrayType::get(IntegerType::get(mod->getContext(), 8), 98);
+
+  ArrayType* ArrayTy_4 =
+      ArrayType::get(IntegerType::get(mod->getContext(), 8), 1);
+
+  GlobalVariable* gvar_array_inception_icp_error_message_filename =
+      new GlobalVariable(/*Module=*/*mod,
+                         /*Type=*/ArrayTy_0,
+                         /*isConstant=*/false,
+                         /*Linkage=*/GlobalValue::ExternalLinkage,
+                         /*Initializer=*/0,  // has initializer, specified below
+                         /*Name=*/"inception_icp_error_message_filename");
+  gvar_array_inception_icp_error_message_filename->setAlignment(1);
+
+  GlobalVariable* gvar_array_inception_icp_error_message_message =
+      new GlobalVariable(/*Module=*/*mod,
+                         /*Type=*/ArrayTy_2,
+                         /*isConstant=*/false,
+                         /*Linkage=*/GlobalValue::ExternalLinkage,
+                         /*Initializer=*/0,  // has initializer, specified below
+                         /*Name=*/"inception_icp_error_message_message");
+  gvar_array_inception_icp_error_message_message->setAlignment(1);
+
+  GlobalVariable* gvar_int32_inception_icp_error_line =
+      new GlobalVariable(/*Module=*/*mod,
+                         /*Type=*/IntegerType::get(mod->getContext(), 32),
+                         /*isConstant=*/false,
+                         /*Linkage=*/GlobalValue::ExternalLinkage,
+                         /*Initializer=*/0,  // has initializer, specified below
+                         /*Name=*/"inception_icp_error_line");
+  gvar_int32_inception_icp_error_line->setAlignment(4);
+
+  GlobalVariable* gvar_array_inception_icp_error_message_suffix =
+      new GlobalVariable(/*Module=*/*mod,
+                         /*Type=*/ArrayTy_4,
+                         /*isConstant=*/false,
+                         /*Linkage=*/GlobalValue::ExternalLinkage,
+                         /*Initializer=*/0,  // has initializer, specified below
+                         /*Name=*/"inception_icp_error_message_suffix");
+  gvar_array_inception_icp_error_message_suffix->setAlignment(1);
+
+  // Constant Definitions
+  Constant* const_array_5 = ConstantDataArray::getString(
+      mod->getContext(), "Indirect Call Promotion", true);
+  Constant* const_array_6 = ConstantDataArray::getString(
+      mod->getContext(),
+      "ICP encountered an address that is not an entry point of a function "
+      "defined in the symbols table\x0A",
+      true);
+  ConstantInt* const_int32_7 =
+      ConstantInt::get(mod->getContext(), APInt(32, StringRef("100"), 10));
+  Constant* const_array_8 =
+      ConstantDataArray::getString(mod->getContext(), "", true);
+
+  // Global Variable Definitions
+  gvar_array_inception_icp_error_message_filename->setInitializer(
+      const_array_5);
+  gvar_array_inception_icp_error_message_message->setInitializer(const_array_6);
+  gvar_int32_inception_icp_error_line->setInitializer(const_int32_7);
+  gvar_array_inception_icp_error_message_suffix->setInitializer(const_array_8);
+
+  // call the error function
   BasicBlock* end_block =
       BasicBlock::Create(IContext::getContextRef(), "end", function);
   bbIRB = new IRBuilder<>(end_block);
+  Constant* const_ptr = GetVoidFunctionPointer("klee_report_error");
+  std::vector<Value*> Args;
+  Args.push_back(gvar_array_inception_icp_error_message_filename);
+  Args.push_back(gvar_int32_inception_icp_error_line);
+  Args.push_back(gvar_array_inception_icp_error_message_message);
+  Args.push_back(gvar_array_inception_icp_error_message_suffix);
+  Instruction* abort = bbIRB->CreateCall(const_ptr, Args);
   bbIRB->CreateRetVoid();
   delete bbIRB;
 
