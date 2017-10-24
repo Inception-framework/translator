@@ -50,15 +50,17 @@ Value* ABIAdapter::HigherCollections(Type* Ty, unsigned size,
   Value* array = IRB->CreateAlloca(Ty);
 
   for (unsigned int i = 0; i < size; i++) {
+    Value* reg = getNext(IRB);
+
     Value* IdxList[2];
     IdxList[0] = getConstant("0");
     IdxList[1] = ConstantInt::get(IContext::getContextRef(), APInt(32, i, 10));
 
+    reg = ReadReg(reg, IRB);
+
     Value* ptr = IRB->CreateGEP(array, IdxList);
 
-    Value* Reg = ReadReg(getNext(IRB), IRB);
-
-    IRB->CreateStore(Reg, ptr);
+    WriteReg(reg, ptr, IRB, 32, true);
   }
   Value* Res = IRB->CreateLoad(array);
 
@@ -75,12 +77,6 @@ Value* ABIAdapter::HigherInteger(Type* type, IRBuilder<>* IRB) {
 
 Value* ABIAdapter::HigherPointer(Type* Ty, IRBuilder<>* IRB) {
   Value* Res = ReadReg(getNext(IRB), IRB);
-
-  Type* i32_ptr = IntegerType::get(IContext::getContextRef(), 32);
-
-  Res = IRB->CreateIntToPtr(Res, i32_ptr->getPointerTo());
-
-  Res = ReadReg(Res, IRB);
 
   Res = IRB->CreateIntToPtr(Res, Ty);
 
@@ -149,25 +145,26 @@ Value* ABIAdapter::Higher(Type* Ty, IRBuilder<>* IRB) {
 
 Value* ABIAdapter::LowerCollections(Value* collection, unsigned size,
                                     IRBuilder<>* IRB) {
-  // unsigned reg_counter = 0;
-  // Value* res = NULL;
+  Value* res = NULL;
 
-  // for (uint64_t i = 0; i < size; i++) {
-  //   Value* reg = Reg(StringRef("R" + std::to_string(reg_counter)));
-  //
-  //   Value* IdxList[2];
-  //   IdxList[0] = getConstant("0");
-  //   IdxList[1] = ConstantInt::get(IContext::getContextRef(), APInt(32, i,
-  //   10));
-  //
-  //   Value* ptr = IRB->CreateGEP(collection, IdxList);
-  //
-  //   // Value* element = IRB->CreateExtractValue(collection, i);
-  //   res = ReadReg(ptr, IRB);
-  //   res = WriteReg(res, reg, IRB);
-  //
-  //   reg_counter++;
-  // }
+  for (uint64_t i = 0; i < size; i++) {
+    Value* reg = getNext(IRB);
+    if(collection->getType()->getTypeID() == llvm::Type::VectorTyID) {
+
+      Value* element =  IRB->CreateExtractElement(collection, IRB->getInt32(i));
+      res = WriteReg(element, reg, IRB, 32, true);
+
+    } else {
+
+      Value* IdxList[2];
+      IdxList[0] = getConstant("0");
+      IdxList[1] = ConstantInt::get(IContext::getContextRef(), APInt(32, i, 10));
+
+      Value* element = IRB->CreateExtractValue(collection, i);
+      res = WriteReg(element, reg, IRB, 32, true);
+    }
+
+  }
   return collection;
 }
 
