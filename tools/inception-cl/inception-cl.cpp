@@ -282,7 +282,7 @@ static std::error_code runInception(StringRef FileName) {
   inception_message("Importing sections ...");
   // SectionsWriter::WriteSection(".data", DAS, module);
   // SectionsWriter::WriteSection(".bss", DAS, module);
-  // SectionsWriter::WriteSection(".heap", DAS, module);
+  SectionsWriter::WriteSection(".heap", DAS, module);
   if (DisableInterrupt == false) {
     SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
   }
