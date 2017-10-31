@@ -44,6 +44,9 @@ void FunctionsHelperWriter::Write(FHW_POSITION position, FUNCTION_HELPER type,
     case INTERRUPT_HANDLER:
       FNHInterruptHandler(mod, before);
       break;
+    case SWITCH_SP:
+      FNHSwitchSP(mod, before);
+      break;
   }
 }
 
@@ -532,6 +535,93 @@ void FunctionsHelperWriter::FNHInterruptHandler(llvm::Module* mod,
   IRB->CreateCall(func_c);
 
   IRB->CreateRetVoid();
+
+  inception_message("done");
+}
+
+void FunctionsHelperWriter::FNHSwitchSP(llvm::Module* mod,
+                                        llvm::Instruction* inst) {
+  Constant* func_ptr = GetIntFunctionPointer("inception_switch_sp");
+  Function* function = cast<Function>(func_ptr);
+  if (function == NULL) {
+    inception_warning("Cannot write inception_switch_sp");
+    return;
+  }
+
+  inception_message("Writing inception_switch_sp");
+
+  if (function->empty()) {
+    BasicBlock::Create(IContext::getContextRef(), "wb", function);
+  }
+
+  llvm::IRBuilder<>* IRB = new IRBuilder<>(&(function->getEntryBlock()));
+
+  // 1) Retrieve function first argument
+  Function::arg_iterator args = function->arg_begin();
+  Value* param_1 = args++;
+  param_1->setName("CONTROL_1_TARGET");
+
+  Type* Ty_word = IntegerType::get(IContext::getContextRef(), 32);
+
+  AllocaInst* ptr_param1 = IRB->CreateAlloca(Ty_word);
+
+  IRB->CreateStore(param_1, ptr_param1);
+  // param1 contains the first argument of the function
+  Value* ctrl1_tgt = IRB->CreateLoad(ptr_param1);
+
+  // Basic blocks and builders
+  BasicBlock* bb_wbToMSP =
+      BasicBlock::Create(IContext::getContextRef(), "wbToMSP", function);
+  BasicBlock* bb_wbToPSP =
+      BasicBlock::Create(IContext::getContextRef(), "wbToPSP", function);
+  BasicBlock* bb_cache =
+      BasicBlock::Create(IContext::getContextRef(), "cache", function);
+  BasicBlock* bb_cacheMSP =
+      BasicBlock::Create(IContext::getContextRef(), "cacheMSP", function);
+  BasicBlock* bb_cachePSP =
+      BasicBlock::Create(IContext::getContextRef(), "cachePSP", function);
+  BasicBlock* bb_end =
+      BasicBlock::Create(IContext::getContextRef(), "end", function);
+
+  IRBuilder<>* irb_wbToMSP = new IRBuilder<>(bb_wbToMSP);
+  IRBuilder<>* irb_wbToPSP = new IRBuilder<>(bb_wbToPSP);
+  IRBuilder<>* irb_cache = new IRBuilder<>(bb_cache);
+  IRBuilder<>* irb_cacheMSP = new IRBuilder<>(bb_cacheMSP);
+  IRBuilder<>* irb_cachePSP = new IRBuilder<>(bb_cachePSP);
+  IRBuilder<>* irb_end = new IRBuilder<>(bb_end);
+
+  // Update MSP or PSP based on CONTROL_1 (i.e. write back SP because it could
+  // be dirty)
+  SwitchInst* wb_sw =
+      IRB->CreateSwitch(ReadReg(Reg("CONTROL_1"), IRB), bb_cache, 2);
+  ConstantInt* zero =
+      ConstantInt::get(IContext::getContextRef(), APInt(32, 0, 10));
+  ConstantInt* one =
+      ConstantInt::get(IContext::getContextRef(), APInt(32, 1, 10));
+  wb_sw->addCase(zero, bb_wbToMSP);
+  wb_sw->addCase(one, bb_wbToPSP);
+
+  WriteReg(ReadReg(Reg("SP"), irb_wbToMSP), Reg("MSP"), irb_wbToMSP);
+  WriteReg(ReadReg(Reg("SP"), irb_wbToPSP), Reg("PSP"), irb_wbToPSP);
+
+  irb_wbToMSP->CreateBr(bb_cache);
+  irb_wbToPSP->CreateBr(bb_cache);
+
+  // Update SP and CONTROL_1 based on CONTROL_1_TARGET (i.e. cache the desired
+  // stack pointer in SP)
+  SwitchInst* cache_sw = irb_cache->CreateSwitch(ctrl1_tgt, bb_end, 2);
+  cache_sw->addCase(zero, bb_cacheMSP);
+  cache_sw->addCase(one, bb_cachePSP);
+
+  WriteReg(ReadReg(Reg("MSP"), irb_cacheMSP), Reg("SP"), irb_cacheMSP);
+  WriteReg(ReadReg(Reg("PSP"), irb_cachePSP), Reg("SP"), irb_cachePSP);
+
+  irb_cacheMSP->CreateBr(bb_end);
+  irb_cachePSP->CreateBr(bb_end);
+
+  WriteReg(ctrl1_tgt, Reg("CONTROL_1"), irb_end);
+
+  irb_end->CreateRetVoid();
 
   inception_message("done");
 }

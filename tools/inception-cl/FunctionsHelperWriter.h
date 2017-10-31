@@ -40,6 +40,7 @@ typedef enum FUNCTION_HELPER {
   INTERRUPT_EPILOGUE = 3,
   ICP = 4,
   INTERRUPT_HANDLER = 5,
+  SWITCH_SP = 6,
 } FUNCTION_HELPER;
 
 typedef enum FHW_POSITION { BEGIN = 0, END = 1, NONE = 2 } FHW_POSITION;
@@ -62,6 +63,8 @@ class FunctionsHelperWriter {
   static void FNHICP(llvm::Module* mod, llvm::Instruction* inst);
 
   static void FNHInterruptHandler(llvm::Module* mod, llvm::Instruction* inst);
+
+  static void FNHSwitchSP(llvm::Module* mod, llvm::Instruction* inst);
 
   static llvm::Instruction* GetBegin(llvm::Function* func);
 
