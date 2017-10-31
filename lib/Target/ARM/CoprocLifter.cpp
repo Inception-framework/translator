@@ -46,19 +46,21 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
   switch (reg_id) {
     case 8: {  // PSP
       // write remote
-      Rdest = Reg("PSP");
+      Value* Ret = WriteReg(Rn, Reg("PSP"), IRB);
       // update cache if necessary
       Constant* cache_sp = GetVoidFunctionPointer("inception_cache_sp");
       IRB->CreateCall(cache_sp);
-      break;
+      saveNodeValue(N, Ret);
+      return;
     }
     case 9: {  // MSP
       // write remote
-      Rdest = Reg("MSP");
+      Value* Ret = WriteReg(Rn, Reg("MSP"), IRB);
       // update cache if necessary
       Constant* cache_sp = GetVoidFunctionPointer("inception_cache_sp");
       IRB->CreateCall(cache_sp);
-      break;
+      saveNodeValue(N, Ret);
+      return;
     }
     case 0:  // APSR
       Rdest = Reg("APSR");
