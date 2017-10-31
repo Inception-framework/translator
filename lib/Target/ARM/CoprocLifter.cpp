@@ -30,8 +30,7 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
 
   ConstantSDNode* DestNode = dyn_cast<ConstantSDNode>(Dest);
   if (DestNode == NULL) {
-    llvm::errs() << "[CoprocLifter] MSR Handler expected ConstantSDNode ...";
-    return;
+    inception_error("[CoprocLifter] MSR Handler expected ConstantSDNode ...");
   }
 
   int64_t reg_id = DestNode->getZExtValue() & 0xff;
@@ -45,18 +44,22 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
   */
   Value* Rdest = NULL;
   switch (reg_id) {
-    case 8:  // PSP
-      Rdest = Reg("SP");
-      inception_warning(
-          "[MSRHandler] PSP/MSP difference is not supported, PSP treated as "
-          "SP");
+    case 8: {  // PSP
+      // write remote
+      Rdest = Reg("PSP");
+      // update cache if necessary
+      Constant* cache_sp = GetVoidFunctionPointer("inception_cache_sp");
+      IRB->CreateCall(cache_sp);
       break;
-    case 9:  // MSP
-      Rdest = Reg("SP");
-      inception_warning(
-          "[MSRHandler] PSP/MSP difference is not supported, MSP treated as "
-          "SP");
+    }
+    case 9: {  // MSP
+      // write remote
+      Rdest = Reg("MSP");
+      // update cache if necessary
+      Constant* cache_sp = GetVoidFunctionPointer("inception_cache_sp");
+      IRB->CreateCall(cache_sp);
       break;
+    }
     case 0:  // APSR
       Rdest = Reg("APSR");
       inception_warning(
@@ -92,13 +95,19 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
       inception_warning(
           "[MSRHandler] FAULTMASK in not supported, treated as dummy write");
       break;
-    case 20:  // CONTROL
+    case 20: {  // CONTROL
       Rdest = Reg("CONTROL");
       inception_warning(
-          "[MSRHandler] CONTROL in not supported, treated as dummy write");
+          "[MSRHandler] only CONTROL[1] is supported, the rest i  treated as a "
+          "dummy write");
+      Value* ctrl1_tgt = IRB->CreateLShr(Rn,getConstant(1));
+      ctrl1_tgt = IRB->CreateAnd(ctrl1_tgt, getConstant(1));
+      Constant* switch_sp = GetVoidFunctionPointer("inception_switch_sp");
+      IRB->CreateCall(switch_sp, ctrl1_tgt);
       break;
+    }
     default:
-      inception_error("[MSRHandler] unsupported coproc register\n");
+      inception_error("[MSRHandler] unsupported coproc register");
   }
 
   // store in the dest register
@@ -114,8 +123,7 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
 
   ConstantSDNode* SrcNode = dyn_cast<ConstantSDNode>(Op0);
   if (SrcNode == NULL) {
-    llvm::errs() << "[CoprocLifter] MRS Handler expected ConstantSDNode ...";
-    return;
+    inception_error("[CoprocLifter] MRS Handler expected ConstantSDNode ...");
   }
 
   int64_t reg_id = SrcNode->getZExtValue();
@@ -127,37 +135,61 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
   switch(reg_id) {
     case 0: //APSR
     Res = ReadReg(Reg("APSR"), IRB, 32);
+    inception_warning(
+        "[MRSHandler] APSR in not supported, the read value may be wrong");
     break;
     case 3: //PSR
     Res = ReadReg(Reg("PSR"), IRB, 32);
+    inception_warning(
+        "[MRSHandler] PSR in not supported, the read value may be wrong");
     break;
     case 5: //IPSR
     Res = ReadReg(Reg("IPSR"), IRB, 32);
+    inception_warning(
+        "[MRSHandler] IPSR in not supported, the read value may be wrong");
     break;
     case 6: //EPSR
     Res = ReadReg(Reg("EPSR"), IRB, 32);
+    inception_warning(
+        "[MRSHandler] EPSR in not supported, the read value may be wrong");
     break;
-    case 8: //PSP
-    // Res = ReadReg(Reg("PSP"), IRB, 32);
-    case 9: //MSP
-    // Res = ReadReg(Reg("MSP"), IRB, 32);
-    Res = ReadReg(Reg("SP"), IRB, 32);
-    break;
+    case 8: {  // PSP
+      // write back possibly dirty SP
+      Constant* wb_sp = GetVoidFunctionPointer("inception_writeback_sp");
+      IRB->CreateCall(wb_sp);
+      // read remote
+      Res = ReadReg(Reg("PSP"), IRB, 32);
+      break;
+    }
+    case 9: {  // MSP
+      // write back possibly dirty SP
+      Constant* wb_sp = GetVoidFunctionPointer("inception_writeback_sp");
+      IRB->CreateCall(wb_sp);
+      // read remote
+      Res = ReadReg(Reg("MSP"), IRB, 32);
+      break;
+    }
     case 16: //PRIMASK
     Res = ReadReg(Reg("PRIMASK"), IRB, 32);
+    inception_warning(
+        "[MRSHandler] PRIMASK in not supported, the read value may be wrong");
     break;
     case 17: //BASEPRI
     Res = ReadReg(Reg("BASEPRI"), IRB, 32);
+    inception_warning(
+        "[MRSHandler] BASEPRI in not supported, the read value may be wrong");
     break;
     case 19: //FAULTMASK
     Res = ReadReg(Reg("FAULTMASK"), IRB, 32);
+    inception_warning(
+        "[MRSHandler] FAULTMASK in not supported, the read value may be wrong");
     break;
     case 20: //CONTROL
     Res = ReadReg(Reg("CONTROL"), IRB, 32);
+    inception_message("[MRSHandler] CONTROL only bit 1 is supported");
     break;
     default :
-      llvm::errs() << "MRSHandler do not know source coproc register\n";
-      exit(0);
+      inception_error("[MRSHandler] unsupported coproc register");
   }
 
   saveNodeValue(N, Res);

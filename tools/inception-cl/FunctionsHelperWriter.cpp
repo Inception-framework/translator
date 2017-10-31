@@ -47,6 +47,12 @@ void FunctionsHelperWriter::Write(FHW_POSITION position, FUNCTION_HELPER type,
     case SWITCH_SP:
       FNHSwitchSP(mod, before);
       break;
+    case WRITEBACK_SP:
+      FNHWritebackSP(mod, before);
+      break;
+    case CACHE_SP:
+      FNHCacheSP(mod, before);
+      break;
   }
 }
 
@@ -130,6 +136,14 @@ void FunctionsHelperWriter::FNHInterruptEpilogue(llvm::Module* mod,
 
   llvm::IRBuilder<>* IRB = new IRBuilder<>(&(function->getEntryBlock()));
 
+  // switch sp based on EXC_RETURN (in LR)
+  Value* EXC_RETURN = ReadReg(Reg("LR"), IRB);
+  EXC_RETURN = IRB->CreateLShr(EXC_RETURN, getConstant(2));
+  EXC_RETURN = IRB->CreateAnd(EXC_RETURN, getConstant(1));
+  Constant* switch_sp = GetVoidFunctionPointer("inception_switch_sp");
+  IRB->CreateCall(switch_sp, EXC_RETURN);
+
+  // unstacking
   Value* reg = NULL;
   Value* sp = ReadReg(Reg("SP"), IRB, 32);
 
@@ -206,6 +220,7 @@ void FunctionsHelperWriter::FNHInterruptPrologue(llvm::Module* mod,
 
   llvm::IRBuilder<>* IRB = new IRBuilder<>(&(function->getEntryBlock()));
 
+  // stacking
   Value* reg = NULL;
   Value* sp = ReadReg(Reg("SP"), IRB, 32);
 
@@ -264,6 +279,10 @@ void FunctionsHelperWriter::FNHInterruptPrologue(llvm::Module* mod,
                                             getConstant(2)));  // PSP/MSP mode
   EXC_RETURN = IRB->CreateOr(EXC_RETURN, getConstant(0x1));    // Thumb/ARM
   WriteReg(EXC_RETURN, Reg("LR"), IRB);
+
+  // switch sp to MSP
+  Constant* switch_sp = GetVoidFunctionPointer("inception_switch_sp");
+  IRB->CreateCall(switch_sp, getConstant("0"));
 
   IRB->CreateRetVoid();
 
@@ -625,3 +644,106 @@ void FunctionsHelperWriter::FNHSwitchSP(llvm::Module* mod,
 
   inception_message("done");
 }
+
+void FunctionsHelperWriter::FNHWritebackSP(llvm::Module* mod,
+                                           llvm::Instruction* inst) {
+  Constant* func_ptr = GetVoidFunctionPointer("inception_writeback_sp");
+  Function* function = cast<Function>(func_ptr);
+  if (function == NULL) {
+    inception_warning("Cannot write inception_writeback_sp");
+    return;
+  }
+
+  inception_message("Writing inception_writeback_sp");
+
+  if (function->empty()) {
+    BasicBlock::Create(IContext::getContextRef(), "wb", function);
+  }
+
+  llvm::IRBuilder<>* IRB = new IRBuilder<>(&(function->getEntryBlock()));
+
+  // Basic blocks and builders
+  BasicBlock* bb_wbToMSP =
+      BasicBlock::Create(IContext::getContextRef(), "wbToMSP", function);
+  BasicBlock* bb_wbToPSP =
+      BasicBlock::Create(IContext::getContextRef(), "wbToPSP", function);
+  BasicBlock* bb_end =
+      BasicBlock::Create(IContext::getContextRef(), "end", function);
+
+  IRBuilder<>* irb_wbToMSP = new IRBuilder<>(bb_wbToMSP);
+  IRBuilder<>* irb_wbToPSP = new IRBuilder<>(bb_wbToPSP);
+  IRBuilder<>* irb_end = new IRBuilder<>(bb_end);
+
+  // Update MSP or PSP based on CONTROL_1 (i.e. write back SP because it could
+  // be dirty)
+  SwitchInst* wb_sw =
+      IRB->CreateSwitch(ReadReg(Reg("CONTROL_1"), IRB), bb_end, 2);
+  ConstantInt* zero =
+      ConstantInt::get(IContext::getContextRef(), APInt(32, 0, 10));
+  ConstantInt* one =
+      ConstantInt::get(IContext::getContextRef(), APInt(32, 1, 10));
+  wb_sw->addCase(zero, bb_wbToMSP);
+  wb_sw->addCase(one, bb_wbToPSP);
+
+  WriteReg(ReadReg(Reg("SP"), irb_wbToMSP), Reg("MSP"), irb_wbToMSP);
+  WriteReg(ReadReg(Reg("SP"), irb_wbToPSP), Reg("PSP"), irb_wbToPSP);
+
+  irb_wbToMSP->CreateBr(bb_end);
+  irb_wbToPSP->CreateBr(bb_end);
+
+  irb_end->CreateRetVoid();
+
+  inception_message("done");
+}
+
+void FunctionsHelperWriter::FNHCacheSP(llvm::Module* mod,
+                                       llvm::Instruction* inst) {
+  Constant* func_ptr = GetVoidFunctionPointer("inception_cache_sp");
+  Function* function = cast<Function>(func_ptr);
+  if (function == NULL) {
+    inception_warning("Cannot write inception_cache_sp");
+    return;
+  }
+
+  inception_message("Writing inception_cache_sp");
+
+  if (function->empty()) {
+    BasicBlock::Create(IContext::getContextRef(), "wb", function);
+  }
+
+  llvm::IRBuilder<>* IRB = new IRBuilder<>(&(function->getEntryBlock()));
+
+  // Basic blocks and builders
+  BasicBlock* bb_cacheMSP =
+      BasicBlock::Create(IContext::getContextRef(), "cacheMSP", function);
+  BasicBlock* bb_cachePSP =
+      BasicBlock::Create(IContext::getContextRef(), "cachePSP", function);
+  BasicBlock* bb_end =
+      BasicBlock::Create(IContext::getContextRef(), "end", function);
+
+  IRBuilder<>* irb_cacheMSP = new IRBuilder<>(bb_cacheMSP);
+  IRBuilder<>* irb_cachePSP = new IRBuilder<>(bb_cachePSP);
+  IRBuilder<>* irb_end = new IRBuilder<>(bb_end);
+
+  // Update SP based on CONTROL_1 (i.e. update the desired
+  // stack pointer in SP)
+  SwitchInst* cache_sw =
+      IRB->CreateSwitch(ReadReg(Reg("CONTROL_1"), IRB), bb_end, 2);
+  ConstantInt* zero =
+      ConstantInt::get(IContext::getContextRef(), APInt(32, 0, 10));
+  ConstantInt* one =
+      ConstantInt::get(IContext::getContextRef(), APInt(32, 1, 10));
+  cache_sw->addCase(zero, bb_cacheMSP);
+  cache_sw->addCase(one, bb_cachePSP);
+
+  WriteReg(ReadReg(Reg("MSP"), irb_cacheMSP), Reg("SP"), irb_cacheMSP);
+  WriteReg(ReadReg(Reg("PSP"), irb_cachePSP), Reg("SP"), irb_cachePSP);
+
+  irb_cacheMSP->CreateBr(bb_end);
+  irb_cachePSP->CreateBr(bb_end);
+
+  irb_end->CreateRetVoid();
+
+  inception_message("done");
+}
+
