@@ -44,7 +44,7 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
   */
   Value* Rdest = NULL;
   switch (reg_id) {
-    case 8: {  // PSP
+    case 9: {  // PSP
       // write remote
       Value* Ret = WriteReg(Rn, Reg("PSP"), IRB);
       // update cache if necessary
@@ -53,7 +53,7 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
       saveNodeValue(N, Ret);
       return;
     }
-    case 9: {  // MSP
+    case 8: {  // MSP
       // write remote
       Value* Ret = WriteReg(Rn, Reg("MSP"), IRB);
       // update cache if necessary
@@ -155,7 +155,7 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
     inception_warning(
         "[MRSHandler] EPSR in not supported, the read value may be wrong");
     break;
-    case 8: {  // PSP
+    case 9: {  // PSP
       // write back possibly dirty SP
       Constant* wb_sp = GetVoidFunctionPointer("inception_writeback_sp");
       IRB->CreateCall(wb_sp);
@@ -163,7 +163,7 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
       Res = ReadReg(Reg("PSP"), IRB, 32);
       break;
     }
-    case 9: {  // MSP
+    case 8: {  // MSP
       // write back possibly dirty SP
       Constant* wb_sp = GetVoidFunctionPointer("inception_writeback_sp");
       IRB->CreateCall(wb_sp);
