@@ -248,9 +248,19 @@ void FunctionsHelperWriter::FNHInterruptPrologue(llvm::Module* mod,
     sp = UpdateRd(sp, getConstant("4"), IRB, false);
     WriteReg(reg, sp, IRB, 32);
   }
+  WriteReg(sp, Reg("SP"), IRB);
 
-  WriteReg(sp, Reg("SP"), IRB, 32);
-  WriteReg(getConstant("4"), Reg("LR"), IRB, 32);
+  // Write EXC_RETURN in LR
+  Value* EXC_RETURN = getConstant(0xfffffff0);    // base value
+  EXC_RETURN =
+      IRB->CreateOr(EXC_RETURN, getConstant(0x8));  // always return in thread
+  // mode, nested exceptions are
+  // not supported for now
+  EXC_RETURN = IRB->CreateOr(EXC_RETURN,
+                             IRB->CreateShl(ReadReg(Reg("CONTROL_1"), IRB),
+                                            getConstant(2)));  // PSP/MSP mode
+  EXC_RETURN = IRB->CreateOr(EXC_RETURN, getConstant(0x1));    // Thumb/ARM
+  WriteReg(EXC_RETURN, Reg("LR"), IRB);
 
   IRB->CreateRetVoid();
 
