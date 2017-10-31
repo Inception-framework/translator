@@ -71,8 +71,9 @@ class SectionsWriter {
     }
 
     if (Section == NULL) {
-      inception_error("[SectionsWriter] Section '%s' not found",
-                      SectionName.str().c_str());
+      inception_warning("[SectionsWriter] Section '%s' not found",
+                        SectionName.str().c_str());
+      return;
     }
 
     if (Section->getSize() == 0) {

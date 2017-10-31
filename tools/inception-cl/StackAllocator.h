@@ -16,11 +16,7 @@ class StackAllocator {
                                 Section_s.getSize());
     Reg(".stack", Ty_s);
 
-    // User stack
-    const object::SectionRef Section_us = Dis->getSectionByName(".user_stack");
-    Type* Ty_us = ArrayType::get(IntegerType::get(mod->getContext(), 4),
-                                 Section_us.getSize());
-    Reg(".user_stack", Ty_us);
+    // User stack allocated by SectionsWriter
   }
 
   // XXX: SP cannot be initialized with other than 0
