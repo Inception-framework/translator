@@ -475,12 +475,12 @@ void FunctionsHelperWriter::FNHICP(llvm::Module* mod, llvm::Instruction* inst) {
   BasicBlock* end_block =
       BasicBlock::Create(IContext::getContextRef(), "end", function);
   bbIRB = new IRBuilder<>(end_block);
-  Constant* const_ptr = GetVoidFunctionPointer("klee_warning");
+  Constant* const_ptr = GetVoidFunctionPointer("klee_report_error");
   std::vector<Value*> Args;
-  // Args.push_back(gvar_array_inception_icp_error_message_filename);
-  // Args.push_back(gvar_int32_inception_icp_error_line);
+  Args.push_back(gvar_array_inception_icp_error_message_filename);
+  Args.push_back(gvar_int32_inception_icp_error_line);
   Args.push_back(gvar_array_inception_icp_error_message_message);
-  // Args.push_back(gvar_array_inception_icp_error_message_suffix);
+  Args.push_back(gvar_array_inception_icp_error_message_suffix);
   Instruction* warning = bbIRB->CreateCall(const_ptr, Args);
   bbIRB->CreateRetVoid();
   delete bbIRB;
@@ -549,14 +549,31 @@ void FunctionsHelperWriter::FNHInterruptHandler(llvm::Module* mod,
   Constant* handler = GetIntFunctionPointer("inception_icp");
   Constant* epilogue = GetVoidFunctionPointer("inception_interrupt_epilogue");
 
+  Value* prev_pc = ReadReg(Reg("PC"), IRB);
+
   IRB->CreateCall(prologue);
   IRB->CreateCall(handler, param1);
   IRB->CreateCall(epilogue);
 
+  BasicBlock* bb_modified_return_address = BasicBlock::Create(
+      IContext::getContextRef(), "modified_return_address", function);
+  BasicBlock* bb_end =
+      BasicBlock::Create(IContext::getContextRef(), "end", function);
+  IRBuilder<>* irb_modified_return_address =
+      new IRBuilder<>(bb_modified_return_address);
+  IRBuilder<>* irb_end = new IRBuilder<>(bb_end);
+
+  Value* new_pc = ReadReg(Reg("PC"), IRB);
+  Value* Cmp = IRB->CreateICmpEQ(new_pc, prev_pc);
+  IRB->CreateCondBr(Cmp, bb_end, bb_modified_return_address);
+
+  // Constant* stop = GetVoidFunctionPointer("stop_irq");
+  // irb_modified_return_address->CreateCall(stop);
   Constant* ret = GetIntFunctionPointer("inception_icp");
-  Value* ret_address = ReadReg(Reg("PC"), IRB);
-  IRB->CreateCall(ret, ret_address);
-  IRB->CreateRetVoid();
+  irb_modified_return_address->CreateCall(ret, new_pc);
+  irb_modified_return_address->CreateBr(bb_end);
+
+  irb_end->CreateRetVoid();
 
   inception_message("done");
 }
