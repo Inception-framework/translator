@@ -475,13 +475,13 @@ void FunctionsHelperWriter::FNHICP(llvm::Module* mod, llvm::Instruction* inst) {
   BasicBlock* end_block =
       BasicBlock::Create(IContext::getContextRef(), "end", function);
   bbIRB = new IRBuilder<>(end_block);
-  Constant* const_ptr = GetVoidFunctionPointer("klee_report_error");
+  Constant* const_ptr = GetVoidFunctionPointer("klee_warning");
   std::vector<Value*> Args;
-  Args.push_back(gvar_array_inception_icp_error_message_filename);
-  Args.push_back(gvar_int32_inception_icp_error_line);
+  // Args.push_back(gvar_array_inception_icp_error_message_filename);
+  // Args.push_back(gvar_int32_inception_icp_error_line);
   Args.push_back(gvar_array_inception_icp_error_message_message);
-  Args.push_back(gvar_array_inception_icp_error_message_suffix);
-  Instruction* abort = bbIRB->CreateCall(const_ptr, Args);
+  // Args.push_back(gvar_array_inception_icp_error_message_suffix);
+  Instruction* warning = bbIRB->CreateCall(const_ptr, Args);
   bbIRB->CreateRetVoid();
   delete bbIRB;
 
@@ -545,14 +545,17 @@ void FunctionsHelperWriter::FNHInterruptHandler(llvm::Module* mod,
   Value* param1 = IRB->CreateLoad(ptr_param1);
   // Address contains param1 without the first bit
 
-  Constant* func_a = GetVoidFunctionPointer("inception_interrupt_prologue");
-  Constant* func_b = GetIntFunctionPointer("inception_icp");
-  Constant* func_c = GetVoidFunctionPointer("inception_interrupt_epilogue");
+  Constant* prologue = GetVoidFunctionPointer("inception_interrupt_prologue");
+  Constant* handler = GetIntFunctionPointer("inception_icp");
+  Constant* epilogue = GetVoidFunctionPointer("inception_interrupt_epilogue");
 
-  IRB->CreateCall(func_a);
-  IRB->CreateCall(func_b, param1);
-  IRB->CreateCall(func_c);
+  IRB->CreateCall(prologue);
+  IRB->CreateCall(handler, param1);
+  IRB->CreateCall(epilogue);
 
+  Constant* ret = GetIntFunctionPointer("inception_icp");
+  Value* ret_address = ReadReg(Reg("PC"), IRB);
+  IRB->CreateCall(ret, ret_address);
   IRB->CreateRetVoid();
 
   inception_message("done");
