@@ -475,12 +475,13 @@ void FunctionsHelperWriter::FNHICP(llvm::Module* mod, llvm::Instruction* inst) {
   BasicBlock* end_block =
       BasicBlock::Create(IContext::getContextRef(), "end", function);
   bbIRB = new IRBuilder<>(end_block);
-  Constant* const_ptr = GetVoidFunctionPointer("klee_report_error");
+  // Constant* const_ptr = GetVoidFunctionPointer("klee_report_error");
+  Constant* const_ptr = GetVoidFunctionPointer("klee_warning");
   std::vector<Value*> Args;
-  Args.push_back(gvar_array_inception_icp_error_message_filename);
-  Args.push_back(gvar_int32_inception_icp_error_line);
+  // Args.push_back(gvar_array_inception_icp_error_message_filename);
+  // Args.push_back(gvar_int32_inception_icp_error_line);
   Args.push_back(gvar_array_inception_icp_error_message_message);
-  Args.push_back(gvar_array_inception_icp_error_message_suffix);
+  // Args.push_back(gvar_array_inception_icp_error_message_suffix);
   Instruction* warning = bbIRB->CreateCall(const_ptr, Args);
   bbIRB->CreateRetVoid();
   delete bbIRB;
