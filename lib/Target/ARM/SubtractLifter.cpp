@@ -82,6 +82,10 @@ void SubtractLifter::SubHandler(llvm::SDNode *N, llvm::IRBuilder<> *IRB) {
       Op0 = getConstant("0");
       Op1 = visit(N->getOperand(0).getNode(), IRB);
       break;
+    case ARM::t2RSBri:
+      Op0 = visit(N->getOperand(1).getNode(), IRB);
+      Op1 = visit(N->getOperand(0).getNode(), IRB);
+      break;
     default:
       Op0 = visit(N->getOperand(0).getNode(), IRB);
       Op1 = visit(N->getOperand(1).getNode(), IRB);

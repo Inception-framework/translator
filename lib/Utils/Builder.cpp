@@ -201,6 +201,8 @@ bool IsSetFlags(SDNode* N) {
       case ARM::t2SUBSri:
       case ARM::t2SUBSrr:
 
+      case ARM::t2RSBri:
+
       case ARM::t2MVNs:
 
       case ARM::t2ANDri:
