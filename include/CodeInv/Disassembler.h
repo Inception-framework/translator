@@ -56,6 +56,7 @@
 #include <cstdlib>
 #include "CodeInv/MCDirector.h"
 #include "CodeInv/FractureMemoryObject.h"
+#include "CodeInv/SymbolsTable.h"
 
 using namespace llvm;
 
@@ -63,6 +64,12 @@ namespace fracture {
 
 class Disassembler {
 public:
+
+  SymbolsTable* syms;
+
+  // TODO : Move into SymbolsTable.h
+  void getRelocFunctionName(unsigned Address, StringRef &NameRef);
+
   /// \brief Construct a new Disassembler object, which is tied to a specific
   /// executable. The constructor creates a module if none is found, and may
   /// share the MCDirector with other Disassemblers (attached to other
@@ -149,13 +156,6 @@ public:
 
   static std::string rawBytesToString(StringRef Bytes);
 
-
-  /// \brief Symbol accessors
-  std::string getSymbolName(unsigned Address);
-  bool isFunctionInSymbolTable(unsigned Address) const;
-  const StringRef getFunctionName(unsigned Address) const;
-  const StringRef getDataName(unsigned Address) const;
-  void getRelocFunctionName(unsigned Address, StringRef &NameRef);
   /// \brief Set the current section reference in the Disassembler
   ///
   /// \param SectionName a string representing the name, e.g. ".text"

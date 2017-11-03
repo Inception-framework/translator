@@ -89,7 +89,7 @@ void Decompiler::decompile(unsigned Address) {
         AddrStr.getAsInteger(10, Addr);
         DEBUG(outs() << "Read Address as: " << format("%1" PRIx64, Addr) << ", "
                      << AddrStr << "\n");
-        StringRef FName = Dis->getFunctionName(Addr);
+        StringRef FName = Dis->syms->getFunctionName(Addr);
 
         outs() << "\n The decompiled function contains a call to " << FName
                << "\n";

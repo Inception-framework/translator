@@ -83,7 +83,7 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
 
   // Unconditional branch or inside it block (last instruction)
   if (Cmp == NULL || (IContext::alm->Dec->it_state & 0b1111) != 0) {
-    if (alm->Dec->getDisassembler()->isFunctionInSymbolTable(Tgt)) {
+    if (alm->Dec->getDisassembler()->syms->isFunctionInSymbolTable(Tgt)) {
       // If the target is a function in the symbols table, we can imagine that
       // this is a branch there to share code. We can then support this case
       // with a trick: we call the function and when it returns we return

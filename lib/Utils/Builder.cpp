@@ -685,7 +685,7 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
 
   // TODO: Look up address in symbol table.
   std::string FName =
-      IContext::alm->Dec->getDisassembler()->getFunctionName(Tgt);
+      IContext::alm->Dec->getDisassembler()->syms->getFunctionName(Tgt);
 
   Module* Mod = IContext::Mod;
 

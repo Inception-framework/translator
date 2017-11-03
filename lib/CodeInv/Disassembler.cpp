@@ -42,6 +42,8 @@ Disassembler::Disassembler(MCDirector *NewMC, object::ObjectFile *NewExecutable,
                               MC->getMCObjectFileInfo());
   // Initialize the GCMI
   GMI = new GCModuleInfo();
+
+  syms = new SymbolsTable(Executable);
 }
 
 Disassembler::~Disassembler() {
@@ -79,6 +81,7 @@ Disassembler::~Disassembler() {
 
   delete CurSectionMemory;
   delete Executable;
+  delete syms;
 }
 
 MachineFunction *Disassembler::disassemble(unsigned Address,
@@ -399,12 +402,12 @@ DebugLoc *Disassembler::setDebugLoc(uint64_t Address) {
 }
 
 MachineFunction *Disassembler::getOrCreateFunction(unsigned Address) {
-  StringRef FNameRef = getFunctionName(Address);
+  StringRef FNameRef = syms->getFunctionName(Address);
   // MachineFunction *MF = getNearestFunction(Address); //see LIMITATIONS of
   // this function
   MachineFunction *MF = getNearestFunction(FNameRef);
   if (MF == NULL) {
-    // StringRef FNameRef = getFunctionName(Address);
+    // StringRef FNameRef = syms->getFunctionName(Address);
     // Note: this fixes breakage in the constructor below DO NOT REMOVE
     std::string FN = FNameRef.str();
     FunctionType *FTy = FunctionType::get(
@@ -579,7 +582,7 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
          MII != Inst->operands_end(); ++MII)
       if (MII->isImm()) DestInt = MII->getImm();
     Tgt = Address + Size + DestInt;
-    FuncName = getFunctionName(Tgt);
+    FuncName = syms->getFunctionName(Tgt);
     if (FuncName.startswith("func")) {
       StringRef SectionName;
       object::SectionRef Section = getSectionByAddress(Tgt);
@@ -625,27 +628,6 @@ void Disassembler::setExecutable(object::ObjectFile *NewExecutable) {
   Executable = NewExecutable;
 }
 
-std::string Disassembler::getSymbolName(unsigned Address) {
-  uint64_t SymAddr;
-  std::error_code ec;
-  for (object::symbol_iterator I = Executable->symbols().begin(),
-                               E = Executable->symbols().end();
-       I != E; ++I) {
-    if ((ec = I->getAddress(SymAddr))) {
-      errs() << ec.message() << "\n";
-      continue;
-    }
-    if ((unsigned)SymAddr == Address) {
-      StringRef Name;
-      if ((ec = I->getName(Name))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
-      return Name.str();
-    }
-  }
-  return "";
-}
 // getRelocFunctionName() pairs function call addresses with dynamically
 // relocated library function addresses and sets the function name to the actual
 // name rather than the function address
@@ -701,111 +683,6 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   // NameRef is passed by reference, so if relocation doesn't match,
   // we don't want to modify the StringRef
   if (!RelName.empty()) NameRef = RelName;
-}
-
-bool Disassembler::isFunctionInSymbolTable(unsigned Address) const {
-  uint64_t SymAddr;
-  std::error_code ec;
-  StringRef NameRef;
-  // Check in the regular symbol table first
-  for (object::symbol_iterator I = Executable->symbols().begin(),
-                               E = Executable->symbols().end();
-       I != E; ++I) {
-    object::SymbolRef::Type SymbolTy;
-    if ((ec = I->getType(SymbolTy))) {
-      errs() << ec.message() << "\n";
-      continue;
-    }
-    if (SymbolTy != object::SymbolRef::ST_Function) {
-      continue;
-    }
-    if ((ec = I->getAddress(SymAddr))) {
-      errs() << ec.message() << "\n";
-      continue;
-    }
-    if ((unsigned)SymAddr == Address) {
-      if ((ec = I->getName(NameRef))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
-      return true;
-    }
-  }
-  return false;
-}
-
-const StringRef Disassembler::getFunctionName(unsigned Address) const {
-  uint64_t SymAddr;
-  std::error_code ec;
-  StringRef NameRef;
-  // Check in the regular symbol table first
-  for (object::symbol_iterator I = Executable->symbols().begin(),
-                               E = Executable->symbols().end();
-       I != E; ++I) {
-    object::SymbolRef::Type SymbolTy;
-    if ((ec = I->getType(SymbolTy))) {
-      errs() << ec.message() << "\n";
-      continue;
-    }
-    if (SymbolTy != object::SymbolRef::ST_Function) {
-      continue;
-    }
-    if ((ec = I->getAddress(SymAddr))) {
-      errs() << ec.message() << "\n";
-      continue;
-    }
-    if ((unsigned)SymAddr == Address) {
-      if ((ec = I->getName(NameRef))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
-      break;
-    }
-  }
-  if (NameRef.empty()) {
-    std::string *FName = new std::string();
-    raw_string_ostream FOut(*FName);
-    FOut << "func_" << format("%1" PRIx64, Address);
-    return StringRef(FOut.str());
-  }
-  return NameRef;
-}
-
-const StringRef Disassembler::getDataName(unsigned Address) const {
-  uint64_t SymAddr;
-  std::error_code ec;
-  StringRef NameRef;
-  // Check in the regular symbol table first
-  for (object::symbol_iterator I = Executable->symbols().begin(),
-                               E = Executable->symbols().end();
-       I != E; ++I) {
-    object::SymbolRef::Type SymbolTy;
-    if ((ec = I->getType(SymbolTy))) {
-      errs() << ec.message() << "\n";
-      continue;
-    }
-    if (SymbolTy != object::SymbolRef::ST_Data) {
-      continue;
-    }
-    if ((ec = I->getAddress(SymAddr))) {
-      errs() << ec.message() << "\n";
-      continue;
-    }
-    if ((unsigned)SymAddr == Address) {
-      if ((ec = I->getName(NameRef))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
-      break;
-    }
-  }
-  if (NameRef.empty()) {
-    std::string *FName = new std::string();
-    raw_string_ostream FOut(*FName);
-    FOut << "func_" << format("%1" PRIx64, Address);
-    return StringRef(FOut.str());
-  }
-  return NameRef;
 }
 
 void Disassembler::setSection(std::string SectionName) {

@@ -340,7 +340,7 @@ static bool lookupELFName(const object::ELFObjectFile<ELFT>* elf,
   if (isStripped)
       for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
         StringRef name = (SDAS->getMain() == it->Address ?
-                                  "main" : DAS->getFunctionName(it->Address));
+                                  "main" : DAS->syms->getFunctionName(it->Address));
         FractureSymbol tempSym(it->Address, name,
                                0, object::SymbolRef::Type::ST_Function, 0);
         Syms.push_back(new FractureSymbol(tempSym));
@@ -609,7 +609,7 @@ static void dumpELFSymbols(const object::ELFObjectFile<ELFT>* elf,
   if (isStripped)
     for (auto &it : SDAS->getStrippedGraph()->getHeadNodes()) {
       StringRef name = (SDAS->getMain() == it->Address ?
-                                "main" : DAS->getFunctionName(it->Address));
+                                "main" : DAS->syms->getFunctionName(it->Address));
       FractureSymbol tempSym(it->Address, name,
                              0, object::SymbolRef::Type::ST_Function, 0);
       Syms.push_back(new FractureSymbol(tempSym));

@@ -8,11 +8,14 @@
 //===----------------------------------------------------------------------===//
 //
 // This class inherits from llvm::object::SymbolRef with the intention of adding
-// data to existing symbols or creating symbols in stripped binaries. 
+// data to existing symbols or creating symbols in stripped binaries.
 //
 // Author: Richard Carback (rtc1032) <rcarback@draper.com>
 // Date: August 28, 2013
 //===----------------------------------------------------------------------===//
+
+#ifndef FRACTURE_SYMBOL_H
+#define FRACTURE_SYMBOL_H
 
 #include "llvm/Object/Error.h"
 #include "llvm/Object/ObjectFile.h"
@@ -49,7 +52,7 @@ class FractureSymbol : public object::SymbolRef {
     std::error_code getSize(uint64_t &Result) const;
 
 
-    // matchAddress() sets the address of a dynamic FractureSymbol by 
+    // matchAddress() sets the address of a dynamic FractureSymbol by
     // pairing the symbol name with the original call instruction offset
     void matchAddress(std::map<StringRef, uint64_t> Rels);
 
@@ -65,7 +68,7 @@ class FractureSymbol : public object::SymbolRef {
       return Name;
     }
 
-  private: 
+  private:
     uint64_t Address = 0;
     StringRef Name ;
     uint32_t Alignment;
@@ -74,3 +77,5 @@ class FractureSymbol : public object::SymbolRef {
 };
 
 } // end namespace fracture
+
+#endif
