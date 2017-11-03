@@ -70,6 +70,10 @@ class AssemblySupport {
 
  private:
   static void importUnknown(StringRef name, uint64_t address) {
+    //XXX: Disable external symbols replacement errors occurs for some samples
+    // It seems that this function is not able to replace all references...
+    return;
+
     GlobalVariable* var = IContext::Mod->getGlobalVariable(name);
 
     if (var == NULL) {
