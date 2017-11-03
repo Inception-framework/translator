@@ -139,6 +139,33 @@ bool Disassembler::hasReturnInstruction(MachineBasicBlock *MBB) {
         return true;
       }
     }
+
+    unsigned address = getDebugOffset(instr->getDebugLoc());
+    unsigned size = this->getMachineInstr(address)->getDesc().Size;
+
+    if (I != MBB->instr_begin()) {
+      object::SymbolRef::Type SymbolTy;
+      unsigned next = address + size;
+
+      /*
+       * This loop looks for all contiguous symbols after current instruction.
+       * If any of these symbols is a Function we found the begenning of another
+       * function and so the end of the current.
+       * If we only find other kind of symbol we ignore them.
+       */
+      do {
+        // inception_warning("Is address 0x%08x a function ?", next);
+
+        SymbolTy = (object::SymbolRef::Type)sym->getSymbolType(next);
+        if (SymbolTy == object::SymbolRef::ST_Function) {
+          // inception_warning("--> yes");
+          return true;
+        }
+        // inception_warning("--> no");
+        next += 4;
+      } while (SymbolTy != -1);
+    }
+
   }
   return false;
 }
