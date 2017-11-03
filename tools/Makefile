@@ -8,6 +8,6 @@ LEVEL=..
 #
 # List all of the subdirectories that we will compile.
 #
-DIRS=inception-cl
+DIRS=inception-cl fracture-cl
 
 include $(LEVEL)/Makefile.common

@@ -447,7 +447,7 @@ static void runDecompileCommand(std::vector<std::string> &CommandLine) {
 //  }
 
   DEC->setViewMCDAGs(ViewMachineDAGs);
-  DEC->setViewIRDAGs(ViewIRDAGs);
+  // DEC->setViewIRDAGs(ViewIRDAGs);
 
   formatted_raw_ostream Out(outs(), false);
   DEC->decompile(Address);
