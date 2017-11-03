@@ -48,6 +48,7 @@ void LoadLifter::registerLifter() {
 
   REGISTER_LOAD_OPCODE(ARM::tLDRHi, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::tLDRHr, Common, new LoadInfo(-1, 1, 2, 16))
+  REGISTER_LOAD_OPCODE(ARM::tLDRSH, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRHi12, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRHi8, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRH_PRE, Pre, new LoadInfo(-1, 1, 2, 16))
@@ -259,8 +260,7 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   while ((index = info->getNext()) != -1) {
     SDNode* pred = N->getOperand(index).getNode();
 
-    if( getReg(Rn).compare(getReg(pred)) == 0)
-      writeback = false;
+    if (getReg(Rn).compare(getReg(pred)) == 0) writeback = false;
 
     Value* Dest = visitRegister(pred->getOperand(1).getNode(), IRB);
 
@@ -272,10 +272,9 @@ void LoadLifter::doMulti(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   }
 
   if (N->getMachineOpcode() == ARM::tLDMIA) {
-    //We need to check if tLDMIA is in the registers list
+    // We need to check if tLDMIA is in the registers list
     // if it is, writeback is enabled
-    if(writeback)
-      Rd = WriteReg(Rd, Rd_init, IRB, info->width, false);
+    if (writeback) Rd = WriteReg(Rd, Rd_init, IRB, info->width, false);
   }
 
   saveNodeValue(N, Rd);
@@ -432,6 +431,7 @@ void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Value* Rn = NULL;
 
   switch (OpCode) {
+    case ARM::tLDRSH:
     case ARM::t2LDRSBi12:
       // some instructions need sign extension
       Rn = ReadReg(Rd, IRB, info->width, true);
