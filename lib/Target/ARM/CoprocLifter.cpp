@@ -87,11 +87,13 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
       inception_warning(
           "[MSRHandler] PRIMASK in not supported, treated as dummy write");
       break;
-    case 17:  // BASEPRI
+    case 17: {  // BASEPRI
       Rdest = Reg("BASEPRI");
-      inception_warning(
-          "[MSRHandler] BASEPRI in not supported, treated as dummy write");
+      Constant* write_basepri =
+          GetVoidFunctionPointer("inception_write_basepri");
+      IRB->CreateCall(write_basepri, Rn);
       break;
+    }
     case 19:  // FAULTMASK
       Rdest = Reg("FAULTMASK");
       inception_warning(
@@ -177,11 +179,12 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
     inception_warning(
         "[MRSHandler] PRIMASK in not supported, the read value may be wrong");
     break;
-    case 17: //BASEPRI
-    Res = ReadReg(Reg("BASEPRI"), IRB, 32);
-    inception_warning(
-        "[MRSHandler] BASEPRI in not supported, the read value may be wrong");
-    break;
+    case 17: {  // BASEPRI
+      Constant* read_basepri = GetVoidFunctionPointer("inception_read_basepri");
+      IRB->CreateCall(read_basepri, Reg("BASEPRI"));
+      Res = ReadReg(Reg("BASEPRI"), IRB, 32);
+      break;
+    }
     case 19: //FAULTMASK
     Res = ReadReg(Reg("FAULTMASK"), IRB, 32);
     inception_warning(
