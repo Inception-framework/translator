@@ -402,12 +402,12 @@ DebugLoc *Disassembler::setDebugLoc(uint64_t Address) {
 }
 
 MachineFunction *Disassembler::getOrCreateFunction(unsigned Address) {
-  StringRef FNameRef = syms->getFunctionName(Address);
+  StringRef FNameRef = getFunctionName(Address);
   // MachineFunction *MF = getNearestFunction(Address); //see LIMITATIONS of
   // this function
   MachineFunction *MF = getNearestFunction(FNameRef);
   if (MF == NULL) {
-    // StringRef FNameRef = syms->getFunctionName(Address);
+    // StringRef FNameRef = getFunctionName(Address);
     // Note: this fixes breakage in the constructor below DO NOT REMOVE
     std::string FN = FNameRef.str();
     FunctionType *FTy = FunctionType::get(
@@ -582,7 +582,7 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
          MII != Inst->operands_end(); ++MII)
       if (MII->isImm()) DestInt = MII->getImm();
     Tgt = Address + Size + DestInt;
-    FuncName = syms->getFunctionName(Tgt);
+    FuncName = getFunctionName(Tgt);
     if (FuncName.startswith("func")) {
       StringRef SectionName;
       object::SectionRef Section = getSectionByAddress(Tgt);
@@ -812,6 +812,43 @@ void Disassembler::deleteFunction(MachineFunction *MF) {
     Functions.erase(FuncItr->first);
     delete MF;
   }
+}
+
+const StringRef Disassembler::getFunctionName(unsigned Address) const {
+  uint64_t SymAddr;
+  std::error_code ec;
+  StringRef NameRef;
+  // Check in the regular symbol table first
+  for (object::symbol_iterator I = Executable->symbols().begin(),
+                               E = Executable->symbols().end();
+       I != E; ++I) {
+    object::SymbolRef::Type SymbolTy;
+    if ((ec = I->getType(SymbolTy))) {
+      errs() << ec.message() << "\n";
+      continue;
+    }
+    if (SymbolTy != object::SymbolRef::ST_Function) {
+      continue;
+    }
+    if ((ec = I->getAddress(SymAddr))) {
+      errs() << ec.message() << "\n";
+      continue;
+    }
+    if ((unsigned)SymAddr == Address) {
+      if ((ec = I->getName(NameRef))) {
+        errs() << ec.message() << "\n";
+        continue;
+      }
+      break;
+    }
+  }
+  if (NameRef.empty()) {
+    std::string *FName = new std::string();
+    raw_string_ostream FOut(*FName);
+    FOut << "func_" << format("%1" PRIx64, Address);
+    return StringRef(FOut.str());
+  }
+  return NameRef;
 }
 
 }  // end namespace fracture

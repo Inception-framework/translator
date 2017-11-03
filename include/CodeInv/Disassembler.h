@@ -41,21 +41,20 @@
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
-#include <sstream>
-#include <string>
-#include <iostream>
-#include <ostream>
-#include <iomanip>
-#include <stdio.h>
-#include <algorithm>
-#include <map>
 #include <inttypes.h>
 #include <signal.h>
-#include <sstream>
+#include <stdio.h>
 #include <unistd.h>
+#include <algorithm>
 #include <cstdlib>
-#include "CodeInv/MCDirector.h"
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <ostream>
+#include <sstream>
+#include <string>
 #include "CodeInv/FractureMemoryObject.h"
+#include "CodeInv/MCDirector.h"
 #include "CodeInv/SymbolsTable.h"
 
 using namespace llvm;
@@ -63,12 +62,13 @@ using namespace llvm;
 namespace fracture {
 
 class Disassembler {
-public:
-
-  SymbolsTable* syms;
+ public:
+  SymbolsTable *syms;
 
   // TODO : Move into SymbolsTable.h
   void getRelocFunctionName(unsigned Address, StringRef &NameRef);
+
+  const StringRef getFunctionName(unsigned Address) const;
 
   /// \brief Construct a new Disassembler object, which is tied to a specific
   /// executable. The constructor creates a module if none is found, and may
@@ -83,8 +83,8 @@ public:
   ///                    it's not provided, the disassembler will create one and
   ///                    you can use the accessor to get it.
   Disassembler(MCDirector *NewMC, object::ObjectFile *NewExecutable,
-    Module *NewModule = NULL, raw_ostream &InfoOut = nulls(),
-    raw_ostream &ErrOut = nulls());
+               Module *NewModule = NULL, raw_ostream &InfoOut = nulls(),
+               raw_ostream &ErrOut = nulls());
   ~Disassembler();
 
   /// \brief Decodes the instructions at the specified address and returns them
@@ -108,7 +108,7 @@ public:
   /// \brief Check if a bb contains a return instruction
   ///
   /// \param MBB - BasicBlock to search into.
-  bool hasReturnInstruction(MachineBasicBlock* MBB);
+  bool hasReturnInstruction(MachineBasicBlock *MBB);
   bool hasPCReturnInstruction(MachineBasicBlock *MBB);
 
   /// \brief Prints size instructions on the given output stream at the given
@@ -118,11 +118,11 @@ public:
   /// \param Address - starting address
   /// \param Size - number of functions (or 0 to print until end of function)
   unsigned printInstructions(formatted_raw_ostream &Out, unsigned Address,
-    unsigned Size, bool PrintTypes = true);
+                             unsigned Size, bool PrintTypes = true);
   void printInstruction(formatted_raw_ostream &Out, MachineInstr *Inst,
-    bool PrintTypes = false);
+                        bool PrintTypes = false);
   void printInstruction(raw_ostream &Out, MachineInstr *Inst,
-    bool PrintTypes = false) {
+                        bool PrintTypes = false) {
     formatted_raw_ostream OutF(Out);
     printInstruction(OutF, Inst, PrintTypes);
   }
@@ -133,10 +133,10 @@ public:
 
   unsigned decodeInstruction(unsigned Address, MachineBasicBlock *Block);
   /// \brief Create a function object at the specified address.
-  MachineFunction* getOrCreateFunction(unsigned Address);
+  MachineFunction *getOrCreateFunction(unsigned Address);
 
   MachineFunction *getNearestFunction(StringRef &NameRef);
-  MachineFunction* getNearestFunction(unsigned Address);
+  MachineFunction *getNearestFunction(unsigned Address);
 
   /// \brief Disassembles a specific instruction given the specific object file
   /// offset.
@@ -151,8 +151,8 @@ public:
   // MCInst* getInst(unsigned Address) const { return Instructions[Address]; }
 
   /// Getters and Setters
-  void setExecutable(object::ObjectFile* NewExecutable);
-  object::ObjectFile* getExecutable() { return Executable; };
+  void setExecutable(object::ObjectFile *NewExecutable);
+  object::ObjectFile *getExecutable() { return Executable; };
 
   static std::string rawBytesToString(StringRef Bytes);
 
@@ -162,36 +162,34 @@ public:
   /// \param Section a pointer to the desired SectionRef
   void setSection(std::string SectionName);
   void setSection(const object::SectionRef Section);
-  const object::SectionRef getCurrentSection() const {
-    return CurSection;
-  }
+  const object::SectionRef getCurrentSection() const { return CurSection; }
   const object::SectionRef getSectionByName(StringRef SectionName) const;
-  const object::SectionRef getSectionByExpression(StringRef SectionExpression) const;
+  const object::SectionRef getSectionByExpression(
+      StringRef SectionExpression) const;
   const object::SectionRef getSectionByAddress(unsigned Address) const;
-  FractureMemoryObject* getCurSectionMemory() const { return CurSectionMemory; }
-  object::ObjectFile* getExecutable() const { return Executable; }
-  MCDirector* getMCDirector() const { return MC; }
-  Module* getModule() const { return TheModule; }
+  FractureMemoryObject *getCurSectionMemory() const { return CurSectionMemory; }
+  object::ObjectFile *getExecutable() const { return Executable; }
+  MCDirector *getMCDirector() const { return MC; }
+  Module *getModule() const { return TheModule; }
 
-  const MachineInstr* getMachineInstr(unsigned Address) const {
-     if (MachineInstructions.find(Address) != MachineInstructions.end()) {
-        return MachineInstructions.at(Address);
-     }
-     return NULL;
+  const MachineInstr *getMachineInstr(unsigned Address) const {
+    if (MachineInstructions.find(Address) != MachineInstructions.end()) {
+      return MachineInstructions.at(Address);
+    }
+    return NULL;
   }
 
-  MCInst* getMCInst(unsigned Address) const {
+  MCInst *getMCInst(unsigned Address) const {
     if (Instructions.find(Address) != Instructions.end()) {
       return Instructions.at(Address);
     }
     return NULL;
   }
 
-
   std::map<StringRef, uint64_t> getRelocOrigins() { return RelocOrigins; };
   uint64_t getDebugOffset(const DebugLoc &Loc) const;
   DebugLoc *setDebugLoc(uint64_t Address);
-  void deleteFunction(MachineFunction* MF);
+  void deleteFunction(MachineFunction *MF);
 
   void setDisassFileNameAndAddr(std::string s, uint64_t a) {
     disass_file_name = s;
@@ -206,12 +204,12 @@ public:
 
   object::SectionRef CurSection;
   object::ObjectFile *Executable;
-  FractureMemoryObject* CurSectionMemory;
+  FractureMemoryObject *CurSectionMemory;
   uint64_t CurSectionEnd;
-  std::map<unsigned, MachineBasicBlock*> BasicBlocks;
-  std::map<unsigned, MachineFunction*> Functions;
-  std::map<unsigned, MCInst*> Instructions;
-  std::map<unsigned, const MachineInstr*> MachineInstructions;
+  std::map<unsigned, MachineBasicBlock *> BasicBlocks;
+  std::map<unsigned, MachineFunction *> Functions;
+  std::map<unsigned, MCInst *> Instructions;
+  std::map<unsigned, const MachineInstr *> MachineInstructions;
   std::map<StringRef, uint64_t> RelocOrigins;
 
   MachineModuleInfo *MMI;
@@ -231,6 +229,6 @@ public:
   }
 };
 
-} // end namespace fracture
+}  // end namespace fracture
 
 #endif /* DISASSEMBLER_H */
