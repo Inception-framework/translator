@@ -98,7 +98,6 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
           "[MSRHandler] FAULTMASK in not supported, treated as dummy write");
       break;
     case 20: {  // CONTROL
-      Rdest = Reg("CONTROL");
       inception_warning(
           "[MSRHandler] only CONTROL[1] is supported, the rest i  treated as a "
           "dummy write");
@@ -106,6 +105,8 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
       ctrl1_tgt = IRB->CreateAnd(ctrl1_tgt, getConstant(1));
       Constant* switch_sp = GetIntFunctionPointer("inception_switch_sp");
       IRB->CreateCall(switch_sp, ctrl1_tgt);
+      Rdest = Reg("CONTROL_1");
+      Rn = ReadReg(Rdest, IRB);
       break;
     }
     default:
@@ -187,9 +188,10 @@ void CoprocLifter::MRSHandler(SDNode *N, IRBuilder<> *IRB) {
         "[MRSHandler] FAULTMASK in not supported, the read value may be wrong");
     break;
     case 20: //CONTROL
-    Res = ReadReg(Reg("CONTROL"), IRB, 32);
-    inception_message("[MRSHandler] CONTROL only bit 1 is supported");
-    break;
+      Res = ReadReg(Reg("CONTROL_1"), IRB, 32);
+      Res = IRB->CreateShl(Res, getConstant(1));
+      inception_message("[MRSHandler] CONTROL only bit 1 is supported");
+      break;
     default :
       inception_error("[MRSHandler] unsupported coproc register");
   }
