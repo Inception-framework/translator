@@ -104,7 +104,7 @@ void CoprocLifter::MSRHandler(SDNode *N, IRBuilder<> *IRB) {
           "dummy write");
       Value* ctrl1_tgt = IRB->CreateLShr(Rn,getConstant(1));
       ctrl1_tgt = IRB->CreateAnd(ctrl1_tgt, getConstant(1));
-      Constant* switch_sp = GetVoidFunctionPointer("inception_switch_sp");
+      Constant* switch_sp = GetIntFunctionPointer("inception_switch_sp");
       IRB->CreateCall(switch_sp, ctrl1_tgt);
       break;
     }
