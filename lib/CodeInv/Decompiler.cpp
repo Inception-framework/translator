@@ -764,7 +764,18 @@ uint64_t Decompiler::getFunctionAddress(Function *F) {
   BasicBlock *FB =
       getOrCreateBasicBlock(StringRef(Twine(F->getName() + "+0").str()), F);
   if (FB->begin() == FB->end()) {
-    inception_error("Cannot find by address when BasicBlock '+0' is empty!");
+    // XXX: if function is empty the address can be retrieve from the symbols
+    // table
+    int address = Dis->syms->getSymbolAddress(F->getName());
+
+    if (address == -1)
+      inception_error(
+          "Cannot find address of function %s because the function has no "
+          "instruction into BasicBlock+0 and is not defined in the symbol "
+          "table",
+          F->getName().str().c_str());
+
+    return (unsigned)address;
   }
   return getBasicBlockAddress(FB);
 }
