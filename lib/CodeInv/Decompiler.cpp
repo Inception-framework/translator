@@ -43,6 +43,7 @@ Decompiler::Decompiler(Disassembler *NewDis, Module *NewMod,
     ModID += "-IR";
     Mod = new Module(StringRef(ModID), *(Dis->getMCDirector()->getContext()));
     Context = Dis->getMCDirector()->getContext();
+    initAPI(Mod, this);
   } else {
     Context = &(Mod->getContext());
   }
