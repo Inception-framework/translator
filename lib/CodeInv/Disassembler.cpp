@@ -145,7 +145,7 @@ bool Disassembler::hasReturnInstruction(MachineBasicBlock *MBB) {
 
     if (I != MBB->instr_begin()) {
       object::SymbolRef::Type SymbolTy;
-      unsigned next = address + size;
+      unsigned next = address + size -1;
 
       /*
        * This loop looks for all contiguous symbols after current instruction.
@@ -162,7 +162,7 @@ bool Disassembler::hasReturnInstruction(MachineBasicBlock *MBB) {
           return true;
         }
         // inception_warning("--> no");
-        next += 4;
+        next += 1;
       } while (SymbolTy != -1);
     }
 
@@ -340,7 +340,7 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
    * If we only find other kind of symbol we ignore them.
    */
   do {
-    for (int j = 0; j < 2; j++) {
+    for (int j = -1; j < 2; j++) {
       // inception_warning("Is address 0x%08x a function ?", next_address + j);
 
       SymbolTy = (object::SymbolRef::Type)syms->getSymbolType(next_address + j);
