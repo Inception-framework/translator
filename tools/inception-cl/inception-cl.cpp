@@ -254,7 +254,6 @@ static std::error_code runInception(StringRef FileName) {
       }  // END FOR INSTRUCTIOn
     }    // END FOR BB
   }      // END FOR FCT
-  inception_message("Done -> %ld functions.", asm_functions.size());
 
   initAPI(module, DEC);
 
@@ -263,6 +262,8 @@ static std::error_code runInception(StringRef FileName) {
   asm_functions2 = AssemblySupport::ImportAll(module, DAS);
   // asm_functions.insert(asm_functions2.begin(), asm_functions2.end());
   inception_message("Done\n");
+
+  inception_message("Done -> %ld functions.", asm_functions.size());
 
   IRMerger *merger = new IRMerger(DEC);
 
