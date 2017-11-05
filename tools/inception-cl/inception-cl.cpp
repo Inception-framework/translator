@@ -283,7 +283,7 @@ static std::error_code runInception(StringRef FileName) {
   // SectionsWriter::WriteSection(".data", DAS, module);
   // SectionsWriter::WriteSection(".bss", DAS, module);
   SectionsWriter::WriteSection(".heap", DAS, module);
-  SectionsWriter::WriteSection(".user_stack", DAS, module);
+  SectionsWriter::WriteSection(".main_stack", DAS, module);
   if (DisableInterrupt == false) {
     SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
   }
