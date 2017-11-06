@@ -104,12 +104,24 @@ void BranchLifter::BranchHandlerB(SDNode *N, IRBuilder<> *IRB) {
       Br->setDebugLoc(N->getDebugLoc());
       saveNodeValue(N, Br);
     } else {
-      // Otherwise, we are not able to handle a branch to Tgt
-      inception_error(
-          "[BranchLifter] Unsupported case: branch (unconditional or last of "
-          "an IT blcok) to a Tgt address which is "
-          "< of the function entry point and which does not correspond to "
-          "another function in the symbols table");
+      if (alm->Dec->getDisassembler()->syms->getSymbolType(Tgt) != -1) {
+        inception_warning(
+            "[BranchLifter] found branch to the entry point of something which "
+            "is not a function defined as a function in the symbol table ..."
+            "trasnforming it in: call func2; return");
+        CreateCall(N, IRB, Tgt);
+        Instruction *Ret = IRB->CreateRetVoid();
+        Ret->setDebugLoc(N->getDebugLoc());
+        saveNodeValue(N, Ret);
+      } else {
+        // Otherwise, we are not able to handle a branch to Tgt
+        inception_error(
+            "[BranchLifter] Unsupported case: branch (unconditional or last of "
+            "an IT block) to a Tgt address (0x%08x) which is "
+            "< of the function entry point and which does not correspond to "
+            "another function in the symbols table",
+            Tgt);
+      }
     }
     return;
   }
