@@ -49,6 +49,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::tLDRHi, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::tLDRHr, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::tLDRSH, Common, new LoadInfo(-1, 1, 2, 16))
+  REGISTER_LOAD_OPCODE(ARM::t2LDRSHi12, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRHi12, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRHi8, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRH_PRE, Pre, new LoadInfo(-1, 1, 2, 16))
@@ -74,7 +75,7 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   SDNode* Node = N->getOperand(index).getNode();
   ConstantSDNode* OffsetNode = dyn_cast<ConstantSDNode>(Node);
   if (OffsetNode == NULL) {
-    llvm::errs() << "[LoadLifter] DoPC Handler expected ConstantSDNode ...";
+    inception_error("[LoadLifter] DoPC Handler expected ConstantSDNode ...");
     return;
   }
 
@@ -83,8 +84,9 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   FractureMemoryObject* fmo = Dis->getCurSectionMemory();
 
   if (!fmo->isValidAddress(debugLoc + offset)) {
-    llvm::errs() << "[LoadLifter] DoPC encountered a memory adress out of "
-                    "current section ...";
+    inception_error(
+        "[LoadLifter] DoPC encountered a memory adress out of "
+        "current section ...");
     return;
   }
 
@@ -94,8 +96,9 @@ void LoadLifter::doPC(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   address &= ~(1 << 1);
   for (int i = 0; i < 4; i++) {
     if (fmo->readByte(&byte, address + i) == -1) {
-      llvm::errs() << "[LoadLifter] DoPC encountered a memory adress out of "
-                      "current section ...";
+      inception_error(
+          "[LoadLifter] DoPC encountered a memory adress out of "
+          "current section ...");
       return;
     } else {
       value |= byte << (i * 8);
@@ -302,8 +305,6 @@ void LoadLifter::doMultiDB(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   for (auto i = 0; i < (info->iRn_max - info->iRn); i++) {
     index = inv_rn[i];
 
-    // llvm::errs() << " At index " << i << " = " << index << "\n";
-
     Rd = UpdateRd(Rd, c4, IRB, false);
 
     SDNode* pred = N->getOperand(index).getNode();
@@ -433,6 +434,7 @@ void LoadLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   switch (OpCode) {
     case ARM::tLDRSH:
     case ARM::t2LDRSBi12:
+    case ARM::t2LDRSHi12:
       // some instructions need sign extension
       Rn = ReadReg(Rd, IRB, info->width, true);
       break;
