@@ -65,6 +65,8 @@ class Disassembler {
  public:
   SymbolsTable *syms;
 
+  bool hasReachAnotherFunction;
+
   // TODO : Move into SymbolsTable.h
   void getRelocFunctionName(unsigned Address, StringRef &NameRef);
 

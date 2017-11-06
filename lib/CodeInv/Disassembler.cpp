@@ -44,6 +44,8 @@ Disassembler::Disassembler(MCDirector *NewMC, object::ObjectFile *NewExecutable,
   GMI = new GCModuleInfo();
 
   syms = new SymbolsTable(Executable);
+
+  hasReachAnotherFunction = false;
 }
 
 Disassembler::~Disassembler() {
@@ -143,29 +145,22 @@ bool Disassembler::hasReturnInstruction(MachineBasicBlock *MBB) {
     unsigned address = getDebugOffset(instr->getDebugLoc());
     unsigned size = this->getMachineInstr(address)->getDesc().Size;
 
-    if (I != MBB->instr_begin()) {
-      object::SymbolRef::Type SymbolTy;
-      unsigned next = address + size -1;
+    // if (I != MBB->instr_begin()) {
+    object::SymbolRef::Type SymbolTy;
+    unsigned next = address + size - 1;
 
-      /*
-       * This loop looks for all contiguous symbols after current instruction.
-       * If any of these symbols is a Function we found the begenning of another
-       * function and so the end of the current.
-       * If we only find other kind of symbol we ignore them.
-       */
-      do {
-        // inception_warning("Is address 0x%08x a function ?", next);
-
-        SymbolTy = (object::SymbolRef::Type)syms->getSymbolType(next);
-        if (SymbolTy == object::SymbolRef::ST_Function) {
-          // inception_warning("--> yes");
-          return true;
-        }
-        // inception_warning("--> no");
-        next += 1;
-      } while (SymbolTy != -1);
-    }
-
+    /*
+     * This loop looks for all contiguous symbols after current instruction.
+     * If any of these symbols is a Function we found the begenning of another
+     * function and so the end of the current.
+     * If we only find other kind of symbol we ignore them.
+     */
+    if (hasReachAnotherFunction) return true;
+    // for (auto j = -1; j < 2; j++) {
+    //   if (syms->isFunctionInSymbolTable(next + j)) {
+    //     return true;
+    //   }
+    // }
   }
   return false;
 }
@@ -216,6 +211,10 @@ MachineBasicBlock *Disassembler::decodeBasicBlock(unsigned Address,
 
   // NOTE: Might also need SectAddr...
   Size = 0;
+
+  // This function
+  hasReachAnotherFunction = false;
+
   while (Address + Size < (unsigned)CurSectionEnd) {
     unsigned CurAddr = Address + Size;
     Size += std::max(unsigned(1), decodeInstruction(CurAddr, MBB));
@@ -227,6 +226,9 @@ MachineBasicBlock *Disassembler::decodeBasicBlock(unsigned Address,
     if (MI != NULL && MI->isTerminator()) {
       break;
     }
+
+    if (hasReachAnotherFunction) break;
+
     const MCRegisterInfo *RI = getMCDirector()->getMCRegisterInfo();
     if (MI != NULL && MI->getOpcode() == 2766) {  // tPOP
       if (MI->readsVirtualRegister(RI->getProgramCounter())) {
@@ -339,22 +341,29 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
    * function and so the end of the current.
    * If we only find other kind of symbol we ignore them.
    */
-  do {
-    for (int j = -1; j < 2; j++) {
-      // inception_warning("Is address 0x%08x a function ?", next_address + j);
-
-      SymbolTy = (object::SymbolRef::Type)syms->getSymbolType(next_address + j);
-      if (SymbolTy == object::SymbolRef::ST_Function) {
-        MCID->Flags |= (1 << MCID::Return);
-        MCID->Flags |= (1 << MCID::Terminator);
-        // inception_warning("--> yes");
-        break;
-      }
-      // inception_warning("--> no");
+  // while (is_data_block) {
+  // Check if a function is defined in -1, +0, +1
+  for (int k = 0; k < 2; k++)
+    if (syms->isFunctionInSymbolTable(next_address + k)) {
+      hasReachAnotherFunction = true;
+      break;
+    } else {
+      // Next instruction is not a function.
+      // Here we try to eliminate data
+      do {
+        SymbolTy =
+            (object::SymbolRef::Type)syms->getSymbolType(next_address + k);
+        if (SymbolTy != -1) {
+          if (SymbolTy == object::SymbolRef::ST_Function) {
+            hasReachAnotherFunction = true;
+            break;
+          } else {
+            next_address += 4;
+            // InstSize += 4;
+          }
+        }
+      } while (SymbolTy != -1);
     }
-
-    next_address += 4;
-  } while (SymbolTy != -1);
 
   // Recover MachineInstr representation
   DebugLoc *Location = setDebugLoc(Address);
@@ -362,8 +371,8 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   unsigned int numDefs = MCID->getNumDefs();
   for (unsigned int i = 0; i < Inst->getNumOperands(); i++) {
     MCOperand MCO = Inst->getOperand(i);
-    // FIXME: This hack is a workaround for the assert in MachineInstr.cpp:653,
-    // where OpNo >= MCID->getNumOperands()...
+    // FIXME: This hack is a workaround for the assert in
+    // MachineInstr.cpp:653, where OpNo >= MCID->getNumOperands()...
     if (i >= MCID->getNumOperands() && !(MCID->isVariadic())) break;
 
     if (MCO.isReg()) {
@@ -377,7 +386,8 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
         flags |= RegState::Define;
       }
 
-      // NOTE: No need to worry about imp defs and uses, as these are already
+      // NOTE: No need to worry about imp defs and uses, as these are
+      // already
       //       specificed in the MCID attached to the MachineInst object.
       MIB.addReg(MCO.getReg(), flags);
       continue;
@@ -406,8 +416,8 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
   if (MCID->mayLoad()) flags |= MachineMemOperand::MOLoad;
   if (MCID->mayStore()) flags |= MachineMemOperand::MOStore;
   if (flags != 0) {
-    // Constant* cInt = ConstantInt::get(Type::getInt64Ty(ctx), MCO.getImm());
-    // Value *Val = ConstantExpr::getIntToPtr(cInt,
+    // Constant* cInt = ConstantInt::get(Type::getInt64Ty(ctx),
+    // MCO.getImm()); Value *Val = ConstantExpr::getIntToPtr(cInt,
     // PointerType::getUnqual(Type::getInt32Ty(ctx)));
     // FIXME: note size of 4 is known to be bad for
     // some targets
@@ -416,12 +426,12 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
     MachineMemOperand *MMO = new MachineMemOperand(MachinePointerInfo(), flags,
                                                    4, 0);  // MCO.getImm()
     MIB.addMemOperand(MMO);
-    // outs() << "Name: " << MII->getName(Inst->getOpcode()) << " Flags: " <<
-    // flags << "\n";
+    // outs() << "Name: " << MII->getName(Inst->getOpcode()) << " Flags: "
+    // << flags << "\n";
   }
 
-  // Note: I don't know why they decided instruction size needed to be 64 bits,
-  // but the following conversion shouldn't be an issue.
+  // Note: I don't know why they decided instruction size needed to be 64
+  // bits, but the following conversion shouldn't be an issue.
   return ((unsigned)InstSize);
 }
 
@@ -480,9 +490,9 @@ MachineFunction *Disassembler::getOrCreateFunction(unsigned Address) {
  *   function entry <= Address <= function end
  *
  * LIMITATION:
- *   This function does not work well if we have two functions sharing a portion
- *   of code, or in other words a function with two entry points.
- *   E.g.  func1: ...
+ *   This function does not work well if we have two functions sharing a
+ * portion of code, or in other words a function with two entry points. E.g.
+ * func1: ...
  *                ...
  *         func2: ...
  *                ...
@@ -517,8 +527,8 @@ MachineFunction *Disassembler::getNearestFunction(unsigned Address) {
 
 /*
  * This function is introduced to overcome the limitation of the previous one.
- * It is based on the function name instead of the function address, in order to
- * avoid ambiguity when there are multiple entry points (multiple functions
+ * It is based on the function name instead of the function address, in order
+ * to avoid ambiguity when there are multiple entry points (multiple functions
  * sharing some code in the last part).
  * The fucntion name can be obtained by calling getFunctionName(entry_address)
  * which returns the name in the symbol table (if the function is there) or an
@@ -678,15 +688,15 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
 }
 
 void Disassembler::setExecutable(object::ObjectFile *NewExecutable) {
-  // NOTE: We don't do any reorging with the module or the machine functions. We
-  // need to evaluate if this is necessary. We should *not* change the MC API
-  // settings to match those of the executable.
+  // NOTE: We don't do any reorging with the module or the machine functions.
+  // We need to evaluate if this is necessary. We should *not* change the MC
+  // API settings to match those of the executable.
   Executable = NewExecutable;
 }
 
 // getRelocFunctionName() pairs function call addresses with dynamically
-// relocated library function addresses and sets the function name to the actual
-// name rather than the function address
+// relocated library function addresses and sets the function name to the
+// actual name rather than the function address
 void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   MachineFunction *MF = disassemble(Address);
   MachineBasicBlock *MBB = &(MF->front());
@@ -709,8 +719,8 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   }
   // If the Jump address of the instruction is smaller than the instruction
   // address then it must be an offset from the instruction address. In this
-  // case, we add the jump address to the original address plus the instruction
-  // size.
+  // case, we add the jump address to the original address plus the
+  // instruction size.
   if (JumpAddr < Address) isOffsetJump = true;
   if (MBB->size() > 1)
     JumpAddr += (Address + 32768 + 8);
