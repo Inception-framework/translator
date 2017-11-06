@@ -10,8 +10,7 @@
 using namespace llvm;
 
 Value* ARMLifter::visit(const SDNode* N, IRBuilder<>* IRB) {
-  if (IContext::VisitMap.find(N) !=
-      IContext::VisitMap.end()) {
+  if (IContext::VisitMap.find(N) != IContext::VisitMap.end()) {
     return IContext::VisitMap[N];
   }
 
@@ -19,9 +18,10 @@ Value* ARMLifter::visit(const SDNode* N, IRBuilder<>* IRB) {
 
   switch (N->getOpcode()) {
     default: {
-      errs() << "OpCode: " << N->getOpcode() << "\n";
-      llvm_unreachable(
-          "IREmitter::visit - Every visit should be implemented...");
+      inception_error(
+          "ARMLifter::visit - Every visit should be implemented..."
+          "When processing opcode H%08x (D%d)",
+          N->getOpcode(), N->getOpcode());
       return NULL;
     }
     case ISD::EntryToken:
@@ -51,8 +51,7 @@ Value* ARMLifter::visitRegister(const SDNode* N, IRBuilder<>* IRB) {
 
     if (RegName.find("noreg") != std::string::npos) return NULL;
 
-    Type* Ty =
-        R->getValueType(0).getTypeForEVT(IContext::getContextRef());
+    Type* Ty = R->getValueType(0).getTypeForEVT(IContext::getContextRef());
 
     Reg = getModule()->getGlobalVariable(RegName);
     if (Reg == NULL) {
