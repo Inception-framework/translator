@@ -691,7 +691,9 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
 
   Function* Func = Mod->getFunction(FName);
   if (Func == NULL) {
-    inception_error("BranchLifter cannot resolve address : 0x%08x", Tgt);
+    Constant* func_ptr = GetVoidFunctionPointer(FName);
+    Func = cast<Function>(func_ptr);
+    // inception_error("BranchLifter cannot resolve address : 0x%08x", Tgt);
   }
 
   if (Func->isIntrinsic()) {
