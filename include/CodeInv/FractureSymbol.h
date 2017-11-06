@@ -19,10 +19,36 @@
 
 #include "llvm/Object/Error.h"
 #include "llvm/Object/ObjectFile.h"
+#include "llvm/Support/Format.h"
+#include "llvm/Support/FormattedStream.h"
+
+#include <inttypes.h>
+#include <signal.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <algorithm>
+#include <cstdlib>
+#include <iomanip>
+#include <iostream>
+#include <map>
+#include <ostream>
+#include <sstream>
+#include <string>
+#include <vector>
+
+#include "CodeInv/FractureSymbol.h"
+#include "Utils/ErrorHandling.h"
+#include "llvm/Object/ELFObjectFile.h"
+#include "llvm/Object/Error.h"
+#include "llvm/Object/ObjectFile.h"
+#include "llvm/Support/Debug.h"
+#include "llvm/Support/FormattedStream.h"
+#include "llvm/Support/TargetRegistry.h"
 
 #include <map>
 
 using namespace llvm;
+using namespace inception;
 
 namespace fracture {
 
@@ -66,6 +92,36 @@ class FractureSymbol : public object::SymbolRef {
     }
     StringRef getN() {
       return Name;
+    }
+
+    bool error(std::error_code ec) {
+      if (!ec) return false;
+
+      inception_warning("Error reading file: %s", ec.message().c_str());
+      return true;
+    }
+
+    void dump() {
+      StringRef Name;
+      uint64_t Addr = 0;
+      object::SymbolRef::Type Type;
+      uint64_t Size;
+
+      if (error(getName(Name))) return;
+      if (error(getAddress(Addr))) return;
+      if (error(getType(Type))) return;
+      if (error(getSize(Size))) return;
+
+      char FileFunc = ' ';
+      if (Type == object::SymbolRef::ST_File)
+        FileFunc = 'f';
+      else if (Type == object::SymbolRef::ST_Function)
+        FileFunc = 'F';
+
+      outs() << format("%08" PRIx64, Addr) << " "
+             << FileFunc  // Name of function (F), file (f) or object (O).
+             << ' ';
+      outs() << '\t' << format("%08" PRIx64 " ", Size) << Name << '\n';
     }
 
   private:
