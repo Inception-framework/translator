@@ -260,6 +260,7 @@ static std::error_code runInception(StringRef FileName) {
   inception_message("Importing pure assembly code...");
   std::set<std::string> asm_functions2;
   asm_functions2 = AssemblySupport::ImportAll(module, DAS);
+  // XXX: Decomment the line bellow to disassemble all functions
   // asm_functions.insert(asm_functions2.begin(), asm_functions2.end());
   inception_message("Done\n");
 
@@ -274,6 +275,29 @@ static std::error_code runInception(StringRef FileName) {
     inception_message("Done\n");
   }
   inception_message("Decompilation stage done\n");
+  // Remove all
+  asm_functions.clear();
+
+  inception_message("Checking functions dependencies");
+  auto fct_begin = module->getFunctionList().begin();
+  auto fct_end = module->getFunctionList().end();
+
+  bool hasDependencies = false;
+  do {
+    hasDependencies = false;
+    for (fct_begin; fct_begin != fct_begin; fct_begin++) {
+      Function &function = *fct_begin;
+
+      if (function.empty())
+        if (!function.hasFnAttribute("Decompiled")) {
+          hasDependencies = true;
+          inception_message("Processing function %s...",
+                            function.getName().str().c_str());
+          merger->Run(llvm::StringRef(function.getName().str()));
+        }
+    }  // END FOR FCT
+    inception_message("Done -> %ld functions.", asm_functions.size());
+  } while (hasDependencies);
 
   inception_message("Allocating and initializing virtual stack...");
   StackAllocator::Allocate(module, DAS);
