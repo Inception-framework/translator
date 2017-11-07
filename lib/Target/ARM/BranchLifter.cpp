@@ -36,6 +36,10 @@ void BranchLifter::registerLifter() {
 }
 
 void BranchLifter::BranchHandler(SDNode *N, IRBuilder<> *IRB) {
+  // save LR into PC (useful e.g. for EXC_RETURN)
+  WriteReg(ReadReg(Reg("LR"), IRB), Reg("PC"), IRB);
+
+  // llvm return
   Instruction *Ret = IRB->CreateRetVoid();
   Ret->setDebugLoc(N->getDebugLoc());
   saveNodeValue(N, Ret);

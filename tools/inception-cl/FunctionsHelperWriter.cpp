@@ -136,8 +136,9 @@ void FunctionsHelperWriter::FNHInterruptEpilogue(llvm::Module* mod,
 
   llvm::IRBuilder<>* IRB = new IRBuilder<>(&(function->getEntryBlock()));
 
-  // switch sp based on EXC_RETURN (in LR)
-  Value* EXC_RETURN = ReadReg(Reg("LR"), IRB);
+  // switch sp based on EXC_RETURN
+  // this value is written into PC by bx lr, pop {pc} etc.
+  Value* EXC_RETURN = ReadReg(Reg("PC"), IRB);
   EXC_RETURN = IRB->CreateLShr(EXC_RETURN, getConstant(2));
   EXC_RETURN = IRB->CreateAnd(EXC_RETURN, getConstant(1));
   Constant* switch_sp = GetVoidFunctionPointer("inception_switch_sp");
