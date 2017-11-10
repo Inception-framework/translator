@@ -168,6 +168,9 @@ void BranchLifter::BranchHandlerBL(SDNode *N, IRBuilder<> *IRB) {
   int64_t PC = alm->Dec->getDisassembler()->getDebugOffset(N->getDebugLoc());
   int64_t Tgt = PC + 4 + DestInt;
   CreateCall(N, IRB, Tgt);
+
+  Value *dummyLR = getConstant("0");
+  saveNodeValue(N, dummyLR);
 }
 
 // simple indirect call promotion
