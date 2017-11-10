@@ -86,6 +86,14 @@ Value* ABIAdapter::HigherInteger(Type* type, IRBuilder<>* IRB) {
   return Res;
 }
 
+Value* ABIAdapter::HigherFloat(Type* type, IRBuilder<>* IRB) {
+  Value* Res = ReadReg(getNext(IRB), IRB);
+
+  Res = IRB->CreateUIToFP(Res, type);
+
+  return Res;
+}
+
 Value* ABIAdapter::HigherPointer(Type* Ty, IRBuilder<>* IRB) {
   Value* Res = ReadReg(getNext(IRB), IRB);
 
@@ -134,8 +142,11 @@ Value* ABIAdapter::Higher(Type* Ty, IRBuilder<>* IRB) {
       return HigherPointer(Ty, IRB);
       break;
     }
+    case llvm::Type::FloatTyID: {
+      return HigherFloat(Ty, IRB);
+      break;
+    }
     case llvm::Type::HalfTyID:
-    case llvm::Type::FloatTyID:
     case llvm::Type::DoubleTyID:
     case llvm::Type::X86_FP80TyID:
     case llvm::Type::FP128TyID:
@@ -213,7 +224,10 @@ Value* ABIAdapter::Lower(Value* inst, IRBuilder<>* IRB) {
       break;
     }
     case llvm::Type::IntegerTyID: {
-      return LowerInteger(inst, IRB);
+      if(inst->getType() == llvm::Type::getInt64Ty(IContext::getContextRef()))
+        return NULL;
+      else
+        return LowerInteger(inst, IRB);
       break;
     }
     case llvm::Type::VoidTyID: {

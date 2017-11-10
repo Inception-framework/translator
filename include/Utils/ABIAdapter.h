@@ -31,6 +31,8 @@ class ABIAdapter {
 
   Value* HigherInteger(Type* Ty, IRBuilder<>* IRB);
 
+  Value* HigherFloat(Type* type, IRBuilder<>* IRB);
+
   Value* HigherPointer(Type* Ty, IRBuilder<>* IRB);
 
   Value* LowerCollections(Value* collection, unsigned size, IRBuilder<>* IRB);

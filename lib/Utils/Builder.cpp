@@ -715,7 +715,7 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
   ABIAdapter abi_higher = ABIAdapter();
 
   if ((Call = abi_higher.Higher(Func, IRB)) == NULL)
-    inception_error("Function %s has unsupported parameter type...",
+    inception_warning("Function %s has unsupported parameter type...",
                     FName.c_str());
 
   // Twine TgtAddr(Tgt);
@@ -728,7 +728,7 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
   ABIAdapter abi_lower = ABIAdapter();
 
   if (abi_lower.Lower(Call, IRB) == NULL)
-    inception_error("Function %s has unsupported return type...",
+    inception_warning("Function %s has unsupported return type...",
                     FName.c_str());
 
   if (N != NULL) {
