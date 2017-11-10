@@ -40,7 +40,18 @@ Value* ABIAdapter::Higher(Function* Func, IRBuilder<>* IRB) {
     Args.push_back(Res);
   }
 
+  bool decompiled = Func->hasFnAttribute("Decompiled");
+  Value* LR = NULL;
+  if (decompiled == false) {
+    inception_message(
+        "[ABIAdapter] C function encoutered, adding restore of lr into pc "
+        "after execution");
+    LR = ReadReg(Reg("LR"), IRB);
+  }
   Value* Call = IRB->CreateCall(dyn_cast<Value>(Func), Args);
+  if (decompiled == false) {
+    WriteReg(LR, Reg("PC"), IRB);
+  }
 
   return Call;
 }
