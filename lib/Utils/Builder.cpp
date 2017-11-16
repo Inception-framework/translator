@@ -696,18 +696,15 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
     // inception_error("BranchLifter cannot resolve address : 0x%08x", Tgt);
   }
 
-  if (Func->isIntrinsic()) {
-    return;
-  }
+  // if (Func->isIntrinsic()) {
+  //   return;
+  // }
 
   if (Func->empty()) {
-    if (Func->isDefTriviallyDead()) {
-      Func->deleteBody();
-      Func->eraseFromParent();
-      return;
-    } else {
-      return;
-    }
+    AttributeSet AS;
+    AS = AS.addAttribute(IContext::getContextRef(), AttributeSet::FunctionIndex,
+                         "DecompileLater", "True");
+    Func->setAttributes(AS);
   }
 
   Value* Call;
@@ -716,20 +713,13 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
 
   if ((Call = abi_higher.Higher(Func, IRB)) == NULL)
     inception_warning("Function %s has unsupported parameter type...",
-                    FName.c_str());
-
-  // Twine TgtAddr(Tgt);
-  //
-  // AttributeSet AS;
-  // AS = AS.addAttribute(IContext::getContextRef(),
-  // AttributeSet::FunctionIndex,
-  //                      "Address", TgtAddr.str());
+                      FName.c_str());
 
   ABIAdapter abi_lower = ABIAdapter();
 
   if (abi_lower.Lower(Call, IRB) == NULL)
     inception_warning("Function %s has unsupported return type...",
-                    FName.c_str());
+                      FName.c_str());
 
   if (N != NULL) {
     Value* dummyLR = getConstant("0");

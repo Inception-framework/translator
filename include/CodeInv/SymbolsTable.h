@@ -99,7 +99,7 @@ class SymbolsTable {
       FractureSymbol *current_symbol = (*si);
       if (SymbolComparator(current_symbol, Address)) {
         if (SymbolComparator(current_symbol, object::SymbolRef::ST_Function)) {
-          current_symbol->dump();
+          // current_symbol->dump();
           symbol = current_symbol;
           break;
         }
@@ -256,14 +256,14 @@ class SymbolsTable {
     // Sort symbols by address
     std::sort(Syms.begin(), Syms.end(), &SymbolsTable::symbolSorter);
 
-    for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
-                                                 se = Syms.end();
-         si != se; ++si) {
-      if (error(ec)) {
-        return;
-      }
-      (*si)->dump();
-    }
+    // for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
+    //                                              se = Syms.end();
+    //      si != se; ++si) {
+    //   if (error(ec)) {
+    //     return;
+    //   }
+    //   (*si)->dump();
+    // }
   }
 
   std::vector<FractureSymbol *> Syms;

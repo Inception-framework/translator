@@ -284,19 +284,18 @@ static std::error_code runInception(StringRef FileName) {
 
   bool hasDependencies = false;
   do {
-    hasDependencies = false;
-    for (fct_begin; fct_begin != fct_begin; fct_begin++) {
+    for (fct_begin; fct_begin != fct_end; fct_begin++) {
       Function &function = *fct_begin;
 
-      if (function.empty())
-        if (!function.hasFnAttribute("Decompiled")) {
-          hasDependencies = true;
-          inception_message("Processing function %s...",
-                            function.getName().str().c_str());
-          merger->Run(llvm::StringRef(function.getName().str()));
-        }
+      if (function.hasFnAttribute("DecompileLater")) {
+        hasDependencies = true;
+        inception_message("Processing function %s...",
+                          function.getName().str().c_str());
+        merger->Run(llvm::StringRef(function.getName().str()));
+        inception_message("Done\n");
+      }
     }  // END FOR FCT
-    inception_message("Done -> %ld functions.", asm_functions.size());
+    hasDependencies = false;
   } while (hasDependencies);
 
   inception_message("Allocating and initializing virtual stack...");
@@ -308,7 +307,7 @@ static std::error_code runInception(StringRef FileName) {
   SectionsWriter::WriteSection(".heap", DAS, module);
   SectionsWriter::WriteSection(".main_stack", DAS, module);
   if (DisableInterrupt == false) {
-    SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
+    SectionsWriter::WriteSection(".isr_vector", DAS, module);
   }
   inception_message("Done\n");
 
