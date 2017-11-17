@@ -36,6 +36,8 @@ Value* ABIAdapter::Higher(Function* Func, IRBuilder<>* IRB) {
     ArgTypes.push_back(I->getType());
 
     Value* Res = Higher(I->getType(), IRB);
+    if(Res == NULL)
+      return NULL;
 
     Args.push_back(Res);
   }
@@ -131,7 +133,12 @@ Value* ABIAdapter::Higher(Type* Ty, IRBuilder<>* IRB) {
       break;
     }
     case llvm::Type::IntegerTyID: {
-      return HigherInteger(Ty, IRB);
+      if(Ty->getIntegerBitWidth() <= 32 )
+        return HigherInteger(Ty, IRB);
+      else
+        inception_warning("ABIAdapter failed to higher integer type :");
+        Ty->dump();
+        return NULL;
       break;
     }
     case llvm::Type::VoidTyID: {

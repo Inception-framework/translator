@@ -711,15 +711,26 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
 
   ABIAdapter abi_higher = ABIAdapter();
 
-  if ((Call = abi_higher.Higher(Func, IRB)) == NULL)
-    inception_warning("Function %s has unsupported parameter type...",
-                      FName.c_str());
+  if ((Call = abi_higher.Higher(Func, IRB)) == NULL) {
+    inception_warning(
+        "Function %s has unsupported parameter type... Call to this function \n"
+        "aborted. This means that if the fail occurs during ICP creation, \n"
+        "Analyzer may fail with unsupported indirect call to a valid entry \n"
+        "point. If, the fail occured during the decompilation process please \n"
+        "concider this code has wrong !\n\n\n",
+        FName.c_str());
+    return;
+  }
 
   ABIAdapter abi_lower = ABIAdapter();
 
-  if (abi_lower.Lower(Call, IRB) == NULL)
-    inception_warning("Function %s has unsupported return type...",
-                      FName.c_str());
+  if (abi_lower.Lower(Call, IRB) == NULL) {
+    inception_warning(
+        "Function %s has unsupported return type... Possible corrution because \n"
+        "instruction may have been generated to lower arguments before \n"
+        "unsupported type was encountered...\n\n\n",
+        FName.c_str());
+  }
 
   if (N != NULL) {
     Value* dummyLR = getConstant("0");
