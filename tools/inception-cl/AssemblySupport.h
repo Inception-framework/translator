@@ -54,10 +54,10 @@ class AssemblySupport {
           importFile(SymbolName, SymbolAddr);
           break;
         case object::SymbolRef::ST_Function: {
-          std::string name = importFunction(SymbolName, SymbolAddr);
-          if(name != "") {
-            asm_functions.insert(name);
-          }
+          // std::string name = importFunction(SymbolName, SymbolAddr);
+          // if(name != "") {
+          //   asm_functions.insert(name);
+          // }
           break;
         }
         case object::SymbolRef::ST_Other:
