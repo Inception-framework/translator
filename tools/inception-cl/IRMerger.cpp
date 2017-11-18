@@ -87,29 +87,16 @@ void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
     return;
   }
 
+  bool has_return_inst = false;
+  Instruction* inst;
   for (auto bb = fct->begin(); bb != fct->end(); bb++) {
-    Instruction* inst = (*bb).begin();
+    inst = (*bb).begin();
 
     while (inst != (*bb).end() || inst == nullptr) {
       auto next = inst->getNextNode();
 
       if ((ret = dyn_cast<ReturnInst>(inst)) != NULL) {
-        // StringRef name("R0_RET" + std::to_string(ret_counter));
-
         IRBuilder<>* IRB = new IRBuilder<>(inst);
-
-        // Value* Res = ReadReg(Reg("R0"), IRB);
-        // Instruction* Res = new LoadInst(reg, name, "", inst);
-        // cast ptr to int to ptr to correct type if necessary
-        // if (FType->isPointerTy()) {
-        //   Res = new IntToPtrInst(Res, FType, "", inst);
-        // } else if (FType->isIntegerTy() && FType->getIntegerBitWidth() < 32)
-        // {
-        //   Res = new TruncInst(Res, FType, "", inst);
-        // }
-        // Value* model = ConstantInt::get(IContext::getContextRef(),
-        //                                 APInt(FType->getBitWidth(), value,
-        //                                 10));
 
         ABIAdapter abi;
         Value* Res = abi.Higher(FType, IRB);
@@ -117,12 +104,33 @@ void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
         IRB->CreateRet(Res);
 
         inst->eraseFromParent();
-        // llvm::ReplaceInstWithInst(inst, new_res);
+        has_return_inst = true;
       }
       inst = next;
     }
   }
-}  // namespace fracture
+
+  /*
+   * If no return instruction is present, we create one if the function return
+   * void. Otherwise, we return an error.
+   * Functions can delegate the return to a callee. In this case, an infinite
+   * loop is often present at the end of the function (unreachable code).
+   */
+  if (!has_return_inst) {
+    // To keep llvm-as happy we create an unreachable return instruction
+    if (fct->getReturnType()->isVoidTy()) {
+      IRBuilder<>* IRB = new IRBuilder<>(inst);
+
+      IRB->CreateRetVoid();
+    } else {
+      inception_error(
+          "Function %s has been decompiled without return instruction."
+          "It does not return void... This is often due to a disassembler "
+          "issue",
+          fct->getName().str().c_str());
+    }
+  }
+}
 
 void IRMerger::WriteABIPrologue(llvm::Function* fct) {
   BasicBlock& new_entry = fct->getEntryBlock();
