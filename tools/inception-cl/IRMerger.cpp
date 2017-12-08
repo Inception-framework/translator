@@ -82,6 +82,11 @@ void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
 
   Type* FType = fct->getReturnType();
 
+  Instruction* last = &(fct->back().back());
+  if (last && !dyn_cast<ReturnInst>(last)) {
+    llvm::ReturnInst::Create(getGlobalContext(), NULL, &(fct->back()));
+  }
+
   // void return has been write by Lifter
   if (FType->isVoidTy()) {
     return;
@@ -107,27 +112,6 @@ void IRMerger::WriteABIEpilogue(llvm::Function* fct) {
         has_return_inst = true;
       }
       inst = next;
-    }
-  }
-
-  /*
-   * If no return instruction is present, we create one if the function return
-   * void. Otherwise, we return an error.
-   * Functions can delegate the return to a callee. In this case, an infinite
-   * loop is often present at the end of the function (unreachable code).
-   */
-  if (!has_return_inst) {
-    // To keep llvm-as happy we create an unreachable return instruction
-    if (fct->getReturnType()->isVoidTy()) {
-      IRBuilder<>* IRB = new IRBuilder<>(inst);
-
-      IRB->CreateRetVoid();
-    } else {
-      inception_error(
-          "Function %s has been decompiled without return instruction."
-          "It does not return void... This is often due to a disassembler "
-          "issue",
-          fct->getName().str().c_str());
     }
   }
 }
