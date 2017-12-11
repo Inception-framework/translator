@@ -307,7 +307,7 @@ static std::error_code runInception(StringRef FileName) {
   SectionsWriter::WriteSection(".heap", DAS, module);
   SectionsWriter::WriteSection(".main_stack", DAS, module);
   if (DisableInterrupt == false) {
-    SectionsWriter::WriteSection(".isr_vector", DAS, module);
+    SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
   }
   inception_message("Done\n");
 
