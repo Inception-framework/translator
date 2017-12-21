@@ -72,7 +72,7 @@ class SectionsWriter {
 
     if (Section == NULL) {
       inception_warning("[SectionsWriter] Section '%s' not found",
-                      SectionName.str().c_str());
+                        SectionName.str().c_str());
       return;
     }
 
@@ -128,15 +128,15 @@ class SectionsWriter {
     for (uint64_t i = 0; i < (size / 4); i++) {
       uint64_t Address = i * 4 + CurSectionMemory->getBase();
 
-        uint8_t* B = new uint8_t(4);
-        int NumRead = CurSectionMemory->readBytes(B, Address, 4);
-        if (NumRead < 0) {
-          llvm::errs() << "Unable to read current section memory!\n";
-          return;
-        }
+      uint8_t* B = new uint8_t(4);
+      int NumRead = CurSectionMemory->readBytes(B, Address, 4);
+      if (NumRead < 0) {
+        llvm::errs() << "Unable to read current section memory!\n";
+        return;
+      }
 
-        uint32_t val = B[0] | (B[1] << 8) | (B[2] << 16) | (B[3] << 24);
-        constant = ConstantInt::get(mod->getContext(), APInt(32, val));
+      uint32_t val = B[0] | (B[1] << 8) | (B[2] << 16) | (B[3] << 24);
+      constant = ConstantInt::get(mod->getContext(), APInt(32, val));
 
       c_addr = ConstantInt::get(mod->getContext(), APInt(32, Address));
 

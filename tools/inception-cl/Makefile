@@ -13,7 +13,7 @@ TOOLNAME=inception-cl
 #
 # List libraries that we'll need
 #
-USEDLIBS = Commands.a FractureCodeInv.a FractureARMCodeInv.a TypeRecovery.a NameRecovery.a Utils.a
+USEDLIBS = Commands.a FractureCodeInv.a FractureARMCodeInv.a TypeRecovery.a NameRecovery.a Utils.a BreakConstantGEP.a BreakConstantPtrToInt.a
 
 #
 # LLVM Components we wish to link with.

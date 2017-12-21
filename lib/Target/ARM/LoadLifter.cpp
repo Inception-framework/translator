@@ -25,6 +25,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::t2LDMDB_UPD, MultiDB, new LoadInfo(4, 1, -1, 32, 0))
 
   REGISTER_LOAD_OPCODE(ARM::t2LDMDB, MultiDB, new LoadInfo(4, 1, -1, 32, 0))
+  // t2LDREXD	= 2391,
 
   REGISTER_LOAD_OPCODE(ARM::tLDRi, Common, new LoadInfo(-1, 1, 2))
   REGISTER_LOAD_OPCODE(ARM::tLDRspi, Common, new LoadInfo(-1, 1, 2))
@@ -36,6 +37,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::t2LDRs, Signed, new LoadInfo(1, 1, 2, true))
   REGISTER_LOAD_OPCODE(ARM::t2LDR_PRE, Pre, new LoadInfo(-1, 1, 2))
   REGISTER_LOAD_OPCODE(ARM::t2LDR_POST, Post, new LoadInfo(-1, 1, 2))
+  REGISTER_LOAD_OPCODE(ARM::t2LDREX, Common, new LoadInfo(-1, 1, 2))
 
   REGISTER_LOAD_OPCODE(ARM::tLDRBi, Common, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::tLDRBr, Common, new LoadInfo(-1, 1, 2, 8))
@@ -45,6 +47,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::t2LDRB_PRE, Pre, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::t2LDRB_POST, Post, new LoadInfo(-1, 1, 2, 8))
   REGISTER_LOAD_OPCODE(ARM::t2LDRBs, Common, new LoadInfo(-1, 1, 2, 8, true))
+  REGISTER_LOAD_OPCODE(ARM::t2LDREXB, Common, new LoadInfo(-1, 1, 2, 8))
 
   REGISTER_LOAD_OPCODE(ARM::tLDRHi, Common, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::tLDRHr, Common, new LoadInfo(-1, 1, 2, 16))
@@ -55,6 +58,7 @@ void LoadLifter::registerLifter() {
   REGISTER_LOAD_OPCODE(ARM::t2LDRH_PRE, Pre, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRH_POST, Post, new LoadInfo(-1, 1, 2, 16))
   REGISTER_LOAD_OPCODE(ARM::t2LDRHs, Common, new LoadInfo(-1, 1, 2, 16, true))
+  REGISTER_LOAD_OPCODE(ARM::t2LDREXH, Common, new LoadInfo(-1, 1, 2, 16))
 
   REGISTER_LOAD_OPCODE(ARM::t2LDRDi8, D, new LoadInfo(-1, 1, 2))
   REGISTER_LOAD_OPCODE(ARM::t2LDRD_PRE, DPre, new LoadInfo(-1, 0, 1))

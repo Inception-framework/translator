@@ -34,7 +34,8 @@ void MoveDataLifter::registerLifter() {
                       (LifterHandler)&MoveDataLifter::MoveHandler);
   alm->registerLifter(this, std::string("MoveDataLifter"), (unsigned)ARM::MOVi,
                       (LifterHandler)&MoveDataLifter::MoveHandler);
-
+  alm->registerLifter(this, std::string("MoveDataLifter"), (unsigned)ARM::t2MOVTi16,
+                      (LifterHandler)&MoveDataLifter::MoveHandler);
   alm->registerLifter(this, std::string("MoveDataLifter"), (unsigned)ARM::MVNCCi,
                       (LifterHandler)&MoveDataLifter::MoveNotHandler);
   alm->registerLifter(this, std::string("MoveDataLifter"), (unsigned)ARM::MVNi,

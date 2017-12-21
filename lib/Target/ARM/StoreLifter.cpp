@@ -31,6 +31,7 @@ void StoreLifter::registerLifter() {
   REGISTER_STORE_OPCODE(ARM::t2STR_PRE, Pre, new StoreInfo(1, 2, 3))
   REGISTER_STORE_OPCODE(ARM::t2STR_POST, Post, new StoreInfo(1, 2, 3))
   REGISTER_STORE_OPCODE(ARM::t2STRs, Signed, new StoreInfo(1, 2, 3))
+  REGISTER_STORE_OPCODE(ARM::t2STREX, Common, new StoreInfo(1, 2, 3))
 
   REGISTER_STORE_OPCODE(ARM::tSTRBi, Common, new StoreInfo(1, 2, 3, 8))
   REGISTER_STORE_OPCODE(ARM::tSTRBr, Common, new StoreInfo(1, 2, 3, 8))
@@ -39,6 +40,7 @@ void StoreLifter::registerLifter() {
   REGISTER_STORE_OPCODE(ARM::t2STRB_PRE, Pre, new StoreInfo(1, 2, 3, 8))
   REGISTER_STORE_OPCODE(ARM::t2STRB_POST, Post, new StoreInfo(1, 2, 3, 8))
   REGISTER_STORE_OPCODE(ARM::t2STRBs, Signed, new StoreInfo(1, 2, 3, 8))
+  REGISTER_STORE_OPCODE(ARM::t2STREXB, Common, new StoreInfo(1, 2, 3))
 
   REGISTER_STORE_OPCODE(ARM::tSTRHi, Common, new StoreInfo(1, 2, 3, 16))
   REGISTER_STORE_OPCODE(ARM::tSTRHr, Common, new StoreInfo(1, 2, 3, 16))
@@ -47,6 +49,7 @@ void StoreLifter::registerLifter() {
   REGISTER_STORE_OPCODE(ARM::t2STRH_PRE, Pre, new StoreInfo(1, 2, 3, 16))
   REGISTER_STORE_OPCODE(ARM::t2STRH_POST, Post, new StoreInfo(1, 2, 3, 16))
   REGISTER_STORE_OPCODE(ARM::t2STRHs, Signed, new StoreInfo(1, 2, 3, 16))
+  REGISTER_STORE_OPCODE(ARM::t2STREXH, Common, new StoreInfo(1, 2, 3))
 
   REGISTER_STORE_OPCODE(ARM::t2STRDi8, D, new StoreInfo(1, 3, 4, 32, 3))
   REGISTER_STORE_OPCODE(ARM::t2STRD_PRE, D, new StoreInfo(0, 2, 3, 32, 2))
@@ -292,6 +295,13 @@ void StoreLifter::doCommon(llvm::SDNode* N, llvm::IRBuilder<>* IRB) {
   Rn = visit(N->getOperand(info->iRn).getNode(), IRB);
 
   Rn = WriteReg(Rn, Rd, IRB, info->width, false);
+
+  switch (opcode) {
+    case ARM::t2STREX:
+    case ARM::t2STREXB:
+    case ARM::t2STREXH:
+      Rn = getConstant("0");
+  }
 
   saveNodeValue(N, Rn);
 }

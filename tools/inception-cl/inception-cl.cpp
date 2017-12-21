@@ -52,6 +52,7 @@
 #include <llvm/Support/SourceMgr.h>
 #include <llvm/Support/ToolOutputFile.h>
 // #include <llvm/Support/Streams.h>
+#include "llvm/PassManager.h"
 
 #include <inttypes.h>
 #include <signal.h>
@@ -77,11 +78,13 @@
 #include "Commands/Commands.h"
 #include "IRMerger.h"
 
-#include "AssemblySupport.h"
+#include "CollisionSolver.h"
 #include "FunctionsHelperWriter.h"
 #include "InterruptSupport.h"
 #include "SectionsWriter.h"
 #include "StackAllocator.h"
+#include "Transforms/BreakConstantGEP.h"
+#include "Transforms/BreakConstantPtrToInt.h"
 #include "Utils/Builder.h"
 #include "Utils/ErrorHandling.h"
 
@@ -127,6 +130,11 @@ static cl::opt<bool> DisableInterrupt(
     "disable-interrupt", cl::Hidden,
     cl::desc("Disable IR code for handler prolog/epilog and SectionsWriter "
              ".interrupt_vector"));
+
+static cl::opt<bool> EnableCollisionSolver(
+    "enable-collision-solver", cl::Hidden,
+    cl::desc("Enable collisions solver feature: replace linker defined symbols "
+             "with constant"));
 
 ///===---------------------------------------------------------------------===//
 /// loadBitcode     - Tries to open the bitcode file and set the ObjectFile.
@@ -241,6 +249,11 @@ static std::error_code runInception(StringRef FileName) {
        iter1 != module->getFunctionList().end(); iter1++) {
     Function &old_function = *iter1;
 
+    FunctionPassManager FPM(module);
+    FPM.add(createBreakConstantGEPPass());
+    FPM.add(createBreakConstantPtrToIntPass());
+    FPM.run(old_function);
+
     for (auto iter2 = old_function.getBasicBlockList().begin();
          iter2 != old_function.getBasicBlockList().end(); iter2++) {
       BasicBlock &old_bb = *iter2;
@@ -254,17 +267,15 @@ static std::error_code runInception(StringRef FileName) {
       }  // END FOR INSTRUCTIOn
     }    // END FOR BB
   }      // END FOR FCT
+  inception_message("Done -> %ld functions.\n", asm_functions.size());
 
   initAPI(module, DEC);
 
-  inception_message("Importing pure assembly code...");
-  std::set<std::string> asm_functions2;
-  asm_functions2 = AssemblySupport::ImportAll(module, DAS);
-  // XXX: Decomment the line bellow to disassemble all functions
-  // asm_functions.insert(asm_functions2.begin(), asm_functions2.end());
-  inception_message("Done\n");
-
-  inception_message("Done -> %ld functions.", asm_functions.size());
+  if (EnableCollisionSolver) {
+    inception_message("Solving collision...");
+    CollisionSolver::solve(module, DAS);
+    inception_message("Done\n");
+  }
 
   IRMerger *merger = new IRMerger(DEC);
 
@@ -284,7 +295,7 @@ static std::error_code runInception(StringRef FileName) {
 
   bool hasDependencies = false;
   do {
-    for (fct_begin; fct_begin != fct_end; fct_begin++) {
+    for (; fct_begin != fct_end; fct_begin++) {
       Function &function = *fct_begin;
 
       if (function.hasFnAttribute("DecompileLater")) {
@@ -307,6 +318,7 @@ static std::error_code runInception(StringRef FileName) {
   SectionsWriter::WriteSection(".heap", DAS, module);
   SectionsWriter::WriteSection(".main_stack", DAS, module);
   if (DisableInterrupt == false) {
+    SectionsWriter::WriteSection(".isr_vector", DAS, module);
     SectionsWriter::WriteSection(".interrupt_vector", DAS, module);
   }
   inception_message("Done\n");
@@ -326,19 +338,6 @@ static std::error_code runInception(StringRef FileName) {
   FunctionsHelperWriter::Write(NONE, ICP, module, main);
   // FunctionsHelperWriter::Write(END, DUMP_STACK, module, main);
   inception_message("Done\n");
-
-  // Which IRQ handlers should we patch ?
-  // XXX: It could be better if we use the symbols table or the config.json
-  // XXX: unfortunately patching inside Compiler does not allow runtime
-  // modification of the IRQ vector
-  // StringRef handlers[] = {""};
-  //
-  // // Iterate over each handlers
-  // for (auto handler : handlers) {
-  //   /*This adds instructions sequence to stacked current context */
-  //   InterruptSupport::WriteInterruptPrologue(handler);
-  //   InterruptSupport::WriteInterruptEpilogue(handler);
-  // }
 
   std::string bc_output(FileName.str());
   bc_output += ".ll";
@@ -360,6 +359,7 @@ static void save(std::string fileName, Module *module) {
   if (ErrorInfo) {
     inception_error("Cannot save result into %s", fileName.c_str());
   }
+  exit(0);
 }
 
 int main(int argc, char *argv[]) {

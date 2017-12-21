@@ -206,6 +206,25 @@ class SymbolsTable {
     return NULL;
   }
 
+  std::vector<FractureSymbol *> *getOccurences(uint64_t address) {
+    std::vector<FractureSymbol *> *list = new std::vector<FractureSymbol *>();
+
+    for (std::vector<FractureSymbol *>::iterator si = Syms.begin(),
+                                                 se = Syms.end();
+         si != se; ++si) {
+      StringRef Name;
+      if (error((*si)->getName(Name))) continue;
+
+      if (SymbolComparator(*si, address)) {
+        if (Name.find("$") == StringRef::npos &&
+            Name.find("/") == StringRef::npos) {
+          list->push_back(*si);
+        }
+      }
+    }
+    return list;
+  }
+
   //===---------------------------------------------------------------------===//
   /// lookupELFName   - With an ELF file, lookup a function address based on its
   /// name.

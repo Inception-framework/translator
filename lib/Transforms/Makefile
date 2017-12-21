@@ -8,7 +8,7 @@
 ##===----------------------------------------------------------------------===##
 
 LEVEL = ../..
-PARALLEL_DIRS = TypeRecovery NameRecovery
+PARALLEL_DIRS = TypeRecovery NameRecovery BreakConstantGEP BreakConstantPtrToInt
 
 # include $(LEVEL)/Makefile.config
 
