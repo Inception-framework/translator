@@ -30,7 +30,7 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-#include "utils.h"
+#include "Utils/utils.h"
 
 #include <cstdio>
 #include <cstdlib>
