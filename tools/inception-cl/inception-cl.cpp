@@ -39,6 +39,7 @@
 #include "llvm/Target/TargetLowering.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetRegisterInfo.h"
+#include "llvm/MC/SubtargetFeature.h"
 
 #include <llvm/Bitcode/ReaderWriter.h>
 #include <llvm/IR/Module.h>

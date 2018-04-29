@@ -1,0 +1,15 @@
+//===-- CompileTimeInfo.h ---------------------------------------*- C++ -*-===//
+//
+//                     The INCEPTION Translator & Merger
+//
+//
+//===----------------------------------------------------------------------===//
+
+// @AUTO_GEN_MSG@
+#ifndef INCEPTION_COMPILE_TIME_INFO_H
+#define INCEPTION_COMPILE_TIME_INFO_H
+
+#define INCEPTION_BUILD_MODE "@CMAKE_BUILD_TYPE@ (Asserts: @ENABLE_INCEPTION_ASSERTS@)"
+#define INCEPTION_BUILD_REVISION "@INCEPTION_GIT_SHA1HASH@"
+
+#endif
