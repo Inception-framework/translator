@@ -13,7 +13,7 @@ set(INCEPTION_LIBS
 #   mc
 # )
 
-target_link_libraries(inception-cl CodeInv Commands Target Transforms Utils ${INCEPTION_LIBS})
+target_link_libraries(inception-cl Commands CodeInv Target Transforms Utils ${INCEPTION_LIBS})
 link_directories(${LLVM_LIBRARY_DIRS})
 
 install(TARGETS inception-cl RUNTIME DESTINATION bin)
