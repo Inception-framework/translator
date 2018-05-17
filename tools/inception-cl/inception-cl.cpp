@@ -76,7 +76,7 @@
 #include "BinFun.h"
 #include "CodeInv/Decompiler.h"
 #include "CodeInv/Disassembler.h"
-#include "Commands/Commands.h"
+//#include "Commands/Commands.h"
 #include "IRMerger.h"
 
 #include "CollisionSolver.h"
@@ -100,7 +100,7 @@ static void save(std::string fileName, Module *module);
 // Global Variables and Parameters
 //===----------------------------------------------------------------------===//
 static std::string ProgramName;
-static Commands CommandParser;
+//static Commands CommandParser;
 
 std::unique_ptr<object::ObjectFile> TempExecutable;
 // bool isStripped = false;
