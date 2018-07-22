@@ -1,6 +1,6 @@
 Maintained since 2017 by:
   Maxim Integrated
-  Eurecom
+  EURECOM
 
 Contact:
   Giovanni Camurati <giovanni.camurati@eurecom.fr>
