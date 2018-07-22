@@ -15,7 +15,7 @@
 
 if (("${CMAKE_CXX_COMPILER_ID}" MATCHES "Clang") OR ("${CMAKE_CXX_COMPILER_ID}" MATCHES "GNU"))
   # Taken from Modules/Compiler/GNU.cmake but -DNDEBUG is removed
-  set(CMAKE_CXX_FLAGS_INIT "")
+  set(CMAKE_CXX_FLAGS_INIT "-fno-rtti")
   set(CMAKE_CXX_FLAGS_DEBUG_INIT "-O0 -g")
   set(CMAKE_CXX_FLAGS_MINSIZEREL_INIT "-Os")
   set(CMAKE_CXX_FLAGS_RELEASE_INIT "-O3")
