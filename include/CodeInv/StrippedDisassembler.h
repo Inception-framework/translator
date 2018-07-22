@@ -1,4 +1,3 @@
-
 //===---  StrippedDisassembler.h -----*- C++ -*-===//
 //
 //              Fracture: The Draper Decompiler Infrastructure

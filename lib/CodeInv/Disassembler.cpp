@@ -12,6 +12,13 @@
 //
 // Author: Richard Carback (rtc1032) <rcarback@draper.com>
 // Date: August 28, 2013
+//
+//
+// Copyright (c) 2017 Maxim Integrated, Inc.
+// Author: Nassim Corteggiani <nassim.corteggiani@maximintegrated.com>
+//
+// Copyright (c) 2017 EURECOM, Inc.
+// Author: Giovanni Camurati <giovanni.camurati@eurecom.fr>
 //===----------------------------------------------------------------------===//
 
 #include "CodeInv/Disassembler.h"

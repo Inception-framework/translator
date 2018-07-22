@@ -11,6 +11,14 @@
 // to decompile target specific code into LLVM IR and return function objects
 // back to the user.
 //
+//
+//
+// Copyright (c) 2017 Maxim Integrated, Inc.
+// Author: Nassim Corteggiani <nassim.corteggiani@maximintegrated.com>
+//
+// Copyright (c) 2017 EURECOM, Inc.
+// Author: Giovanni Camurati <giovanni.camurati@eurecom.fr>
+//
 //===----------------------------------------------------------------------===//
 
 #ifndef DECOMPILER_H
