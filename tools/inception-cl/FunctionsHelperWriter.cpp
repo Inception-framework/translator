@@ -516,23 +516,24 @@ void FunctionsHelperWriter::FNHICP(llvm::Module* mod, llvm::Instruction* inst) {
 
   // add all cases
   // if more than one symbol has the same address, put only the first
-  sw->addCase(addresses[0], blocks[0]);
-  for (unsigned int i = 1; i < num_cases; i++) {
-    bool duplicate = false;
-    for (unsigned int j = 0; j < i; j++) {
-      if (addresses[i] == addresses[j]) {
-        duplicate = true;
-        inception_warning(
-            "[BranchHandlerBLXr] icp creation, duplicate function symbol at "
-            "the same address, skipping it\n");
-        break;
+  if( addresses.size() > 0 ) {
+    sw->addCase(addresses[0], blocks[0]);
+    for (unsigned int i = 1; i < num_cases; i++) {
+      bool duplicate = false;
+      for (unsigned int j = 0; j < i; j++) {
+        if (addresses[i] == addresses[j]) {
+          duplicate = true;
+          inception_warning(
+              "[BranchHandlerBLXr] icp creation, duplicate function symbol at "
+              "the same address, skipping it\n");
+          break;
+        }
+      }
+      if (!duplicate) {
+        sw->addCase(addresses[i], blocks[i]);
       }
     }
-    if (!duplicate) {
-      sw->addCase(addresses[i], blocks[i]);
-    }
   }
-
   inception_message("Done");
 
   // FunctionPassManager FPM(IContext::Mod);

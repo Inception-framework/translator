@@ -35,9 +35,15 @@ class StackAllocator {
   static void Allocate(llvm::Module* mod, const Disassembler* Dis) {
     // Main stack
     const object::SectionRef Section_s = Dis->getSectionByName(".stack");
-    Type* Ty_s = ArrayType::get(IntegerType::get(mod->getContext(), 4),
+    //if( Section_s.getObject() == NULL ) {
+    if( Section_s.getSize() > 0x800 ) {
+      Type* Ty_s = ArrayType::get(IntegerType::get(mod->getContext(), 4),10000);
+      Reg(".stack", Ty_s);
+    } else {
+      Type* Ty_s = ArrayType::get(IntegerType::get(mod->getContext(), 4),
                                 Section_s.getSize());
-    Reg(".stack", Ty_s);
+      Reg(".stack", Ty_s);
+    }
 
     // User stack allocated by SectionsWriter
   }
