@@ -14,4 +14,5 @@ The lifter can be used independently of the Inception eco-system.
 mkdir build
 cd build
 cmake ..
+make
 ```
