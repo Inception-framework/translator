@@ -7,3 +7,11 @@ This framework uses a lift-and-merge process that is built around two main compo
 * A merger that enables execution of IR generated from low-level semantic code (e.g., binary or inline assembly) and high-level semantic code (e.g., C/C++).
 
 The lifter can be used independently of the Inception eco-system.
+
+# How to build?
+
+```bash
+mkdir build
+cd build
+cmake ..
+```
