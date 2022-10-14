@@ -49,7 +49,7 @@ std::string getReg(const SDNode* N) {
   std::string RegName;
   raw_string_ostream RP(RegName);
 
-  RP << PrintReg(R->getReg(), IContext::RegisterInfo);
+  RP << printReg(R->getReg(), IContext::RegisterInfo);
 
   RegName = RP.str().substr(1, RP.str().size());
 
@@ -88,7 +88,7 @@ bool IsCPSR(SDNode* N) {
     std::string RegName;
     raw_string_ostream RP(RegName);
 
-    RP << PrintReg(R->getReg(), IContext::RegisterInfo);
+    RP << printReg(R->getReg(), IContext::RegisterInfo);
 
     RegName = RP.str().substr(1, RP.str().size());
 
@@ -112,7 +112,7 @@ bool IsPC(SDNode* N) {
     std::string RegName;
     raw_string_ostream RP(RegName);
 
-    RP << PrintReg(R->getReg(), IContext::RegisterInfo);
+    RP << printReg(R->getReg(), IContext::RegisterInfo);
 
     RegName = RP.str().substr(1, RP.str().size());
 
@@ -136,7 +136,7 @@ bool IsITSTATE(SDNode* N) {
     std::string RegName;
     raw_string_ostream RP(RegName);
 
-    RP << PrintReg(R->getReg(), IContext::RegisterInfo);
+    RP << printReg(R->getReg(), IContext::RegisterInfo);
 
     RegName = RP.str().substr(1, RP.str().size());
 
@@ -510,7 +510,7 @@ std::string getRegisterSDNodeName(const RegisterSDNode* R) {
   std::string RegName;
   raw_string_ostream RP(RegName);
 
-  RP << PrintReg(R->getReg(), IContext::RegisterInfo);
+  RP << printReg(R->getReg(), IContext::RegisterInfo);
 
   // We remove the % char
   RegName = RP.str().substr(1, RP.str().size());
@@ -641,19 +641,20 @@ Constant* GetIntIntFunctionPointer(StringRef function_name) {
         /*Name=*/function_name, IContext::Mod);
     function->setCallingConv(67);
   }
-  AttributeSet function_PAL;
-  {
-    SmallVector<AttributeSet, 4> Attrs;
-    AttributeSet PAS;
-    {
-      AttrBuilder B;
-      B.addAttribute(Attribute::NoUnwind);
-      PAS = AttributeSet::get(IContext::getContextRef(), ~0U, B);
-    }
-
-    Attrs.push_back(PAS);
-    function_PAL = AttributeSet::get(IContext::getContextRef(), Attrs);
-  }
+  // AttributeSet function_PAL;
+  // {
+    // SmallVector<AttributeSet, 4> Attrs;
+    // AttributeSet PAS;
+    // {
+      // AttrBuilder B;
+      // B.addAttribute(Attribute::NoUnwind);
+      // const Attribute::AttrKind AttrParam[] = {Attribute::NoUnwind};
+      // PAS = AttributeSet::get(IContext::getContextRef(), ~0U, AttrParam);
+    // }
+//
+    // Attrs.push_back(PAS);
+    // function_PAL = AttributeSet::get(IContext::getContextRef(), Attrs);
+  // }
 
   // Constant Definitions
   Constant* fct_ptr =
@@ -683,19 +684,19 @@ Constant* GetIntFunctionPointer(StringRef function_name) {
         /*Name=*/function_name, IContext::Mod);
     function->setCallingConv(67);
   }
-  AttributeSet function_PAL;
-  {
-    SmallVector<AttributeSet, 4> Attrs;
-    AttributeSet PAS;
-    {
-      AttrBuilder B;
-      B.addAttribute(Attribute::NoUnwind);
-      PAS = AttributeSet::get(IContext::getContextRef(), ~0U, B);
-    }
-
-    Attrs.push_back(PAS);
-    function_PAL = AttributeSet::get(IContext::getContextRef(), Attrs);
-  }
+  // AttributeSet function_PAL;
+  // {
+    // SmallVector<AttributeSet, 4> Attrs;
+    // AttributeSet PAS;
+    // {
+      // AttrBuilder B;
+      // B.addAttribute(Attribute::NoUnwind);
+      // PAS = AttributeSet::get(IContext::getContextRef(), ~0U, B);
+    // }
+//
+    // Attrs.push_back(PAS);
+    // function_PAL = AttributeSet::get(IContext::getContextRef(), Attrs);
+  // }
 
   // Constant Definitions
   Constant* fct_ptr =
@@ -708,7 +709,7 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
   if (IContext::Mod == NULL) inception_error("API has not been initialized.");
 
   // TODO: Look up address in symbol table.
-  std::string FName =
+  llvm::StringRef FName =
       IContext::alm->Dec->getDisassembler()->syms->getFunctionName(Tgt);
 
   Module* Mod = IContext::Mod;
@@ -742,7 +743,7 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
         "Analyzer may fail with unsupported indirect call to a valid entry \n"
         "point. If, the fail occured during the decompilation process please \n"
         "concider this code has wrong !\n\n\n",
-        FName.c_str());
+        FName.str().c_str());
     return;
   }
 
@@ -753,7 +754,7 @@ void CreateCall(SDNode* N, IRBuilder<>* IRB, uint32_t Tgt) {
         "Function %s has unsupported return type... Possible corrution because \n"
         "instruction may have been generated to lower arguments before \n"
         "unsupported type was encountered...\n\n\n",
-        FName.c_str());
+        FName.str().c_str());
   }
 
   if (N != NULL) {

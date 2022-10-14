@@ -19,14 +19,12 @@
 
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Compiler.h"
-#include "llvm/Support/MemoryObject.h"
 
 using namespace llvm;
 
 namespace fracture {
 
-/// StringRefMemoryObject - Simple StringRef-backed MemoryObject
-class FractureMemoryObject : public MemoryObject {
+class FractureMemoryObject {
   StringRef Bytes;
   uint64_t Base;
 public:

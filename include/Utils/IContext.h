@@ -30,7 +30,7 @@
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
 #include "llvm/IR/Module.h"
-#include "llvm/Target/TargetRegisterInfo.h"
+#include "llvm/CodeGen/TargetRegisterInfo.h"
 #include "Target/ARM/ARMLifterManager.h"
 
 using namespace llvm;

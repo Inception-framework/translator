@@ -74,7 +74,7 @@ Value* ABIAdapter::Higher(Function* Func, IRBuilder<>* IRB) {
         "after execution");
     LR = ReadReg(Reg("LR"), IRB);
   }
-  Value* Call = IRB->CreateCall(dyn_cast<Value>(Func), Args);
+  Value* Call = IRB->CreateCall(Func, Args);
   if (decompiled == false) {
     WriteReg(LR, Reg("PC"), IRB);
   }
@@ -95,7 +95,7 @@ Value* ABIAdapter::HigherCollections(Type* Ty, unsigned size,
 
     reg = ReadReg(reg, IRB);
 
-    Value* ptr = IRB->CreateGEP(array, IdxList);
+    Value* ptr = IRB->CreateGEP(Ty, array, IdxList);
 
     WriteReg(reg, ptr, IRB, 32, true);
   }
@@ -134,14 +134,16 @@ Value* ABIAdapter::Higher(Type* Ty, IRBuilder<>* IRB) {
   switch (Ty->getTypeID()) {
     case llvm::Type::StructTyID: {
       num_elements = Ty->getStructNumElements();
-      Type* Ty = StructType::get(
+      LLVMContext &ctx = Ty->getContext();
+      Type* Ty = StructType::get(ctx, 
           IntegerType::get(IContext::getContextRef(), 32), num_elements);
 
       return HigherCollections(Ty, num_elements, IRB);
       break;
     }
-    case llvm::Type::VectorTyID: {
-      num_elements = Ty->getVectorNumElements();
+    case llvm::Type::ScalableVectorTyID: 
+    case llvm::Type::FixedVectorTyID: {
+      num_elements = cast<VectorType>(Ty)->getElementCount();
       Type* Ty = VectorType::get(
           IntegerType::get(IContext::getContextRef(), 32), num_elements);
 
@@ -159,10 +161,11 @@ Value* ABIAdapter::Higher(Type* Ty, IRBuilder<>* IRB) {
     case llvm::Type::IntegerTyID: {
       if(Ty->getIntegerBitWidth() <= 32 )
         return HigherInteger(Ty, IRB);
-      else
+      else {
         inception_warning("ABIAdapter failed to higher integer type :");
         Ty->dump();
         return NULL;
+      }
       break;
     }
     case llvm::Type::VoidTyID: {
@@ -198,23 +201,22 @@ Value* ABIAdapter::Higher(Type* Ty, IRBuilder<>* IRB) {
 
 Value* ABIAdapter::LowerCollections(Value* collection, unsigned size,
                                     IRBuilder<>* IRB) {
-  Value* res = NULL;
 
   for (uint64_t i = 0; i < size; i++) {
     Value* reg = getNext(IRB);
-    if(collection->getType()->getTypeID() == llvm::Type::VectorTyID) {
+    if(collection->getType()->isVectorTy()) {
 
       Value* element =  IRB->CreateExtractElement(collection, IRB->getInt32(i));
-      res = WriteReg(element, reg, IRB, 32, true);
+      WriteReg(element, reg, IRB, 32, true);
 
     } else {
 
-      Value* IdxList[2];
-      IdxList[0] = getConstant("0");
-      IdxList[1] = ConstantInt::get(IContext::getContextRef(), APInt(32, i, 10));
+      // Value* IdxList[2];
+      // IdxList[0] = getConstant("0");
+      // IdxList[1] = ConstantInt::get(IContext::getContextRef(), APInt(32, i, 10));
 
       Value* element = IRB->CreateExtractValue(collection, i);
-      res = WriteReg(element, reg, IRB, 32, true);
+      WriteReg(element, reg, IRB, 32, true);
     }
 
   }
@@ -244,8 +246,9 @@ Value* ABIAdapter::Lower(Value* inst, IRBuilder<>* IRB) {
       return LowerCollections(inst, num_elements, IRB);
       break;
     }
-    case llvm::Type::VectorTyID: {
-      num_elements = ReturnType->getVectorNumElements();
+    case llvm::Type::ScalableVectorTyID: 
+    case llvm::Type::FixedVectorTyID: {
+      num_elements = cast<VectorType>(ReturnType)->getElementCount();
       return LowerCollections(inst, num_elements, IRB);
       break;
     }

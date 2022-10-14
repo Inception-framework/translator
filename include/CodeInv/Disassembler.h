@@ -25,7 +25,6 @@
 #define DISASSEMBLER_H
 
 #include "llvm/CodeGen/GCMetadata.h"
-#include "llvm/CodeGen/GCStrategy.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/CodeGen/MachineMemOperand.h"
@@ -36,7 +35,7 @@
 #include "llvm/IR/Metadata.h"
 #include "llvm/IR/Module.h"
 #include "llvm/MC/MCAsmInfo.h"
-#include "llvm/MC/MCDisassembler.h"
+#include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCInstrInfo.h"
 #include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCSubtargetInfo.h"
@@ -44,7 +43,7 @@
 #include "llvm/Object/ObjectFile.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/TargetRegistry.h"
+// #include "llvm/MC/TargetRegistry.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
 
@@ -77,7 +76,7 @@ class Disassembler {
   // TODO : Move into SymbolsTable.h
   void getRelocFunctionName(unsigned Address, StringRef &NameRef);
 
-  const StringRef getFunctionName(unsigned Address) const;
+  const StringRef getFunctionName(uint64_t Address) const;
 
   /// \brief Construct a new Disassembler object, which is tied to a specific
   /// executable. The constructor creates a module if none is found, and may

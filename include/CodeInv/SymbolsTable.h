@@ -46,7 +46,8 @@
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Format.h"
 #include "llvm/Support/FormattedStream.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvm/MC/TargetRegistry.h"
+
 
 using namespace inception;
 using namespace llvm;
@@ -263,7 +264,7 @@ class SymbolsTable {
     else {
       if (error(sym->getAddress(Address))) return false;
 
-      if (Address == object::UnknownAddressOrSize) {
+      if (Address == 0ULL) {
         Address = 0;
         return false;
       } else

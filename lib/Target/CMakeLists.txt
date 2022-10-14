@@ -32,11 +32,11 @@ inception_compiler_add_component(Target
 # inceptionCore.
 set(LLVM_COMPONENTS
 	core
-  support
+        support
 	analysis
 	arm
 	armasmparser
-	armasmprinter
+	#armasmprinter
 	armcodegen
 	armdesc
 	armdisassembler

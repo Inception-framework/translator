@@ -24,7 +24,7 @@
 #include "llvm/CodeGen/ValueTypes.h"
 #include "llvm/IR/LLVMContext.h"
 #include "llvm/MC/MCAsmInfo.h"
-#include "llvm/MC/MCDisassembler.h"
+#include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/MC/MCInstPrinter.h"
 #include "llvm/MC/MCInstrInfo.h"
@@ -33,10 +33,10 @@
 #include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/Target/TargetOptions.h"
-#include "llvm/Target/TargetRegisterInfo.h"
-#include "llvm/Target/TargetSubtargetInfo.h"
+#include "llvm/CodeGen/TargetRegisterInfo.h"
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/Object/ObjectFile.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Support/raw_ostream.h"
 
 using namespace llvm;
@@ -64,8 +64,8 @@ public:
                StringRef CPUName = "generic",
                StringRef Features = "",
                TargetOptions TargetOpts = TargetOptions(),
-               Reloc::Model RM = Reloc::Default,
-               CodeModel::Model CM = CodeModel::Default,
+               Reloc::Model RM = Reloc::Static,
+               CodeModel::Model CM = CodeModel::Small,
                CodeGenOpt::Level OL = CodeGenOpt::Default,
                raw_ostream &InfoOut = nulls(),
                raw_ostream &ErrOut = nulls());
@@ -91,6 +91,7 @@ public:
 
   EVT getRegType(unsigned RegisterID);
 
+  const MCSubtargetInfo *STI;
 private:
   LLVMContext *LLVMCtx;
   /// NOTE: In order of initialization in Constructor.
@@ -98,7 +99,6 @@ private:
   const Target *TheTarget;
   TargetMachine *TM;
 
-  const MCSubtargetInfo *STI;
   const MCDisassembler *DisAsm;
   const MCRegisterInfo *MRI;
   MCObjectFileInfo *MCOFI;

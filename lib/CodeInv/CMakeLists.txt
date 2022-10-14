@@ -21,7 +21,7 @@ set(LLVM_COMPONENTS
 	analysis
 	arm
 	armasmparser
-	armasmprinter
+	#armasmprinter
 	armcodegen
 	armdesc
 	armdisassembler

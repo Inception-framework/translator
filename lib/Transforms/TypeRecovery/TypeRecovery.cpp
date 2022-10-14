@@ -136,7 +136,7 @@ bool TypeRecovery::runOnFunction(Function &F) {
        I != E; ++I) {
     if (isa<AllocaInst>(I)) {
       // WorkList.push_back(I);
-      AnalyzeVar(I);
+      AnalyzeVar(&(*I));
     }
   }
 

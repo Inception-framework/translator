@@ -152,7 +152,7 @@ static Instruction *convertGEP(ConstantExpr *CE, Instruction *InsertPt) {
   //
   // Make the new GEP instruction.
   //
-  return (GetElementPtrInst::CreateInBounds(CE->getOperand(0), Indices,
+  return (GetElementPtrInst::CreateInBounds(NULL, CE->getOperand(0), Indices,
                                             CE->getName(), InsertPt));
 }
 
@@ -217,7 +217,7 @@ static Instruction *convertExpression(ConstantExpr *CE, Instruction *InsertPt) {
     case Instruction::FCmp:
     case Instruction::ICmp: {
       Instruction::OtherOps Op = (Instruction::OtherOps)(CE->getOpcode());
-      NewInst = CmpInst::Create(Op, CE->getPredicate(), CE->getOperand(0),
+      NewInst = CmpInst::Create(Op, (llvm::CmpInst::Predicate)CE->getPredicate(), CE->getOperand(0),
                                 CE->getOperand(1), CE->getName(), InsertPt);
       break;
     }
@@ -270,7 +270,7 @@ bool BreakConstantGEP::runOnFunction(Function &F) {
       // Scan through the operands of this instruction.  If it is a constant
       // expression GEP, insert an instruction GEP before the instruction.
       //
-      Instruction *I = i;
+      Instruction *I = &(*i);
       for (unsigned index = 0; index < I->getNumOperands(); ++index) {
         if (hasConstantGEP(I->getOperand(index))) {
           Worklist.push_back(I);

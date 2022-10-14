@@ -32,6 +32,7 @@ Disassembler::Disassembler(MCDirector *NewMC, object::ObjectFile *NewExecutable,
                            Module *NewModule, raw_ostream &InfoOut,
                            raw_ostream &ErrOut)
     : Infos(InfoOut), Errs(ErrOut) {
+
   MC = NewMC;
   setExecutable(NewExecutable);
   // If the module is null then create a new one
@@ -469,7 +470,7 @@ DebugLoc *Disassembler::setDebugLoc(uint64_t Address) {
   unsigned ColVal = (Address & 0xFF000000) >> 24;
   unsigned LineVal = ((Address - func_addr) + 1 + 1) & 0xFFFFFF;
   DebugLoc *Location =
-      new DebugLoc(DebugLoc::get(LineVal, ColVal, Scope->get(), NULL));
+      new DebugLoc( DILocation(LineVal, ColVal, Scope->getScope(), NULL));
 
   return Location;
 }
@@ -485,8 +486,16 @@ MachineFunction *Disassembler::getOrCreateFunction(unsigned Address) {
     std::string FN = FNameRef.str();
     FunctionType *FTy = FunctionType::get(
         Type::getPrimitiveType(TheModule->getContext(), Type::VoidTyID), false);
-    Function *F = cast<Function>(TheModule->getOrInsertFunction(FN, FTy));
-    MF = new MachineFunction(F, *MC->getTargetMachine(), Address, *MMI);
+
+    FunctionCallee inserted_callee = TheModule->getOrInsertFunction(FN, FTy);
+    Function* inserted_function = dyn_cast<Function>(inserted_callee.getCallee());
+
+    llvm::TargetMachine* TM = MC->getTargetMachine();
+    const TargetSubtargetInfo &STI = *TM->getSubtargetImpl(*inserted_function);
+
+    LLVMTargetMachine &LLVMTM = static_cast<LLVMTargetMachine &>(*TM);
+
+    MF = new MachineFunction(*inserted_function, LLVMTM, STI, Address, *MMI);
     Functions[Address] = MF;
   }
   return MF;
@@ -612,7 +621,7 @@ unsigned Disassembler::printInstructions(formatted_raw_ostream &Out,
   // Print each instruction
   unsigned InstrCount = 0;
   while (BI != BE && (Size == 0 || InstrCount < Size)) {
-    printInstruction(Out, II, PrintTypes);
+    printInstruction(Out, &*II, PrintTypes);
     ++InstrCount;
     ++II;
     if (II == IE) {
@@ -672,8 +681,8 @@ void Disassembler::printInstruction(formatted_raw_ostream &Out,
   if (PrintTypes) {
     Inst->print(Out, MC->getTargetMachine(), false);
   } else {
-    MC->getMCInstPrinter()->printInst(Instructions[Address], Out,
-                                      Inst->isCall() ? FuncName : "");
+    MC->getMCInstPrinter()->printInst(Instructions[Address], Address, 
+                                      Inst->isCall() ? FuncName : "", *(MC->STI), Out);
     Out << "\n";
   }
   // Print the rest of the instruction bytes
@@ -708,7 +717,7 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
   MachineFunction *MF = disassemble(Address);
   MachineBasicBlock *MBB = &(MF->front());
   uint64_t JumpAddr = 0;
-  StringRef RelName;
+  StringRef real_name;
   std::error_code ec;
   bool isOffsetJump = false;
 
@@ -740,22 +749,25 @@ void Disassembler::getRelocFunctionName(unsigned Address, StringRef &NameRef) {
        seci != Executable->section_end(); ++seci)
     for (object::relocation_iterator ri = seci->relocation_begin();
          ri != seci->relocation_end(); ++ri) {
-      uint64_t RelocAddr;
-      if ((ec = ri->getAddress(RelocAddr))) {
-        errs() << ec.message() << "\n";
-        continue;
-      }
-      if (JumpAddr == RelocAddr) {
-        if ((ec = ri->getSymbol()->getName(RelName))) {
-          errs() << ec.message() << "\n";
+      
+      uint64_t relocation_address = ri->getOffset();
+      relocation_address += seci->getAddress();
+
+      if (JumpAddr == relocation_address) {
+        Expected<StringRef> symbol_name_error = ri->getSymbol()->getName();
+
+        if (!symbol_name_error) {
+          //TODO: better error handling
           continue;
         }
-        RelocOrigins[RelName] = Address;
+        real_name = symbol_name_error.get();
+
+        RelocOrigins[real_name] = Address;
       }
     }
   // NameRef is passed by reference, so if relocation doesn't match,
   // we don't want to modify the StringRef
-  if (!RelName.empty()) NameRef = RelName;
+  if (!real_name.empty()) NameRef = real_name;
 }
 
 void Disassembler::setSection(std::string SectionName) {
@@ -763,21 +775,31 @@ void Disassembler::setSection(std::string SectionName) {
 }
 
 void Disassembler::setSection(const object::SectionRef Section) {
-  StringRef Bytes;
-  uint64_t SectAddr, SectSize;
-  std::error_code ec = Section.getContents(Bytes);
-  if (ec) {
-    printError(ec.message());
+  StringRef section_content;
+  uint64_t section_address, section_size;
+  StringRef section_name;
+
+  Expected< StringRef > section_content_error = Section.getContents();
+  if (!section_content_error) {
+    //TODO: Better error handling
     return;
   }
-  SectAddr = Section.getAddress();
-  SectSize = Section.getSize();
+  section_content = section_content_error.get();
+
+  section_address = Section.getAddress();
+  section_size = Section.getSize();
+
   CurSection = Section;
-  CurSectionEnd = SectAddr + SectSize;
-  CurSectionMemory = new FractureMemoryObject(Bytes, SectAddr);
-  StringRef SectionName;
-  CurSection.getName(SectionName);
-  // printInfo("Setting Section " + std::string(SectionName.data()));
+  CurSectionEnd = section_address + section_size;
+  CurSectionMemory = new FractureMemoryObject(section_content, section_address);
+
+  Expected<StringRef> section_name_error = CurSection.getName();
+  if(!section_name_error) {
+    //TODO: Better error handling
+    return;
+  }
+  section_name = section_name_error.get();
+  printInfo("Setting Section " + std::string(section_name.data()));
 }
 
 std::string Disassembler::rawBytesToString(StringRef Bytes) {
@@ -795,35 +817,24 @@ std::string Disassembler::rawBytesToString(StringRef Bytes) {
 }
 
 const object::SectionRef Disassembler::getSectionByName(
-    StringRef SectionName) const {
-  std::error_code ec;
-  StringRef Name;
-  uint64_t Addr;
+    StringRef section_name) const {
+
+  StringRef name;
   for (object::section_iterator si = Executable->section_begin(),
                                 se = Executable->section_end();
        si != se; ++si) {
-    if (ec) {
-      printError(ec.message());
-      break;
-    }
-    if (si->getName(Name)) {
-      Addr = si->getAddress();
+  
+    Expected<StringRef> section_name_error = si->getName();
+    if (! section_name_error ) {
+      Expected<uint64_t> section_address_error = si->getAddress();
+      uint64_t address = section_address_error.get();
       Infos << "Disassembler: Unnamed section encountered at "
-            << format("%8" PRIx64, Addr) << "\n";
+            << format("%8" PRIx64, address) << "\n";
       continue;
     }
-    if (Name == SectionName) {
-      return *si;
-    }
-  }
-  for (object::section_iterator si = Executable->section_begin(),
-                                se = Executable->section_end();
-       si != se; ++si) {
-    if (si->getName(Name)) {
-      Addr = si->getAddress();
-      continue;
-    }
-    if (Name.str().find(SectionName) != std::string::npos) return *si;
+    name = *section_name_error;
+
+    if (name.str().find(section_name.str()) != std::string::npos) return *si;
   }
 
   return *Executable->section_end();
@@ -854,18 +865,22 @@ const object::SectionRef Disassembler::getSectionByAddress(
   return *Executable->section_end();
 }
 
-uint64_t Disassembler::getDebugOffset(const DebugLoc &Loc) const {
-  MDNode *Scope = Loc.getScope(*MC->getContext());
-  if (Scope == NULL || Scope->getNumOperands() != 3) {
+uint64_t Disassembler::getDebugOffset(const DebugLoc &debug_location) const {
+  
+
+  MDNode *scope = debug_location.getScope();
+  
+  if (scope == NULL || scope->getNumOperands() != 3) {
+    
     inception::inception_error(
         "[Disassembler::getDebugOffset] Scope not set properly in the "
         "debugLoc");
     return 0;
   }
 
-  if (ConstantInt *OffsetVal = dyn_cast<ConstantInt>(
-          dyn_cast<ValueAsMetadata>(Scope->getOperand(2))->getValue())) {
-    return OffsetVal->getZExtValue();
+  if (ConstantInt *offset = dyn_cast<ConstantInt>(
+          dyn_cast<ValueAsMetadata>(scope->getOperand(2))->getValue())) {
+    return offset->getZExtValue();
   }
 
   errs() << "Could not decode DebugOffset Value as a ConstantInt!\n";
@@ -887,41 +902,70 @@ void Disassembler::deleteFunction(MachineFunction *MF) {
   }
 }
 
-const StringRef Disassembler::getFunctionName(unsigned Address) const {
-  uint64_t SymAddr;
-  std::error_code ec;
-  StringRef NameRef;
+/*
+ * @Brief: Return the function name at a given address by reading the symbol table
+ * @param: The unsigned int address
+ */
+const StringRef Disassembler::getFunctionName(uint64_t address) const {
+
+  llvm::StringRef symbol_name;
+  std::string *function_name;
+
   // Check in the regular symbol table first
   for (object::symbol_iterator I = Executable->symbols().begin(),
                                E = Executable->symbols().end();
        I != E; ++I) {
-    object::SymbolRef::Type SymbolTy;
-    if ((ec = I->getType(SymbolTy))) {
-      errs() << ec.message() << "\n";
+
+    // Declare expected variables
+    llvm::Expected<llvm::object::SymbolRef::Type> symbol_type_error = I->getType();
+    llvm::Expected<uint64_t> symbol_address_error = I->getAddress();
+    llvm::Expected<llvm::StringRef> symbol_name_error = I->getName();
+
+    // Declare symbols variables
+    uint64_t symbol_address;
+    llvm::object::SymbolRef::Type symbol_type;
+
+    // Retrieve symbol type
+    if(Error error = symbol_type_error.takeError()) {
+      errs() << symbol_type_error.takeError() << "\n";
       continue;
     }
-    if (SymbolTy != object::SymbolRef::ST_Function) {
+
+    // Discard non function type
+    symbol_type = symbol_type_error.get();
+    if (symbol_type != llvm::object::SymbolRef::ST_Function) {
       continue;
     }
-    if ((ec = I->getAddress(SymAddr))) {
-      errs() << ec.message() << "\n";
+
+    // Retrieve function address
+    if(!symbol_address_error) {
+      errs() << symbol_address_error.takeError() << "\n";
       continue;
     }
-    if ((unsigned)SymAddr == Address) {
-      if ((ec = I->getName(NameRef))) {
-        errs() << ec.message() << "\n";
+    symbol_address = symbol_address_error.get();
+
+    // If address match
+    if (symbol_address == address) {
+
+      // Retrieve symbol name
+      if (!symbol_name_error) {
+        errs() << symbol_name_error.takeError() << "\n";
         continue;
       }
+      symbol_name = *symbol_name_error;
       break;
     }
   }
-  if (NameRef.empty()) {
-    std::string *FName = new std::string();
-    raw_string_ostream FOut(*FName);
-    FOut << "func_" << format("%1" PRIx64, Address);
-    return StringRef(FOut.str());
+
+  // if search was not successful
+  if (symbol_name.empty()) {
+
+    function_name = new std::string();
+    raw_string_ostream ostream(*function_name);
+    ostream << "func_" << format("%1" PRIx64, address);
+    return StringRef(ostream.str());
   }
-  return NameRef;
+  return symbol_name;
 }
 
 }  // end namespace fracture

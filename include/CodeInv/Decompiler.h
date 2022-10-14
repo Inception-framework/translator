@@ -27,24 +27,24 @@
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/CodeGen/ISDOpcodes.h"
 #include "llvm/CodeGen/SelectionDAGNodes.h"
-#include "llvm/CodeGen/MachineModuleInfo.h"
 #include "llvm/CodeGen/GCMetadata.h"
 #include "llvm/CodeGen/MachineFunction.h"
 #include "llvm/CodeGen/MachineInstrBuilder.h"
 #include "llvm/IR/GlobalValue.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Module.h"
-#include "llvm/IR/TypeBuilder.h"
 #include "llvm/IR/InstIterator.h"
 #include "llvm/IR/CFG.h"
-#include "llvm/Target/TargetSubtargetInfo.h"
+#include "llvm/CodeGen/TargetSubtargetInfo.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Utils/PromoteMemToReg.h"
-#include "llvm/PassManager.h"
 
 #include "CodeInv/Disassembler.h"
 #include "Transforms/TypeRecovery.h"
 #include "Transforms/NameRecovery.h"
+#include <stack>
+#include "llvm/IR/LegacyPassManager.h"
+#include "llvm/CodeGen/MachineModuleInfo.h"
 
 using namespace llvm;
 
