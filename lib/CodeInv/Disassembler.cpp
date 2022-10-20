@@ -46,8 +46,12 @@ Disassembler::Disassembler(MCDirector *NewMC, object::ObjectFile *NewExecutable,
   // setSection(".text");
   setSection("code");
   // Initialize the MMI
-  MMI = new MachineModuleInfo(*MC->getMCAsmInfo(), *MC->getMCRegisterInfo(),
-                              MC->getMCObjectFileInfo());
+  // MMI = new MachineModuleInfo(*MC->getMCAsmInfo(), *MC->getMCRegisterInfo(),
+                              // MC->getMCObjectFileInfo());
+  llvm::TargetMachine* TM = MC->getTargetMachine();
+  LLVMTargetMachine &LLVMTM = static_cast<LLVMTargetMachine &>(*TM);
+
+  MMI = new MachineModuleInfo(&LLVMTM);
   // Initialize the GCMI
   GMI = new GCModuleInfo();
 
@@ -266,8 +270,7 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
                              // Bytes.data() + Bytes.size() - NewAddr);
                              (size_t)(Bytes.size() - NewAddr));
   // Replace nulls() with outs() for stack tracing
-  if (!(DA->getInstruction(*Inst, InstSize, NewBytes, Address, nulls(),
-                           nulls()))) {
+  if (!(DA->getInstruction(*Inst, InstSize, NewBytes, Address, nulls()))) {
     printError("Unknown instruction encountered, instruction decode failed! ");
 
     return 1;
@@ -431,8 +434,8 @@ unsigned Disassembler::decodeInstruction(unsigned Address,
     // some targets
 
     // Copy & paste set getImm to zero
-    MachineMemOperand *MMO = new MachineMemOperand(MachinePointerInfo(), flags,
-                                                   4, 0);  // MCO.getImm()
+    MachineMemOperand *MMO = new MachineMemOperand(MachinePointerInfo(), (llvm::MachineMemOperand::Flags) flags,
+                                                   LLT::pointer(0, 32), llvm::Align(0));  // MCO.getImm()
     MIB.addMemOperand(MMO);
     // outs() << "Name: " << MII->getName(Inst->getOpcode()) << " Flags: "
     // << flags << "\n";
@@ -463,6 +466,7 @@ DebugLoc *Disassembler::setDebugLoc(uint64_t Address) {
   Elts->push_back(MDString::get(*MC->getContext(), StringRef(DIType.str())));
   Elts->push_back(MDTuple::get(*MC->getContext(), file_loc));
   Elts->push_back(ValueAsMetadata::get(ConstantInt::get(Int64, Address)));
+  // DIScope *Scope = new DIScope(MDNode::get(*MC->getContext(), *Elts));
   DIScope *Scope = new DIScope(MDNode::get(*MC->getContext(), *Elts));
 
   // The following is here to fill in the value and not to be used to get
